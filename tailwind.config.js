@@ -1,0 +1,80 @@
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        primary: {
+          50: '#e6f5ff',
+          100: '#cceaff',
+          200: '#99d5ff',
+          300: '#66bfff',
+          400: '#33aaff',
+          500: '#0095ff',
+          600: '#0076cc',
+          700: '#005899',
+          800: '#003a66',
+          900: '#001c33',
+        },
+        secondary: {
+          50: '#e8f8f5',
+          100: '#d1f1eb',
+          200: '#a3e3d7',
+          300: '#75d5c3',
+          400: '#47c7af',
+          500: '#1ab99b',
+          600: '#15947c',
+          700: '#106f5d',
+          800: '#0a4a3e',
+          900: '#05251f',
+        },
+        neutral: {
+          50: '#f9fafb',
+          100: '#f3f4f6',
+          200: '#e5e7eb',
+          300: '#d1d5db',
+          400: '#9ca3af',
+          500: '#6b7280',
+          600: '#4b5563',
+          700: '#374151',
+          800: '#1f2937',
+          900: '#111827',
+        },
+        accent: {
+          50: '#fff6e6',
+          100: '#ffedcc',
+          200: '#ffdb99',
+          300: '#ffc966',
+          400: '#ffb733',
+          500: '#ffa500',
+          600: '#cc8400',
+          700: '#996300',
+          800: '#664200',
+          900: '#332100',
+        },
+      },
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+        display: ['Montserrat', 'sans-serif'],
+      },
+      animation: {
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'bounce-slow': 'bounce 2s infinite',
+      },
+      boxShadow: {
+        soft: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+        'soft-lg': '0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03)',
+      },
+      borderRadius: {
+        'xl': '1rem',
+        '2xl': '1.5rem',
+        '3xl': '2rem',
+      },
+    },
+  },
+  plugins: [],
+} 
