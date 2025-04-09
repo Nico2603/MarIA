@@ -3,9 +3,38 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 246, 249, 252;
-  --background-end-rgb: 255, 255, 255;
+  --primary-50: #f0f9ff;
+  --primary-100: #e0f2fe;
+  --primary-200: #bae6fd;
+  --primary-300: #7dd3fc;
+  --primary-400: #38bdf8;
+  --primary-500: #0ea5e9;
+  --primary-600: #0284c7;
+  --primary-700: #0369a1;
+  --primary-800: #075985;
+  --primary-900: #0c4a6e;
+  
+  --secondary-50: #ecfdf5;
+  --secondary-100: #d1fae5;
+  --secondary-200: #a7f3d0;
+  --secondary-300: #6ee7b7;
+  --secondary-400: #34d399;
+  --secondary-500: #10b981;
+  --secondary-600: #059669;
+  --secondary-700: #047857;
+  --secondary-800: #065f46;
+  --secondary-900: #064e3b;
+  
+  --neutral-50: #f9fafb;
+  --neutral-100: #f3f4f6;
+  --neutral-200: #e5e7eb;
+  --neutral-300: #d1d5db;
+  --neutral-400: #9ca3af;
+  --neutral-500: #6b7280;
+  --neutral-600: #4b5563;
+  --neutral-700: #374151;
+  --neutral-800: #1f2937;
+  --neutral-900: #111827;
 }
 
 body {
@@ -21,68 +50,131 @@ body {
 
 @layer base {
   html {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   }
   
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Montserrat', system-ui, sans-serif;
+    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   }
 }
 
 @layer components {
   .container-app {
-    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+    @apply max-w-7xl mx-auto;
   }
   
   .btn {
-    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 ease-in-out;
+    @apply rounded-md px-4 inline-flex justify-center items-center transition-all duration-200 font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none;
   }
   
   .btn-primary {
-    @apply bg-primary-500 text-white hover:bg-primary-600 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:outline-none;
+    @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
   }
   
   .btn-secondary {
-    @apply bg-secondary-500 text-white hover:bg-secondary-600 focus:ring-2 focus:ring-secondary-500 focus:ring-offset-2 focus:outline-none;
+    @apply bg-secondary-600 text-white hover:bg-secondary-700 focus:ring-secondary-500;
   }
   
-  .btn-neutral {
-    @apply bg-neutral-200 text-neutral-800 hover:bg-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-offset-2 focus:outline-none;
+  .btn-outline {
+    @apply bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-50 focus:ring-primary-500;
   }
   
-  .input-field {
-    @apply block w-full px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
-  }
-  
-  .card {
-    @apply bg-white rounded-xl shadow-soft p-6;
+  .shadow-soft {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
   }
   
   .chat-bubble {
-    @apply rounded-2xl p-4 max-w-[80%];
+    @apply p-4 rounded-2xl max-w-[85%];
   }
   
   .chat-bubble-user {
-    @apply bg-primary-100 text-neutral-800 ml-auto;
+    @apply chat-bubble bg-primary-600 text-white ml-auto;
   }
   
   .chat-bubble-ai {
-    @apply bg-secondary-100 text-neutral-800;
+    @apply chat-bubble bg-white border border-neutral-200 text-neutral-800;
   }
   
-  .navbar {
-    @apply bg-white shadow-soft py-4;
-  }
-
-  .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  /* Estilos para la visualización de audio del avatar interactivo */
+  .audio-wave {
+    @apply flex items-end h-10 space-x-0.5;
   }
   
-  .badge-info {
-    @apply bg-primary-100 text-primary-800;
+  .audio-wave-bar {
+    @apply w-1 rounded-full bg-primary-500;
+    animation: audio-wave 1s ease-in-out infinite;
   }
   
-  .badge-warning {
-    @apply bg-accent-100 text-accent-800;
+  @keyframes audio-wave {
+    0%, 100% {
+      height: 3px;
+    }
+    50% {
+      height: 15px;
+    }
+  }
+  
+  /* Estilos para efectos de pulsación y brillos */
+  .pulse-effect {
+    position: relative;
+  }
+  
+  .pulse-effect::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: inherit;
+    box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.7);
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.7);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(14, 165, 233, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(14, 165, 233, 0);
+    }
+  }
+  
+  /* Transiciones suaves para componentes */
+  .transition-all-sm {
+    @apply transition-all duration-200 ease-in-out;
+  }
+  
+  .transition-all-md {
+    @apply transition-all duration-300 ease-in-out;
+  }
+  
+  .transition-all-lg {
+    @apply transition-all duration-500 ease-in-out;
+  }
+  
+  /* Mejoras de accesibilidad y foco */
+  .focus-visible-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2;
+  }
+  
+  /* Estilo para el área de transcripción de texto */
+  .transcription-area {
+    @apply bg-gradient-to-b from-blue-50 to-white p-4 rounded-lg border border-blue-100;
+  }
+  
+  /* Estilos para vistas móviles específicas */
+  @media (max-width: 640px) {
+    .sm-full-height {
+      min-height: calc(100vh - 64px);
+    }
+    
+    .sm-no-padding {
+      padding-left: 0;
+      padding-right: 0;
+    }
   }
 } 
