@@ -7,44 +7,90 @@ interface Resource {
   description: string;
   url: string;
   icon: 'article' | 'guide' | 'contact' | 'emergency';
+  category: 'ansiedad' | 'depresión' | 'ambos';
 }
 
 const ResourcesSidebar: React.FC = () => {
   const resources: Resource[] = [
     {
       id: '1',
-      title: 'Línea de Ayuda en Crisis',
-      description: 'Contacto inmediato para situaciones de emergencia psicológica',
+      title: 'Línea de Atención para Crisis',
+      description: 'Contacto inmediato para emergencias de ansiedad y depresión',
       url: 'tel:+123456789',
       icon: 'emergency',
+      category: 'ambos'
     },
     {
       id: '2',
-      title: 'Guía para el Manejo del Estrés',
-      description: 'Técnicas prácticas para manejar el estrés en la vida diaria',
-      url: 'https://example.com/estres',
+      title: 'Respiración para Controlar Ansiedad',
+      description: 'Técnicas de respiración para calmar ataques de pánico y ansiedad',
+      url: 'https://example.com/respiracion-ansiedad',
       icon: 'guide',
+      category: 'ansiedad'
     },
     {
       id: '3',
-      title: 'Directorio de Profesionales',
-      description: 'Encuentra psicólogos y psiquiatras cerca de ti',
-      url: 'https://example.com/directorio',
+      title: 'Psicólogos Especializados en Ansiedad',
+      description: 'Directorio de especialistas en trastornos de ansiedad',
+      url: 'https://example.com/especialistas-ansiedad',
       icon: 'contact',
+      category: 'ansiedad'
     },
     {
       id: '4',
-      title: 'Primeros Auxilios Emocionales',
-      description: 'Qué hacer en situaciones de crisis emocional',
-      url: 'https://example.com/auxilios',
+      title: 'Síntomas de Depresión Mayor',
+      description: 'Guía para identificar signos de depresión clínica',
+      url: 'https://example.com/depresion-sintomas',
       icon: 'article',
+      category: 'depresión'
     },
     {
       id: '5',
-      title: 'Ejercicios de Mindfulness',
-      description: 'Prácticas para estar presente y reducir la ansiedad',
-      url: 'https://example.com/mindfulness',
+      title: 'Mindfulness para Ansiedad',
+      description: 'Ejercicios de atención plena para reducir ansiedad crónica',
+      url: 'https://example.com/mindfulness-ansiedad',
       icon: 'guide',
+      category: 'ansiedad'
+    },
+    {
+      id: '6',
+      title: 'Plan de Autocuidado para Depresión',
+      description: 'Actividades y rutinas recomendadas durante episodios depresivos',
+      url: 'https://example.com/depresion-autocuidado',
+      icon: 'article',
+      category: 'depresión'
+    },
+    {
+      id: '7',
+      title: 'Terapia Cognitivo-Conductual',
+      description: 'Cómo funciona la TCC para ansiedad y depresión',
+      url: 'https://example.com/tcc-ansiedad-depresion',
+      icon: 'article',
+      category: 'ambos'
+    },
+    {
+      id: '8',
+      title: 'Grupos de Apoyo para Depresión',
+      description: 'Comunidades locales y en línea para personas con depresión',
+      url: 'https://example.com/grupos-depresion',
+      icon: 'contact',
+      category: 'depresión'
+    },
+    {
+      id: '9',
+      title: 'Ejercicios contra Ataques de Pánico',
+      description: 'Técnicas para manejar ataques de pánico en el momento',
+      url: 'https://example.com/ataques-panico',
+      icon: 'guide',
+      category: 'ansiedad'
+    },
+    {
+      id: '10',
+      title: 'Medicamentos para Ansiedad y Depresión',
+      description: 'Información general sobre tratamientos farmacológicos',
+      url: 'https://example.com/medicamentos',
+      icon: 'article',
+      category: 'ambos'
     },
   ];
 
@@ -79,14 +125,18 @@ const ResourcesSidebar: React.FC = () => {
     }
   };
 
+  // Agrupar recursos por categoría
+  const ansiedadResources = resources.filter(r => r.category === 'ansiedad' || r.category === 'ambos');
+  const depresionResources = resources.filter(r => r.category === 'depresión' || r.category === 'ambos');
+
   return (
-    <aside className="hidden lg:block w-80 border-l border-neutral-200 bg-white p-4 overflow-y-auto">
+    <aside className="w-full h-full bg-white p-4 overflow-y-auto">
       <div className="sticky top-4">
-        <h2 className="text-xl font-display font-semibold mb-6 text-neutral-800">
-          Recursos útiles
+        <h2 className="text-xl font-display font-semibold mb-4 text-neutral-800">
+          Recursos Especializados
         </h2>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Recurso de emergencia destacado */}
           <motion.div
             whileHover={{ scale: 1.02 }}
@@ -97,9 +147,9 @@ const ResourcesSidebar: React.FC = () => {
                 {renderIcon('emergency')}
               </div>
               <div>
-                <h3 className="font-medium text-red-700">Línea de Ayuda en Crisis</h3>
+                <h3 className="font-medium text-red-700">Línea de Atención para Crisis</h3>
                 <p className="text-sm text-red-600 mt-1">
-                  Contacto inmediato para situaciones de emergencia psicológica
+                  Contacto inmediato para emergencias de ansiedad y depresión
                 </p>
                 <a
                   href="tel:+123456789"
@@ -114,35 +164,77 @@ const ResourcesSidebar: React.FC = () => {
             </div>
           </motion.div>
 
-          {/* Lista de recursos */}
-          <div className="space-y-3">
-            {resources.slice(1).map((resource) => (
-              <motion.a
-                key={resource.id}
-                href={resource.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                whileHover={{ scale: 1.02 }}
-                className="block bg-neutral-50 hover:bg-neutral-100 rounded-lg p-3 transition-colors duration-200"
-              >
-                <div className="flex items-start">
-                  <div className="bg-white rounded-full p-2 mr-3">
-                    {renderIcon(resource.icon)}
+          {/* Sección de recursos para ansiedad */}
+          <div>
+            <h3 className="text-lg font-medium text-blue-700 mb-2 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Ansiedad
+            </h3>
+            <div className="space-y-2">
+              {ansiedadResources.filter(r => r.id !== '1').map((resource) => (
+                <motion.a
+                  key={resource.id}
+                  href={resource.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ scale: 1.02 }}
+                  className="block bg-blue-50 hover:bg-blue-100 rounded-lg p-3 transition-colors duration-200"
+                >
+                  <div className="flex items-start">
+                    <div className="bg-white rounded-full p-2 mr-3">
+                      {renderIcon(resource.icon)}
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-neutral-800">{resource.title}</h3>
+                      <p className="text-xs text-neutral-600 mt-1">{resource.description}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-medium text-neutral-800">{resource.title}</h3>
-                    <p className="text-xs text-neutral-600 mt-1">{resource.description}</p>
+                </motion.a>
+              ))}
+            </div>
+          </div>
+
+          {/* Sección de recursos para depresión */}
+          <div>
+            <h3 className="text-lg font-medium text-purple-700 mb-2 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </svg>
+              Depresión
+            </h3>
+            <div className="space-y-2">
+              {depresionResources.filter(r => r.id !== '1').map((resource) => (
+                <motion.a
+                  key={resource.id}
+                  href={resource.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ scale: 1.02 }}
+                  className="block bg-purple-50 hover:bg-purple-100 rounded-lg p-3 transition-colors duration-200"
+                >
+                  <div className="flex items-start">
+                    <div className="bg-white rounded-full p-2 mr-3">
+                      {renderIcon(resource.icon)}
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-neutral-800">{resource.title}</h3>
+                      <p className="text-xs text-neutral-600 mt-1">{resource.description}</p>
+                    </div>
                   </div>
-                </div>
-              </motion.a>
-            ))}
+                </motion.a>
+              ))}
+            </div>
           </div>
 
           {/* Disclaimer */}
-          <div className="mt-6 p-3 bg-neutral-100 rounded-lg text-xs text-neutral-600">
+          <div className="mt-4 p-3 bg-neutral-100 rounded-lg text-xs text-neutral-600">
             <p className="font-medium mb-1">Importante:</p>
             <p>
-              Los recursos proporcionados son orientativos. Consulta con un profesional de la salud mental para obtener asesoramiento específico para tu situación.
+              Este asistente está exclusivamente especializado en orientación inicial sobre ansiedad y depresión. 
+              Los recursos proporcionados son orientativos. Consulta con un profesional de la salud mental para obtener 
+              diagnóstico y tratamiento adecuado.
             </p>
           </div>
         </div>

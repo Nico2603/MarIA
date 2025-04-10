@@ -2,15 +2,6 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  async redirects() {
-    return [
-      {
-        source: '/api/auth/callback',
-        destination: '/chat',
-        permanent: true,
-      },
-    ]
-  },
   async headers() {
     return [
       {

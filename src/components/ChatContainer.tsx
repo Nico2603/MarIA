@@ -20,7 +20,7 @@ const ChatContainer: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: 'Hola, soy tu asistente de salud mental. Estoy aquí para escucharte y brindarte orientación inicial. ¿Cómo puedo ayudarte hoy?',
+      text: 'Hola, soy tu asistente especializado en ansiedad y depresión. Estoy aquí para escucharte y brindarte orientación inicial. Esta es tu sesión gratuita, ¿cómo puedo ayudarte hoy?',
       isUser: false,
       timestamp: new Date().toLocaleTimeString(),
     },
@@ -29,10 +29,10 @@ const ChatContainer: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const suggestedQuestions = [
-    '¿Cómo manejar la ansiedad?',
-    '¿Qué es la depresión?',
-    '¿Dónde buscar ayuda profesional?',
-    'Técnicas de respiración',
+    '¿Qué síntomas de ansiedad son comunes?',
+    '¿Cómo distinguir tristeza de depresión?',
+    'Técnicas para reducir la ansiedad',
+    'Recursos para depresión en Colombia',
   ];
 
   useEffect(() => {
@@ -63,7 +63,7 @@ const ChatContainer: React.FC = () => {
       if (text.toLowerCase().includes('ansiedad')) {
         aiResponse = {
           id: (Date.now() + 1).toString(),
-          text: 'La ansiedad es una respuesta natural ante situaciones estresantes, pero cuando se vuelve persistente puede afectar tu bienestar. Algunas técnicas que pueden ayudar son la respiración profunda, mindfulness y la actividad física regular. Si sientes que tu ansiedad interfiere con tus actividades diarias, te recomiendo consultar con un profesional.',
+          text: 'La ansiedad es una respuesta natural ante situaciones estresantes, pero cuando se vuelve persistente puede afectar tu bienestar. Algunas técnicas que pueden ayudar son la respiración profunda, mindfulness y la actividad física regular. Si sientes que tu ansiedad interfiere con tus actividades diarias, te recomiendo consultar con un profesional especializado.',
           isUser: false,
           timestamp: new Date().toLocaleTimeString(),
           hasResources: true,
@@ -100,10 +100,17 @@ const ChatContainer: React.FC = () => {
             }
           ]
         };
+      } else if (text.toLowerCase().includes('pago') || text.toLowerCase().includes('precio') || text.toLowerCase().includes('costo') || text.toLowerCase().includes('suscripción') || text.toLowerCase().includes('suscripcion')) {
+        aiResponse = {
+          id: (Date.now() + 1).toString(),
+          text: 'Esta es tu sesión gratuita. Para continuar recibiendo apoyo, ofrecemos sesiones individuales por 40.000 COP o una suscripción mensual de 120.000 COP que incluye 4 sesiones al mes. Puedes encontrar más detalles en la página principal o preguntarme si necesitas más información.',
+          isUser: false,
+          timestamp: new Date().toLocaleTimeString(),
+        };
       } else {
         aiResponse = {
           id: (Date.now() + 1).toString(),
-          text: 'Gracias por compartir conmigo. Recuerda que estoy aquí para brindarte apoyo inicial, pero no sustituyo la atención profesional. ¿Hay algo específico sobre lo que quieras hablar o algún recurso que necesites?',
+          text: 'Gracias por compartir conmigo. Estoy especializado en brindar apoyo inicial para temas de ansiedad y depresión. ¿Hay algo específico sobre estos temas de lo que quieras hablar? Recuerda que esta es tu sesión gratuita.',
           isUser: false,
           timestamp: new Date().toLocaleTimeString(),
         };

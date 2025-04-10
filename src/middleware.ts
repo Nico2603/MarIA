@@ -13,20 +13,13 @@ export async function middleware(req: NextRequest) {
     path === route || path.startsWith(`${route}/`)
   );
 
-  // Si la URL tiene parámetros de auth0 callback, limpia la URL
-  if (url.search.includes('code=') && url.search.includes('state=')) {
-    // Crear una respuesta con la misma ruta pero sin query params
-    url.search = '';
-    return NextResponse.redirect(url);
-  }
-
   // Para rutas protegidas, verificamos la autenticación con un enfoque simple
   if (isProtectedRoute) {
-    // Verificación básica mediante cookie de sesión
-    const authCookie = req.cookies.get('appSession');
+    // Verificación mediante cookie simulada
+    const hasCookie = req.cookies.has('simulatedAuth');
     
-    if (!authCookie) {
-      // Redirigir a la página de inicio si no hay cookie de sesión
+    if (!hasCookie) {
+      // Redirigir a la página de inicio si no hay autenticación
       return NextResponse.redirect(new URL('/', req.url));
     }
   }

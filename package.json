@@ -26,8 +26,6 @@
   },
   "homepage": "https://github.com/Nico2603/AI-Mental-Health#readme",
   "dependencies": {
-    "@auth0/auth0-react": "^2.3.0",
-    "@auth0/nextjs-auth0": "^4.4.2",
     "autoprefixer": "^10.4.16",
     "framer-motion": "^10.16.4",
     "next": "^14.0.4",

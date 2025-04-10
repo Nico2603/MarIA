@@ -8,7 +8,11 @@ interface Message {
   text: string;
   isUser: boolean;
   timestamp: string;
+  tags?: string[]; // Etiquetas para categorizar los mensajes
 }
+
+// Tipos de temas permitidos
+type MessageTopic = 'ansiedad' | 'depresión' | 'off-topic';
 
 const VoiceChatContainer: React.FC = () => {
   // Estados para controlar las diferentes fases de la conversación
@@ -18,6 +22,7 @@ const VoiceChatContainer: React.FC = () => {
   const [currentSpeakingId, setCurrentSpeakingId] = useState<string | null>(null);
   const [userInput, setUserInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
+  const [currentTopic, setCurrentTopic] = useState<MessageTopic | null>(null);
   
   // Referencia para el reconocimiento de voz (simulado para la demo)
   const recognitionRef = useRef<any>(null);
@@ -61,6 +66,81 @@ const VoiceChatContainer: React.FC = () => {
       }
     };
   }, [isListening]);
+
+  // Función para categorizar mensajes según su contenido
+  const categorizarMensaje = (texto: string): { topic: MessageTopic, tags: string[] } => {
+    const textoLower = texto.toLowerCase();
+    let topic: MessageTopic = 'off-topic';
+    const tags: string[] = [];
+    
+    // Palabras clave para ansiedad
+    const keywordsAnsiedad = [
+      'ansiedad', 'ansioso', 'ansiosa', 'nervios', 'nervioso', 'nerviosa', 'angustia', 
+      'preocupación', 'preocupado', 'preocupada', 'pánico', 'ataque', 'estrés', 
+      'estresado', 'estresada', 'inquieto', 'inquieta', 'miedo', 'temeroso', 'temerosa'
+    ];
+    
+    // Palabras clave para depresión
+    const keywordsDepresion = [
+      'depresión', 'depresion', 'deprimido', 'deprimida', 'triste', 'tristeza', 
+      'desánimo', 'desanimado', 'desanimada', 'melancolía', 'melancólico', 'melancólica', 
+      'sin ganas', 'sin energía', 'cansado', 'cansada', 'pesimista', 'desesperanza',
+      'insomnio', 'dormir', 'no duermo', 'suicida', 'suicidio', 'matarme'
+    ];
+    
+    // Revisar si el mensaje contiene palabras clave de ansiedad
+    if (keywordsAnsiedad.some(word => textoLower.includes(word))) {
+      topic = 'ansiedad';
+      
+      // Etiquetas específicas para ansiedad
+      if (textoLower.includes('pánico') || textoLower.includes('ataque')) {
+        tags.push('ataques-panico');
+      }
+      if (textoLower.includes('social') || textoLower.includes('gente')) {
+        tags.push('ansiedad-social');
+      }
+      if (textoLower.includes('respira') || textoLower.includes('respirar')) {
+        tags.push('tecnicas-respiracion');
+      }
+      
+      // Etiqueta general
+      tags.push('ansiedad');
+    }
+    
+    // Revisar si el mensaje contiene palabras clave de depresión
+    if (keywordsDepresion.some(word => textoLower.includes(word))) {
+      topic = 'depresión';
+      
+      // Etiquetas específicas para depresión
+      if (textoLower.includes('suicid') || textoLower.includes('matarme')) {
+        tags.push('pensamientos-suicidas');
+      }
+      if (textoLower.includes('dormir') || textoLower.includes('insomnio')) {
+        tags.push('problemas-sueno');
+      }
+      if (textoLower.includes('energia') || textoLower.includes('cansad')) {
+        tags.push('falta-energia');
+      }
+      
+      // Etiqueta general
+      tags.push('depresión');
+    }
+    
+    return { topic, tags };
+  };
+  
+  // Generar respuesta para redirigir la conversación a temas de ansiedad o depresión
+  const generarRespuestaRedireccion = (): string => {
+    const respuestasRedireccion = [
+      "Entiendo que quieras hablar sobre ese tema. Sin embargo, me especializo en brindar apoyo para ansiedad y depresión. ¿Te gustaría que habláramos sobre cómo manejar síntomas de ansiedad o depresión que puedas estar experimentando?",
+      "Agradezco que compartas eso conmigo. Mi función principal es apoyarte con temas relacionados a la ansiedad y depresión. ¿Hay algo específico sobre estos temas que te preocupe actualmente?",
+      "Comprendo que ese tema es importante para ti. Mi especialidad es proporcionar orientación sobre ansiedad y depresión. ¿Te puedo ayudar con información o estrategias para manejar alguno de estos estados emocionales?",
+      "Gracias por compartir eso. Estoy diseñado principalmente para asistir con temas de ansiedad y depresión. ¿Quizás podríamos hablar sobre cómo estos pueden estar afectando tu bienestar emocional?"
+    ];
+    
+    // Seleccionar una respuesta aleatoria
+    return respuestasRedireccion[Math.floor(Math.random() * respuestasRedireccion.length)];
+  };
   
   // Simular respuestas del asistente
   const simulateAssistantResponse = (userMessage: string) => {
@@ -70,20 +150,38 @@ const VoiceChatContainer: React.FC = () => {
     setTimeout(() => {
       setIsProcessing(false);
       
-      // Generar una respuesta simple basada en palabras clave
-      let response = '';
-      const lowercasedInput = userMessage.toLowerCase();
+      // Categorizar el mensaje del usuario
+      const { topic, tags } = categorizarMensaje(userMessage);
       
-      if (lowercasedInput.includes('hola') || lowercasedInput.includes('saludos') || lowercasedInput.includes('buenos días')) {
-        response = '¡Hola! Soy tu asistente de salud mental. ¿Cómo puedo ayudarte hoy?';
-      } else if (lowercasedInput.includes('ansiedad') || lowercasedInput.includes('estres') || lowercasedInput.includes('estrés')) {
-        response = 'La ansiedad es una respuesta natural del cuerpo ante situaciones estresantes. Algunas técnicas que pueden ayudarte son la respiración profunda, el mindfulness y el ejercicio regular. Si sientes que tu ansiedad interfiere significativamente con tu vida diaria, te recomendaría buscar ayuda profesional.';
-      } else if (lowercasedInput.includes('depresión') || lowercasedInput.includes('depresion') || lowercasedInput.includes('triste')) {
-        response = 'Sentirse triste o deprimido puede ser muy difícil. Es importante que sepas que no estás solo/a. Te recomendaría hablar con amigos de confianza o familiares sobre cómo te sientes, y considerar buscar ayuda profesional con un psicólogo o psiquiatra que pueda ofrecerte el apoyo adecuado.';
-      } else if (lowercasedInput.includes('dormir') || lowercasedInput.includes('insomnio') || lowercasedInput.includes('sueño')) {
-        response = 'Los problemas de sueño pueden afectar significativamente tu bienestar. Algunas recomendaciones incluyen mantener un horario regular de sueño, crear una rutina relajante antes de acostarte, limitar la cafeína y las pantallas antes de dormir, y asegurarte de que tu entorno de sueño sea cómodo y tranquilo.';
+      // Actualizar el tema actual de la conversación
+      setCurrentTopic(topic);
+      
+      // Generar una respuesta basada en el tema y las etiquetas
+      let response = '';
+      
+      if (topic === 'ansiedad') {
+        if (tags.includes('ataques-panico')) {
+          response = 'Los ataques de pánico pueden ser muy angustiantes. Durante un ataque, intenta respirar lentamente (inhala por 4 segundos, mantén 2 segundos, exhala por 6 segundos). Recuerda que los síntomas físicos no son peligrosos aunque se sientan intensos. Si experimentas ataques frecuentes, te recomendaría consultar con un especialista en salud mental que pueda ofrecerte técnicas específicas para tu situación.';
+        } else if (tags.includes('ansiedad-social')) {
+          response = 'La ansiedad social puede hacer que las interacciones sean difíciles. Algunas estrategias que pueden ayudar incluyen la exposición gradual a situaciones sociales, desafiar pensamientos negativos y técnicas de relajación. Un enfoque terapéutico como la terapia cognitivo-conductual ha demostrado ser muy efectivo para este tipo de ansiedad.';
+        } else if (tags.includes('tecnicas-respiracion')) {
+          response = 'La respiración diafragmática es una técnica efectiva para reducir la ansiedad. Coloca una mano en tu pecho y otra en tu abdomen. Respira profundamente por la nariz, asegurándote que sea tu abdomen el que se expande, no tu pecho. Exhala lentamente por la boca. Practica esto durante 5-10 minutos varias veces al día para notar beneficios.';
+        } else {
+          response = 'La ansiedad es una respuesta natural del cuerpo ante situaciones estresantes. Algunas técnicas que pueden ayudarte son la respiración profunda, el mindfulness y el ejercicio regular. Si experimentas síntomas persistentes como preocupación excesiva, problemas para dormir o tensión muscular, te recomendaría buscar ayuda profesional con un especialista en salud mental.';
+        }
+      } else if (topic === 'depresión') {
+        if (tags.includes('pensamientos-suicidas')) {
+          response = 'Me preocupa mucho lo que estás compartiendo. Es muy importante que sepas que no estás solo/a y que hay ayuda disponible. Por favor, contacta inmediatamente con un servicio de emergencia como el 123 (Colombia) o busca atención médica urgente. Estos pensamientos son temporales y con el apoyo adecuado puedes superarlos. Tu vida es valiosa y hay profesionales preparados para ayudarte en este momento difícil.';
+        } else if (tags.includes('problemas-sueno')) {
+          response = 'Los problemas de sueño son comunes en la depresión. Algunas recomendaciones incluyen mantener un horario regular, evitar cafeína y pantallas antes de dormir, y crear un ambiente tranquilo. Si los problemas persisten, un profesional de la salud mental puede ayudarte con técnicas específicas o considerar opciones de tratamiento adicionales.';
+        } else if (tags.includes('falta-energia')) {
+          response = 'La falta de energía y la fatiga son síntomas frecuentes de la depresión. Aunque parezca contradictorio, la actividad física moderada puede ayudar a aumentar tus niveles de energía. Comienza con actividades pequeñas y ve aumentando gradualmente. También es importante revisar tus patrones de sueño y alimentación. Un profesional de la salud mental puede ofrecerte estrategias adicionales para manejar este síntoma.';
+        } else {
+          response = 'La depresión es un trastorno que afecta cómo te sientes, piensas y manejas las actividades diarias. Síntomas comunes incluyen tristeza persistente, pérdida de interés en actividades que solías disfrutar y cambios en apetito o sueño. Es importante que sepas que no estás solo/a y que la depresión tiene tratamiento. Te recomendaría buscar ayuda profesional con un psicólogo o psiquiatra especializado.';
+        }
       } else {
-        response = 'Gracias por compartir eso conmigo. ¿Podrías contarme un poco más sobre cómo te sientes al respecto? Estoy aquí para escucharte y ofrecerte apoyo.';
+        // Respuesta para redirigir la conversación si está fuera de tema
+        response = generarRespuestaRedireccion();
       }
       
       // Añadir la respuesta a los mensajes
@@ -92,6 +190,7 @@ const VoiceChatContainer: React.FC = () => {
         text: response,
         isUser: false,
         timestamp: new Date().toLocaleTimeString(),
+        tags: tags
       };
       
       setMessages(prevMessages => [...prevMessages, newMessage]);
@@ -167,11 +266,15 @@ const VoiceChatContainer: React.FC = () => {
     
     // Si hay texto reconocido, enviarlo como mensaje
     if (userInput.trim()) {
+      // Categorizar el mensaje para asignar etiquetas
+      const { tags } = categorizarMensaje(userInput);
+      
       const message: Message = {
         id: Date.now().toString(),
         text: userInput,
         isUser: true,
         timestamp: new Date().toLocaleTimeString(),
+        tags: tags
       };
       
       setMessages(prevMessages => [...prevMessages, message]);
@@ -200,9 +303,9 @@ const VoiceChatContainer: React.FC = () => {
         <div className="w-full md:w-1/3 p-6 flex flex-col items-center justify-center bg-white">
           <div className="max-w-sm w-full">
             <div className="mb-8 text-center">
-              <h2 className="text-2xl font-medium text-neutral-800 mb-2">Asistente de Salud Mental</h2>
+              <h2 className="text-2xl font-medium text-neutral-800 mb-2">Asistente de Ansiedad y Depresión</h2>
               <p className="text-neutral-500">
-                Habla conmigo para recibir orientación y apoyo en temas de salud mental
+                Habla conmigo para recibir orientación y apoyo específico en ansiedad y depresión
               </p>
             </div>
             
@@ -239,23 +342,64 @@ const VoiceChatContainer: React.FC = () => {
                 </li>
                 <li className="flex items-start">
                   <span className="text-primary-500 mr-2">•</span>
-                  <span>Puedes preguntar sobre ansiedad, depresión o problemas de sueño</span>
+                  <span>Puedes consultar sobre síntomas de ansiedad o depresión</span>
                 </li>
                 <li className="flex items-start">
                   <span className="text-primary-500 mr-2">•</span>
-                  <span>Recuerda que esta es una herramienta de apoyo, no sustituye a un profesional</span>
+                  <span>Mi especialidad es brindar información y apoyo en ansiedad y depresión</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-primary-500 mr-2">•</span>
+                  <span>Recuerda que soy una herramienta de apoyo, no sustituyo a un profesional</span>
                 </li>
               </ul>
             </div>
           </div>
         </div>
         
-        {/* Panel derecho para la transcripción de mensajes, ocupa 2/3 en escritorio */}
-        <div className="w-full md:w-2/3 border-t md:border-t-0 md:border-l border-neutral-200 flex flex-col">
-          <TranscribedResponse 
-            responses={messages} 
-            currentSpeaking={currentSpeakingId} 
-          />
+        {/* Panel derecho para las transcripciones, ocupa 2/3 en escritorio */}
+        <div className="flex-1 bg-neutral-50 overflow-y-auto p-4">
+          {/* Mostrar todas las respuestas transcritas */}
+          <div className="max-w-3xl mx-auto">
+            {messages.length > 0 ? (
+              <div className="space-y-6">
+                {messages.map((msg) => (
+                  <TranscribedResponse
+                    key={msg.id}
+                    text={msg.text}
+                    isUser={msg.isUser}
+                    isHighlighted={currentSpeakingId === msg.id}
+                    timestamp={msg.timestamp}
+                    tags={msg.tags}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-neutral-500 py-12">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-12 w-12 mx-auto text-neutral-300 mb-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
+                </svg>
+                <p className="text-lg">Tu sesión enfocada en ansiedad y depresión</p>
+                <p className="mt-2">
+                  Haz clic en el botón de micrófono para comenzar a hablar
+                </p>
+              </div>
+            )}
+            
+            {/* Espacio adicional al final para que el scroll muestre el contenido completo */}
+            {messages.length > 0 && <div className="h-24" />}
+          </div>
         </div>
       </div>
     </div>

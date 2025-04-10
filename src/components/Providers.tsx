@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import Auth0ProviderWithNavigation from './Auth0Provider';
 import { ThemeProvider } from './ThemeProvider';
+import { SessionProvider } from '@/contexts/SessionContext';
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -10,10 +10,10 @@ interface ProvidersProps {
 
 export default function Providers({ children }: ProvidersProps) {
   return (
-    <Auth0ProviderWithNavigation>
+    <SessionProvider>
       <ThemeProvider>
         {children}
       </ThemeProvider>
-    </Auth0ProviderWithNavigation>
+    </SessionProvider>
   );
 } 
