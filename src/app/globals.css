@@ -38,14 +38,19 @@
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  /* Estilos base para modo claro */
+  color: var(--neutral-800);
+  background-color: var(--neutral-50); /* Fondo claro base */
   min-height: 100vh;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11'; /* Mejoras tipográficas */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.dark body {
+  /* Estilos base para modo oscuro */
+  color: var(--neutral-200); /* Texto claro */
+  background-color: var(--neutral-900); /* Fondo oscuro base */
 }
 
 @layer base {
@@ -92,7 +97,7 @@ body {
   }
   
   .chat-bubble-ai {
-    @apply chat-bubble bg-white border border-neutral-200 text-neutral-800;
+    @apply chat-bubble bg-white border border-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:border-neutral-600 dark:text-neutral-100;
   }
   
   /* Estilos para la visualización de audio del avatar interactivo */

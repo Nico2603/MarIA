@@ -16,67 +16,70 @@ const TerminosPage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <h1 className="text-3xl md:text-4xl font-bold mb-8 text-blue-600">Términos y Condiciones</h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-8 text-blue-600">Términos y Condiciones de Uso</h1>
           
           <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
             <h2 className="text-2xl font-semibold mb-4">Introducción</h2>
             <p className="mb-4">
-              Bienvenido a AI Mental Health. Al acceder a nuestra plataforma, aceptas cumplir con estos términos y condiciones de uso, todas las leyes y regulaciones aplicables, y reconoces que eres responsable de cumplir con las leyes locales aplicables.
+              Bienvenido a AI Mental Health Colombia. Al acceder a nuestra plataforma y utilizar nuestros servicios, aceptas cumplir con estos términos y condiciones de uso ("Términos"), todas las leyes y regulaciones aplicables en Colombia, y reconoces que eres responsable de cumplir con las leyes locales aplicables.
             </p>
             <p>
-              Si no estás de acuerdo con alguno de estos términos, tienes prohibido utilizar o acceder a esta plataforma. Los materiales contenidos en este sitio web están protegidos por las leyes de derechos de autor y marcas comerciales aplicables.
+              Si no estás de acuerdo con alguno de estos términos, tienes prohibido utilizar o acceder a esta plataforma. Los materiales y contenidos en esta plataforma están protegidos por las leyes colombianas e internacionales de derechos de autor y marcas comerciales aplicables.
             </p>
           </div>
           
           <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
-            <h2 className="text-2xl font-semibold mb-4">Uso del Servicio</h2>
+            <h2 className="text-2xl font-semibold mb-4">Uso del Servicio y Limitaciones Importantes</h2>
             <p className="mb-4">
-              AI Mental Health proporciona herramientas y recursos para el bienestar mental. Sin embargo:
+              AI Mental Health Colombia proporciona herramientas de apoyo, información y recursos basados en IA para el bienestar mental. Sin embargo, es crucial entender y aceptar las siguientes limitaciones:
             </p>
             <ul className="space-y-3 list-disc pl-5">
-              <li>Esta plataforma no sustituye la atención profesional de salud mental.</li>
-              <li>Los contenidos proporcionados son meramente informativos y educativos.</li>
-              <li>En caso de emergencia, debes contactar inmediatamente con los servicios de emergencia locales o acudir al centro médico más cercano.</li>
-              <li>No nos hacemos responsables de las decisiones tomadas basadas únicamente en la información proporcionada en esta plataforma.</li>
+              <li><strong>No es un servicio médico ni terapéutico:</strong> Esta plataforma no sustituye la atención profesional de salud mental proporcionada por psicólogos, psiquiatras u otros profesionales licenciados en Colombia.</li>
+              <li><strong>No proporciona diagnósticos ni tratamientos:</strong> Los contenidos y las interacciones con la IA son informativos y de apoyo, no constituyen diagnóstico ni recomendación de tratamiento médico o psicológico.</li>
+              <li><strong>No es un servicio de emergencia:</strong> En caso de emergencia o crisis de salud mental (pensamientos suicidas, riesgo de daño), debes contactar inmediatamente con la línea de emergencia nacional 123, la Línea de Salud Mental 106, o acudir al centro médico u hospital más cercano.</li>
+              <li><strong>Decisiones personales:</strong> No nos hacemos responsables de las decisiones tomadas basadas únicamente en la información proporcionada en esta plataforma. Consulta siempre a un profesional cualificado.</li>
+              <li><strong>Limitaciones de la IA:</strong> La IA puede cometer errores, malinterpretar contextos o no captar la complejidad de una situación individual. No posee juicio clínico humano.</li>
             </ul>
+            <p className="mt-4">Para más detalles sobre las limitaciones, consulta nuestra sección de <Link href="/legal/limitaciones" className="text-blue-500 hover:underline">Limitaciones de Responsabilidad</Link>.</p>
           </div>
           
           <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
-            <h2 className="text-2xl font-semibold mb-4">Cuentas de Usuario</h2>
+            <h2 className="text-2xl font-semibold mb-4">Cuentas de Usuario (Si aplica)</h2>
             <p className="mb-4">
-              Al crear una cuenta en nuestra plataforma, debes proporcionarnos información precisa y completa. Eres el único responsable de:
+              Si la plataforma requiere la creación de una cuenta:
             </p>
             <ul className="space-y-2 list-disc pl-5 mb-4">
-              <li>Mantener la confidencialidad de tu cuenta y contraseña.</li>
-              <li>Restringir el acceso a tu computadora o dispositivo.</li>
-              <li>Todas las actividades que ocurran bajo tu cuenta o contraseña.</li>
+              <li>Debes proporcionar información precisa y completa.</li>
+              <li>Eres responsable de mantener la confidencialidad de tu cuenta y contraseña.</li>
+              <li>Debes restringir el acceso a tu dispositivo.</li>
+              <li>Eres responsable de todas las actividades que ocurran bajo tu cuenta.</li>
             </ul>
             <p>
-              Nos reservamos el derecho de suspender o terminar cuentas, rechazar servicio, eliminar o editar contenido, a nuestra discreción.
+              Nos reservamos el derecho de suspender o terminar cuentas, rechazar servicio, eliminar o editar contenido, a nuestra discreción, en caso de incumplimiento de estos Términos o la ley.
             </p>
           </div>
           
           <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
-            <h2 className="text-2xl font-semibold mb-4">Limitación de Responsabilidad</h2>
+            <h2 className="text-2xl font-semibold mb-4">Exclusión de Garantías y Limitación de Responsabilidad</h2>
             <p className="mb-4">
-              Los materiales en el sitio web de AI Mental Health se proporcionan "tal cual". No ofrecemos garantías, expresas o implícitas, y por este medio rechazamos y negamos todas las demás garantías, incluyendo, sin limitación, garantías implícitas o condiciones de comerciabilidad, idoneidad para un propósito particular, o no infracción de propiedad intelectual u otra violación de derechos.
+              Los materiales y servicios en la plataforma de AI Mental Health Colombia se proporcionan "tal cual" y "según disponibilidad". No ofrecemos garantías, expresas o implícitas, sobre la exactitud, integridad, fiabilidad o idoneidad de la información o los servicios para un propósito particular. Rechazamos todas las demás garantías, incluyendo, sin limitación, garantías implícitas de comerciabilidad o no infracción.
             </p>
             <p className="mb-4">
-              Además, AI Mental Health no garantiza ni hace ninguna representación con respecto a la precisión, los resultados probables, o la confiabilidad del uso de los materiales en su sitio web o de otra manera relacionados con dichos materiales o en cualquier sitio vinculado a este sitio.
+              En ningún caso AI Mental Health Colombia S.A.S., sus directores, empleados o afiliados serán responsables por daños directos, indirectos, incidentales, especiales, consecuentes o punitivos (incluyendo, sin limitación, daños por pérdida de datos o beneficios, o debido a interrupción del negocio) que surjan del uso o la imposibilidad de usar los materiales o servicios en la plataforma, incluso si hemos sido notificados de la posibilidad de tales daños. Consulta nuestra sección de <Link href="/legal/limitaciones" className="text-blue-500 hover:underline">Limitaciones de Responsabilidad</Link> para más detalles.
             </p>
           </div>
           
           <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
             <h2 className="text-2xl font-semibold mb-4">Modificaciones</h2>
             <p className="mb-4">
-              AI Mental Health puede revisar estos términos de servicio para su sitio web en cualquier momento sin previo aviso. Al usar este sitio web, aceptas estar sujeto a la versión actual de estos términos y condiciones de servicio.
+              AI Mental Health Colombia puede revisar estos Términos de uso para su plataforma en cualquier momento sin previo aviso. Al usar esta plataforma, aceptas estar sujeto a la versión vigente de estos Términos.
             </p>
           </div>
           
           <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
-            <h2 className="text-2xl font-semibold mb-4">Ley Aplicable</h2>
+            <h2 className="text-2xl font-semibold mb-4">Ley Aplicable y Jurisdicción</h2>
             <p className="mb-4">
-              Estos términos y condiciones se rigen e interpretan de acuerdo con las leyes aplicables, y te sometes irrevocablemente a la jurisdicción exclusiva de los tribunales de esa jurisdicción.
+              Estos Términos se rigen e interpretan de acuerdo con las leyes de la República de Colombia. Te sometes irrevocablemente a la jurisdicción exclusiva de los tribunales de Bogotá D.C., Colombia, para resolver cualquier disputa que surja en relación con estos Términos o el uso de la plataforma, renunciando a cualquier otro fuero que pudiera corresponderte.
             </p>
           </div>
           

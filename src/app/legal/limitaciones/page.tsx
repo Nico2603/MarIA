@@ -20,34 +20,34 @@ const LimitacionesPage = () => {
           
           <div className={`bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-8 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-600`}>
             <p className="font-bold mb-2">AVISO IMPORTANTE</p>
-            <p>Este documento detalla las limitaciones de nuestra plataforma de asistencia en salud mental. Por favor, léalo atentamente.</p>
+            <p>Este documento detalla las limitaciones de nuestra plataforma de asistencia en salud mental AI Mental Health Colombia. Por favor, léalo atentamente.</p>
           </div>
           
           <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
             <h2 className="text-2xl font-semibold mb-4">Alcance del servicio</h2>
             <p className="mb-4">
-              AI Mental Health es una plataforma de apoyo basada en inteligencia artificial diseñada para ofrecer recursos, información y herramientas de autoayuda en el ámbito de la salud mental. Nuestra plataforma tiene las siguientes limitaciones fundamentales que todo usuario debe conocer y aceptar:
+              AI Mental Health Colombia es una plataforma de apoyo basada en inteligencia artificial diseñada para ofrecer recursos, información y herramientas de autoayuda en el ámbito de la salud mental en Colombia. Nuestra plataforma tiene las siguientes limitaciones fundamentales que todo usuario debe conocer y aceptar:
             </p>
             
             <div className="space-y-4 mb-6">
               <div className="bg-red-100 p-4 rounded-md dark:bg-red-900/30">
                 <h3 className="text-lg font-medium mb-2 text-red-700 dark:text-red-400">No somos un servicio médico o terapéutico</h3>
                 <p>
-                  AI Mental Health no ofrece servicios médicos, psicológicos o terapéuticos profesionales. Nuestra plataforma no está diseñada para diagnosticar, tratar, curar o prevenir ninguna condición médica o psicológica. Todo el contenido y las interacciones con nuestra IA tienen fines informativos y de apoyo únicamente.
+                  AI Mental Health Colombia no ofrece servicios médicos, psicológicos o terapéuticos profesionales. Nuestra plataforma no está diseñada para diagnosticar, tratar, curar o prevenir ninguna condición médica o psicológica. Todo el contenido y las interacciones con nuestra IA tienen fines informativos y de apoyo únicamente.
                 </p>
               </div>
               
               <div className="bg-red-100 p-4 rounded-md dark:bg-red-900/30">
                 <h3 className="text-lg font-medium mb-2 text-red-700 dark:text-red-400">No sustituimos a profesionales de la salud</h3>
                 <p>
-                  Ninguna información, contenido o interacción con nuestra plataforma debe interpretarse como consejo médico o psicológico profesional. AI Mental Health no sustituye la consulta, diagnóstico o tratamiento de profesionales cualificados en salud mental.
+                  Ninguna información, contenido o interacción con nuestra plataforma debe interpretarse como consejo médico o psicológico profesional. AI Mental Health Colombia no sustituye la consulta, diagnóstico o tratamiento de profesionales cualificados y registrados en Colombia (psicólogos, psiquiatras, etc.).
                 </p>
               </div>
               
               <div className="bg-red-100 p-4 rounded-md dark:bg-red-900/30">
                 <h3 className="text-lg font-medium mb-2 text-red-700 dark:text-red-400">No somos un servicio de emergencia</h3>
                 <p>
-                  AI Mental Health NO es un servicio de emergencia y no está diseñado para responder a crisis de salud mental. Si experimenta una emergencia psicológica, pensamientos suicidas, o siente que puede hacerse daño a sí mismo o a otros, contacte inmediatamente con los servicios de emergencia (112 en España) o acuda al servicio de urgencias más cercano.
+                  AI Mental Health Colombia NO es un servicio de emergencia y no está diseñado para responder a crisis de salud mental. Si experimenta una emergencia psicológica, pensamientos suicidas, o siente que puede hacerse daño a sí mismo o a otros, contacte inmediatamente con la **línea de emergencia nacional 123** o la **Línea de Salud Mental 106**, o acuda al servicio de urgencias médicas u hospital más cercano.
                 </p>
               </div>
             </div>
@@ -64,7 +64,7 @@ const LimitacionesPage = () => {
                 <strong>Conocimiento limitado:</strong> Aunque nuestra IA ha sido entrenada con conocimientos en salud mental, no posee el juicio clínico, la experiencia, ni la capacidad de evaluación directa que tiene un profesional humano cualificado.
               </li>
               <li>
-                <strong>Sin capacidad de diagnóstico:</strong> La IA no puede diagnosticar trastornos mentales o condiciones médicas. Cualquier información que sugiera posibles condiciones debe considerarse como meramente orientativa y nunca como un diagnóstico.
+                <strong>Sin capacidad de diagnóstico:</strong> La IA no puede diagnosticar trastornos mentales o condiciones médicas. Cualquier información que sugiera posibles condiciones debe considerarse como meramente orientativa y nunca como un diagnóstico formal.
               </li>
               <li>
                 <strong>Comprensión contextual limitada:</strong> A pesar de sus capacidades, la IA puede malinterpretar el contexto de ciertas situaciones o no captar completamente la complejidad emocional y personal única de cada usuario.
@@ -79,7 +79,7 @@ const LimitacionesPage = () => {
             
             <div className={`bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-6 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-600`}>
               <p>
-                <strong>Nota importante:</strong> Aunque nuestros modelos de IA han sido desarrollados con la orientación de profesionales en salud mental, la IA no es un profesional de la salud y no debe utilizarse como sustituto de la atención médica o psicológica profesional.
+                <strong>Nota importante:</strong> Aunque nuestros modelos de IA han sido desarrollados con orientación, la IA no es un profesional de la salud y no debe utilizarse como sustituto de la atención médica o psicológica profesional.
               </p>
             </div>
           </div>
@@ -87,7 +87,7 @@ const LimitacionesPage = () => {
           <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
             <h2 className="text-2xl font-semibold mb-4">Situaciones críticas y emergencias</h2>
             <p className="mb-4">
-              AI Mental Health NO está equipado para manejar situaciones críticas o emergencias de salud mental. Si usted o alguien que conoce está experimentando alguna de las siguientes situaciones, por favor busque ayuda profesional inmediata:
+              AI Mental Health Colombia NO está equipado para manejar situaciones críticas o emergencias de salud mental. Si usted o alguien que conoce está experimentando alguna de las siguientes situaciones, por favor busque ayuda profesional inmediata:
             </p>
             
             <ul className="space-y-3 list-disc pl-6 mb-6">
@@ -95,90 +95,88 @@ const LimitacionesPage = () => {
               <li>Impulsos de hacerse daño a sí mismo o a otros</li>
               <li>Experimentar alucinaciones o delirios</li>
               <li>Crisis de pánico severas</li>
-              <li>Síntomas de abstinencia de sustancias</li>
+              <li>Síntomas de abstinencia de sustancias graves</li>
               <li>Cualquier situación que represente un riesgo inmediato para la salud o seguridad</li>
             </ul>
             
             <div className="bg-red-100 p-4 rounded-md mb-6 dark:bg-red-900/30">
-              <h3 className="text-lg font-medium mb-2 text-red-700 dark:text-red-400">Recursos de emergencia</h3>
+              <h3 className="text-lg font-medium mb-2 text-red-700 dark:text-red-400">Recursos de emergencia en Colombia</h3>
               <ul className="space-y-2">
-                <li><strong>Emergencias generales:</strong> 112 (España) / 911 (EE.UU.)</li>
-                <li><strong>Teléfono de la Esperanza:</strong> 717 003 717 (24h)</li>
-                <li><strong>Teléfono contra el suicidio:</strong> 024 (24h)</li>
+                <li><strong>Emergencias generales (Policía, Bomberos, Ambulancia):</strong> <a href="tel:123" className="font-bold hover:underline">123</a></li>
+                <li><strong>Línea de Salud Mental Nacional:</strong> <a href="tel:106" className="font-bold hover:underline">106</a> (Puede variar por departamento, verificar localmente)</li>
+                <li><strong>Línea Nacional de Prevención del Suicidio (Operada por MinSalud):</strong> Consultar líneas locales o <a href="tel:106" className="font-bold hover:underline">106</a></li>
                 <li><strong>Urgencias hospitalarias:</strong> Acuda al hospital o centro médico más cercano</li>
               </ul>
+              <p className="text-sm italic mt-3">Verifica los números y recursos específicos de tu ciudad o departamento.</p>
             </div>
           </div>
           
           <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
             <h2 className="text-2xl font-semibold mb-4">Límites de responsabilidad</h2>
             <p className="mb-4">
-              Considerando las limitaciones mencionadas anteriormente, AI Mental Health establece las siguientes exclusiones de responsabilidad:
+              Considerando las limitaciones mencionadas anteriormente, AI Mental Health Colombia S.A.S. establece las siguientes exclusiones de responsabilidad:
             </p>
             
             <ol className="space-y-3 list-decimal pl-6 mb-6">
               <li>
-                <strong>No responsabilidad médica:</strong> AI Mental Health no asume responsabilidad por decisiones médicas, diagnósticos o tratamientos basados en la información proporcionada a través de nuestra plataforma.
+                <strong>No responsabilidad médica/psicológica:</strong> AI Mental Health Colombia no asume responsabilidad por decisiones médicas, diagnósticos o tratamientos basados en la información proporcionada.
               </li>
               <li>
-                <strong>Exactitud de la información:</strong> Aunque nos esforzamos por proporcionar información precisa y actualizada, no garantizamos la exactitud, integridad o idoneidad de la información para ningún propósito específico.
+                <strong>Exactitud de la información:</strong> Aunque nos esforzamos por proporcionar información útil, no garantizamos la exactitud, integridad o idoneidad de la información para ningún propósito específico.
               </li>
               <li>
-                <strong>Resultados individuales:</strong> No garantizamos resultados específicos del uso de nuestros recursos o herramientas, ya que la salud mental es compleja y varía significativamente entre individuos.
+                <strong>Resultados individuales:</strong> No garantizamos resultados específicos del uso de nuestros recursos, ya que la salud mental varía entre individuos.
               </li>
               <li>
-                <strong>Interacciones con la IA:</strong> No nos responsabilizamos por malentendidos, interpretaciones erróneas o consejos inadecuados que puedan surgir de las limitaciones inherentes a la tecnología de IA.
+                <strong>Interacciones con la IA:</strong> No nos responsabilizamos por malentendidos o consejos inadecuados que puedan surgir de las limitaciones de la IA.
               </li>
               <li>
-                <strong>Decisiones del usuario:</strong> El usuario es el único responsable de sus decisiones y acciones basadas en la información o recursos proporcionados por AI Mental Health.
+                <strong>Decisiones del usuario:</strong> El usuario es el único responsable de sus decisiones y acciones basadas en la información o recursos proporcionados.
               </li>
               <li>
-                <strong>Contenido de terceros:</strong> No asumimos responsabilidad por el contenido, precisión o prácticas de sitios web de terceros vinculados desde nuestra plataforma.
+                <strong>Contenido de terceros:</strong> No asumimos responsabilidad por el contenido o prácticas de sitios web de terceros vinculados.
               </li>
             </ol>
             
             <p className="font-medium">
-              Al utilizar AI Mental Health, usted reconoce y acepta estas limitaciones y exclusiones de responsabilidad. Si no está de acuerdo con estas limitaciones, le recomendamos que no utilice nuestros servicios.
+              Al utilizar AI Mental Health Colombia, usted reconoce y acepta estas limitaciones y exclusiones de responsabilidad. Si no está de acuerdo, le recomendamos no utilizar nuestros servicios.
             </p>
           </div>
           
           <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
             <h2 className="text-2xl font-semibold mb-4">Mejores prácticas para el uso de la plataforma</h2>
             <p className="mb-4">
-              Para maximizar los beneficios de AI Mental Health mientras reconoce sus limitaciones, recomendamos:
+              Para maximizar los beneficios mientras reconoce las limitaciones, recomendamos:
             </p>
             
             <ul className="space-y-3 list-disc pl-6 mb-6">
               <li>
-                <strong>Consulte con profesionales:</strong> Utilice nuestra plataforma como un complemento, no como un sustituto, de la atención profesional de salud mental.
+                <strong>Consulte con profesionales:</strong> Use la plataforma como complemento, no sustituto, de la atención profesional en Colombia.
               </li>
               <li>
-                <strong>Verifique la información:</strong> Contraste la información obtenida a través de nuestra plataforma con fuentes acreditadas y profesionales de la salud.
+                <strong>Verifique la información:</strong> Contraste la información con fuentes acreditadas y profesionales de la salud locales.
               </li>
               <li>
-                <strong>Sea consciente de las limitaciones:</strong> Recuerde que la IA no tiene la capacidad de evaluación o juicio clínico de un profesional humano.
+                <strong>Sea consciente de las limitaciones:</strong> Recuerde que la IA no tiene juicio clínico humano.
               </li>
               <li>
-                <strong>Utilice los recursos adecuados:</strong> Para situaciones agudas o diagnósticos específicos, busque siempre ayuda profesional directa.
+                <strong>Utilice los recursos adecuados:</strong> Para situaciones agudas o diagnósticos, busque siempre ayuda profesional directa.
               </li>
               <li>
-                <strong>Proporcione feedback:</strong> Ayúdenos a mejorar informando sobre contenido o respuestas que considere incorrectas o potencialmente perjudiciales.
+                <strong>Proporcione feedback:</strong> Ayúdenos a mejorar informando sobre contenido o respuestas incorrectas.
               </li>
             </ul>
             
             <div className={`bg-green-100 border-l-4 border-green-500 text-green-700 p-4 dark:bg-green-900/30 dark:text-green-300 dark:border-green-600`}>
               <p className="font-bold mb-2">RECORDATORIO</p>
-              <p>AI Mental Health está diseñado para complementar, nunca para reemplazar, la atención profesional de salud mental. Nuestro objetivo es proporcionar recursos de apoyo y educación que puedan ser útiles como parte de un enfoque integral del bienestar mental.</p>
+              <p>AI Mental Health Colombia está diseñado para complementar, nunca para reemplazar, la atención profesional de salud mental. Nuestro objetivo es proporcionar recursos de apoyo y educación útiles.</p>
             </div>
           </div>
           
           <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
             <h2 className="text-2xl font-semibold mb-4">Actualización de estas limitaciones</h2>
             <p className="mb-4">
-              AI Mental Health se reserva el derecho de modificar estas limitaciones en cualquier momento para reflejar cambios en nuestra plataforma, avances tecnológicos, requisitos legales o mejores prácticas en el campo de la salud mental.
-            </p>
-            <p className="mb-4">
-              Se notificarán los cambios sustanciales a través de nuestra plataforma. El uso continuado de AI Mental Health después de dichos cambios constituirá su aceptación de las limitaciones modificadas.
+              AI Mental Health Colombia S.A.S. se reserva el derecho de modificar estas limitaciones en cualquier momento. Se notificarán los cambios sustanciales.
             </p>
             <p>
               Estas limitaciones fueron actualizadas por última vez el 15 de septiembre de 2023.
@@ -188,12 +186,10 @@ const LimitacionesPage = () => {
           <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
             <h2 className="text-2xl font-semibold mb-4">Contacto</h2>
             <p className="mb-4">
-              Si tiene preguntas o inquietudes sobre estas limitaciones o sobre el uso de AI Mental Health, por favor contáctenos a través de:
+              Si tiene preguntas sobre estas limitaciones, contáctenos a través de los canales indicados en nuestro <Link href="/legal/aviso-legal" className="text-blue-500 hover:underline">Aviso Legal</Link>.
             </p>
             <div>
-              <p><strong>Email:</strong> limitaciones@aimentalhealth.es</p>
-              <p><strong>Formulario de contacto:</strong> Disponible en nuestra sección de "Contacto"</p>
-              <p><strong>Dirección postal:</strong> AI Mental Health S.L., Calle Innovación 123, 28001 Madrid, España</p>
+              <p><strong>Email:</strong> legal.co@aimentalhealth.com (Email inventado)</p>
             </div>
           </div>
           

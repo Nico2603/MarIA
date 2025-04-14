@@ -16,113 +16,107 @@ const DepresionPage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <h1 className="text-3xl md:text-4xl font-bold mb-8 text-blue-600">Sobre la Depresión</h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-8 text-blue-600">Entendiendo la Depresión</h1>
           
           <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
             <h2 className="text-2xl font-semibold mb-4">¿Qué es la depresión?</h2>
             <p className="mb-4">
-              La depresión es un trastorno mental común caracterizado por una tristeza persistente, pérdida de interés en actividades que normalmente eran placenteras, y una incapacidad para llevar a cabo las actividades diarias durante al menos dos semanas.
+              La depresión (trastorno depresivo mayor) es un trastorno del estado de ánimo común pero grave que afecta cómo te sientes, piensas y manejas las actividades diarias, como dormir, comer o trabajar. Para ser diagnosticado con depresión, los síntomas deben estar presentes durante al menos dos semanas.
+            </p>
+            <p className="mb-4">
+              Es mucho más que sentirse triste o tener un mal día. La depresión puede ser debilitante y afectar todos los aspectos de la vida de una persona. No es un signo de debilidad y no es algo de lo que uno pueda simplemente "salir".
             </p>
             <p>
-              Además, las personas con depresión suelen experimentar varios de los siguientes síntomas: pérdida de energía, cambios en el apetito, alteraciones del sueño, ansiedad, disminución de la concentración, indecisión, inquietud, sentimientos de inutilidad, culpa o desesperanza, y pensamientos de autolesión o suicidio.
+                Reconocer sus síntomas es el primer paso para buscar ayuda y recuperación.
             </p>
           </div>
           
           <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
-            <h2 className="text-2xl font-semibold mb-4">Tipos de depresión</h2>
-            <ul className="space-y-3 list-disc pl-5">
-              <li><strong>Trastorno depresivo mayor:</strong> Síntomas depresivos severos que interfieren con la capacidad de trabajar, dormir, estudiar, comer y disfrutar de la vida.</li>
-              <li><strong>Trastorno depresivo persistente (distimia):</strong> Una forma menos severa pero crónica de depresión que dura al menos dos años.</li>
-              <li><strong>Depresión posparto:</strong> Ocurre después del parto y se caracteriza por sentimientos extremos de tristeza, ansiedad y fatiga.</li>
-              <li><strong>Trastorno afectivo estacional:</strong> Depresión que generalmente ocurre durante los meses de invierno, cuando hay menos luz solar natural.</li>
-              <li><strong>Trastorno bipolar:</strong> Incluye episodios depresivos que alternan con períodos de manía o hipomanía.</li>
-              <li><strong>Depresión psicótica:</strong> Depresión severa acompañada de alguna forma de psicosis, como alucinaciones o delirios.</li>
-            </ul>
-          </div>
-          
-          <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
-            <h2 className="text-2xl font-semibold mb-4">Causas y factores de riesgo</h2>
-            <p className="mb-4">
-              La depresión es el resultado de una interacción compleja de factores sociales, psicológicos y biológicos. Algunos factores que pueden aumentar el riesgo incluyen:
-            </p>
-            <ul className="space-y-2 list-disc pl-5 mb-6">
-              <li><strong>Factores biológicos:</strong> Cambios en la función cerebral, desequilibrios hormonales y genética.</li>
-              <li><strong>Antecedentes familiares:</strong> El riesgo aumenta si hay familiares de primer grado con depresión.</li>
-              <li><strong>Experiencias adversas:</strong> Trauma, abuso, pérdida de un ser querido o situaciones estresantes.</li>
-              <li><strong>Enfermedades crónicas:</strong> Condiciones médicas como enfermedades cardíacas, cáncer o dolor crónico.</li>
-              <li><strong>Consumo de sustancias:</strong> El abuso de alcohol o drogas puede contribuir a la depresión.</li>
-              <li><strong>Rasgos de personalidad:</strong> Baja autoestima, tendencia a preocuparse excesivamente, o ser autocrítico.</li>
-            </ul>
-          </div>
-          
-          <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
-            <h2 className="text-2xl font-semibold mb-4">Tratamientos para la depresión</h2>
-            
-            <h3 className="text-xl font-medium mb-3 text-blue-500">Psicoterapia</h3>
-            <p className="mb-4">
-              Diferentes tipos de terapia han demostrado ser efectivas para tratar la depresión:
-            </p>
-            <ul className="space-y-2 list-disc pl-5 mb-6">
-              <li><strong>Terapia cognitivo-conductual (TCC):</strong> Ayuda a identificar patrones de pensamiento negativo y desarrollar estrategias para cambiarlos.</li>
-              <li><strong>Terapia interpersonal:</strong> Se centra en mejorar las relaciones personales y desarrollar mejores habilidades de comunicación.</li>
-              <li><strong>Terapia de aceptación y compromiso:</strong> Enfoca la atención en aceptar los pensamientos y sentimientos difíciles en lugar de luchar contra ellos.</li>
-              <li><strong>Terapia psicodinámica:</strong> Explora los conflictos y patrones inconscientes que pueden contribuir a la depresión.</li>
-            </ul>
-            
-            <h3 className="text-xl font-medium mb-3 text-blue-500">Medicación</h3>
-            <p className="mb-4">
-              Los antidepresivos pueden ser efectivos para la depresión moderada a severa:
-            </p>
-            <ul className="space-y-2 list-disc pl-5 mb-6">
-              <li><strong>Inhibidores selectivos de la recaptación de serotonina (ISRS)</strong></li>
-              <li><strong>Inhibidores de la recaptación de serotonina y norepinefrina (IRSN)</strong></li>
-              <li><strong>Antidepresivos atípicos</strong></li>
-              <li><strong>Antidepresivos tricíclicos</strong></li>
-              <li><strong>Inhibidores de la monoaminooxidasa (IMAO)</strong></li>
-            </ul>
-            <p className="text-sm italic mb-6">
-              Nota: Los medicamentos deben ser prescritos y supervisados por un profesional de la salud. Nunca se deben suspender bruscamente.
-            </p>
-            
-            <h3 className="text-xl font-medium mb-3 text-blue-500">Cambios en el estilo de vida</h3>
-            <ul className="space-y-2 list-disc pl-5 mb-6">
-              <li>Actividad física regular</li>
-              <li>Alimentación balanceada</li>
-              <li>Establecer rutinas de sueño saludables</li>
-              <li>Reducir el consumo de alcohol y evitar drogas</li>
-              <li>Técnicas de manejo del estrés como la meditación</li>
-              <li>Mantener conexiones sociales</li>
-            </ul>
-          </div>
-          
-          <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
-            <h2 className="text-2xl font-semibold mb-4">Cuándo buscar ayuda profesional</h2>
-            <p className="mb-4">
-              Es fundamental buscar ayuda profesional si experimentas:
-            </p>
-            <ul className="space-y-2 list-disc pl-5 mb-6">
-              <li>Síntomas de depresión que duran más de dos semanas</li>
-              <li>Dificultad para funcionar en la vida diaria</li>
-              <li>Pensamientos de muerte o suicidio</li>
-              <li>Sentimientos de desesperanza intensos</li>
-              <li>Síntomas que no mejoran con el automanejo</li>
-            </ul>
-            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 dark:bg-yellow-900 dark:text-yellow-200 dark:border-yellow-600">
-              <p className="font-bold">IMPORTANTE</p>
-              <p>Si tienes pensamientos suicidas, busca ayuda inmediatamente:</p>
-              <ul className="list-disc pl-5 mt-2">
-                <li>Llama a una línea de crisis de salud mental</li>
-                <li>Acude a un servicio de urgencias</li>
-                <li>Contacta a un profesional de salud mental</li>
-                <li>Habla con alguien de confianza que pueda ayudarte a buscar tratamiento</li>
-              </ul>
+            <h2 className="text-2xl font-semibold mb-4">Síntomas comunes de la depresión</h2>
+            <p className="mb-4">Los síntomas pueden variar de leves a graves e incluir:</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <ul className="space-y-2 list-disc pl-5">
+                    <li>Sentimientos persistentes de tristeza, ansiedad o "vacío".</li>
+                    <li>Sentimientos de desesperanza o pesimismo.</li>
+                    <li>Irritabilidad.</li>
+                    <li>Sentimientos de culpa, inutilidad o impotencia.</li>
+                    <li>Pérdida de interés o placer en pasatiempos y actividades (anhedonia).</li>
+                    <li>Fatiga o disminución de energía.</li>
+                </ul>
+                <ul className="space-y-2 list-disc pl-5">
+                    <li>Dificultad para concentrarse, recordar o tomar decisiones.</li>
+                    <li>Dificultad para dormir (insomnio), despertarse temprano o dormir demasiado (hipersomnia).</li>
+                    <li>Cambios en el apetito y/o peso (comer más o menos).</li>
+                    <li>Pensamientos de muerte o suicidio, o intentos de suicidio.</li>
+                    <li>Molestias físicas como dolores, dolores de cabeza, calambres o problemas digestivos sin una causa física clara.</li>
+                </ul>
             </div>
+             <p className="mt-4 italic text-sm">No todas las personas con depresión experimentan todos los síntomas.</p>
+          </div>
+          
+          <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
+            <h2 className="text-2xl font-semibold mb-4">Estrategias de afrontamiento y autocuidado en Colombia</h2>
+            
+             <p className="mb-4">
+                Estas estrategias pueden ser útiles, pero no reemplazan el tratamiento profesional si es necesario. Considera adaptarlas a tu vida y entorno en Colombia.
+            </p>
+            
+            <h3 className="text-xl font-medium mb-3 text-blue-500">Mantenerse activo</h3>
+            <p className="mb-4">
+              El ejercicio físico regular, incluso caminatas cortas, puede mejorar el estado de ánimo. Aprovecha los parques y espacios públicos de tu ciudad.
+            </p>
+            
+            <h3 className="text-xl font-medium mb-3 text-blue-500">Establecer metas realistas</h3>
+            <p className="mb-4">
+              Divide las tareas grandes en pequeñas. Establece prioridades y haz lo que puedas. Sentir que logras algo, por pequeño que sea, puede ayudar.
+            </p>
+            
+            <h3 className="text-xl font-medium mb-3 text-blue-500">Conectar con otros</h3>
+             <p className="mb-4">
+               Intenta pasar tiempo con personas de confianza (familiares, amigos). El aislamiento puede empeorar la depresión. Busca grupos de apoyo locales si te sientes cómodo.
+            </p>
+            
+            <h3 className="text-xl font-medium mb-3 text-blue-500">Cuidar la salud física</h3>
+             <p className="mb-4">
+               Intenta comer de forma balanceada, dormir lo suficiente y evitar el alcohol y las drogas, ya que pueden empeorar la depresión.
+            </p>
+            
+            <h3 className="text-xl font-medium mb-3 text-blue-500">Posponer decisiones importantes</h3>
+             <p className="mb-4">
+               Si es posible, evita tomar decisiones importantes (cambio de trabajo, matrimonio, etc.) hasta que te sientas mejor. Habla con personas de confianza si necesitas decidir algo.
+            </p>
+
+            <h3 className="text-xl font-medium mb-3 text-blue-500">Ser paciente y amable contigo mismo</h3>
+            <p className="mb-4">
+              La recuperación lleva tiempo. No esperes "salir" de la depresión de inmediato. Sé compasivo contigo mismo durante el proceso.
+            </p>
+            
+          </div>
+          
+          <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
+            <h2 className="text-2xl font-semibold mb-4">Cuándo buscar ayuda profesional en Colombia</h2>
+            <p className="mb-4">
+              Si los síntomas de depresión persisten por más de dos semanas, son severos, o interfieren con tu vida diaria, es crucial buscar ayuda profesional. La depresión es una condición tratable.
+            </p>
+             <p className="mb-4">Considera contactar a:</p>
+            <ul className="space-y-2 list-disc pl-5 mb-6">
+              <li>Un médico general, quien puede evaluar tu estado y referirte a un especialista si es necesario.</li>
+              <li>Un psicólogo o psiquiatra registrado en Colombia.</li>
+              <li>Tu Entidad Promotora de Salud (EPS) para conocer las rutas de atención en salud mental disponibles.</li>
+              <li>Líneas de apoyo psicológico como la Línea 106 u otras líneas locales disponibles en tu ciudad o departamento.</li>
+            </ul>
+            
+            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 dark:bg-yellow-900 dark:text-yellow-200 dark:border-yellow-600">
+              <p className="font-bold">¡NO ESTÁS SOLO/A! BUSCAR AYUDA ES UN SIGNO DE FORTALEZA.</p>
+              <p className="mt-2">Si tienes pensamientos de muerte o suicidio, o conoces a alguien que los tenga, busca ayuda de emergencia inmediatamente. Llama al <strong>123</strong> (Emergencia Nacional) o al <strong>106</strong> (Línea de Salud Mental).</p>
+            </div>
+
             <div className="mt-6">
               <Link 
                 href="/recursos/profesionales" 
                 className={`inline-flex items-center px-4 py-2 rounded-md ${theme === 'dark' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white transition-colors duration-200`}
               >
-                Directorio de profesionales
+                Directorio de profesionales (Ejemplo)
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>
@@ -138,7 +132,7 @@ const DepresionPage = () => {
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-              Manejo de la Ansiedad
+              Sobre la Ansiedad
             </Link>
             
             <Link 

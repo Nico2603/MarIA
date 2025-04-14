@@ -26,51 +26,51 @@ const CookiesPage = () => {
           <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
             <h2 className="text-2xl font-semibold mb-4">¿Qué son las cookies?</h2>
             <p className="mb-4">
-              Las cookies son pequeños archivos de texto que se almacenan en tu dispositivo (ordenador, tablet, teléfono móvil) cuando visitas sitios web. Son ampliamente utilizadas para hacer que los sitios web funcionen de manera más eficiente, así como para proporcionar información a los propietarios del sitio.
+              Las cookies son pequeños archivos de texto que se almacenan en tu dispositivo (computador, tablet, teléfono móvil) cuando visitas sitios web. Son ampliamente utilizadas para hacer que los sitios web funcionen de manera más eficiente, así como para proporcionar información a los propietarios del sitio.
             </p>
             <p>
-              Las cookies permiten que un sitio web reconozca tu dispositivo, recuerde tus preferencias, te ofrezca una experiencia personalizada y, en algunos casos, faciliten la presentación de publicidad relevante a tus intereses.
+              Las cookies permiten que un sitio web reconozca tu dispositivo, recuerde tus preferencias, te ofrezca una experiencia personalizada y, en algunos casos, faciliten la presentación de información relevante a tus intereses.
             </p>
           </div>
           
           <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
             <h2 className="text-2xl font-semibold mb-4">Cómo utilizamos las cookies</h2>
             <p className="mb-4">
-              En AI Mental Health utilizamos cookies y tecnologías similares para diversos fines, incluyendo:
+              En AI Mental Health Colombia utilizamos cookies y tecnologías similares para diversos fines, de acuerdo con la normativa colombiana sobre protección de datos y comercio electrónico:
             </p>
             
             <div className="space-y-6 mb-4">
               <div className={`p-4 rounded-md ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                <h3 className="text-xl font-medium mb-2 text-blue-500">Funcionamiento esencial</h3>
+                <h3 className="text-xl font-medium mb-2 text-blue-500">Funcionamiento esencial (Técnicas)</h3>
                 <p>
-                  Algunas cookies son esenciales para el funcionamiento básico de nuestra plataforma. Te permiten navegar por el sitio, acceder a áreas seguras, y utilizar funciones como el inicio de sesión. Sin estas cookies, nuestra plataforma no funcionaría correctamente.
+                  Algunas cookies son estrictamente necesarias para el funcionamiento básico de nuestra plataforma. Te permiten navegar por el sitio, acceder a áreas seguras (si aplica), y utilizar funciones como el inicio de sesión. Sin estas cookies, nuestra plataforma no funcionaría correctamente.
                 </p>
               </div>
               
               <div className={`p-4 rounded-md ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                <h3 className="text-xl font-medium mb-2 text-blue-500">Personalización y preferencias</h3>
+                <h3 className="text-xl font-medium mb-2 text-blue-500">Personalización y preferencias (Funcionales)</h3>
                 <p>
-                  Estas cookies nos permiten recordar tus preferencias y opciones, como tu nombre de usuario, idioma, región, o preferencias de visualización (como el modo oscuro/claro). Esto nos ayuda a proporcionarte una experiencia más personalizada y adaptada a tus preferencias.
+                  Estas cookies nos permiten recordar tus preferencias y opciones, como tu nombre de usuario (si aplica), idioma, región, o preferencias de visualización (como el modo oscuro/claro). Esto nos ayuda a proporcionarte una experiencia más personalizada y adaptada a tus preferencias.
                 </p>
               </div>
               
               <div className={`p-4 rounded-md ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                <h3 className="text-xl font-medium mb-2 text-blue-500">Análisis y rendimiento</h3>
+                <h3 className="text-xl font-medium mb-2 text-blue-500">Análisis y rendimiento (Analíticas)</h3>
                 <p>
-                  Utilizamos cookies para recopilar información sobre cómo interactúas con nuestra plataforma, qué páginas visitas, y si encuentras errores. Esto nos ayuda a mejorar el rendimiento de nuestro sitio y a desarrollar mejores funcionalidades.
+                  Utilizamos cookies (propias o de terceros como Google Analytics) para recopilar información sobre cómo interactúas con nuestra plataforma, qué páginas visitas, y si encuentras errores. Esto nos ayuda a mejorar el rendimiento de nuestro sitio y a desarrollar mejores funcionalidades, siempre buscando tu autorización previa para cookies no esenciales.
                 </p>
               </div>
               
               <div className={`p-4 rounded-md ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
                 <h3 className="text-xl font-medium mb-2 text-blue-500">Seguridad</h3>
                 <p>
-                  Utilizamos cookies de seguridad para autenticar usuarios, prevenir el uso fraudulento de cuentas de usuario, y proteger los datos de usuarios de accesos no autorizados.
+                  Utilizamos cookies de seguridad para autenticar usuarios (si aplica), prevenir el uso fraudulento de cuentas de usuario, y proteger los datos de usuarios de accesos no autorizados.
                 </p>
               </div>
             </div>
             
             <p className="mb-4">
-              Es importante destacar que no utilizamos cookies para mostrar publicidad de terceros ni para rastrear tu actividad de navegación en otros sitios web.
+              Es importante destacar que no utilizamos cookies con fines de publicidad comportamental de terceros ni para rastrear tu actividad de navegación en otros sitios web.
             </p>
           </div>
           
@@ -84,36 +84,41 @@ const CookiesPage = () => {
                     <th className="px-4 py-3 text-left">Tipo de Cookie</th>
                     <th className="px-4 py-3 text-left">Finalidad</th>
                     <th className="px-4 py-3 text-left">Duración</th>
+                    <th className="px-4 py-3 text-left">Origen</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr className={`${theme === 'dark' ? 'border-b border-gray-700' : 'border-b border-gray-300'}`}>
-                    <td className="px-4 py-3 font-medium">Sesión</td>
+                    <td className="px-4 py-3 font-medium">Técnicas</td>
                     <td className="px-4 py-3">
-                      Estas cookies temporales se utilizan para recordar tus acciones durante una sesión de navegación. Se eliminan al cerrar el navegador.
+                      Esenciales para la navegación y el funcionamiento básico.
                     </td>
-                    <td className="px-4 py-3">Sesión</td>
+                    <td className="px-4 py-3">Generalmente de sesión</td>
+                    <td className="px-4 py-3">Propias</td>
                   </tr>
                   <tr className={`${theme === 'dark' ? 'border-b border-gray-700' : 'border-b border-gray-300'}`}>
-                    <td className="px-4 py-3 font-medium">Persistentes</td>
+                    <td className="px-4 py-3 font-medium">Funcionales</td>
                     <td className="px-4 py-3">
-                      Estas cookies permanecen en tu dispositivo durante un período específico o hasta que las elimines manualmente. Se utilizan para recordar tus preferencias o acciones a lo largo de múltiples sesiones.
+                      Recuerdan preferencias para personalizar la experiencia.
                     </td>
-                    <td className="px-4 py-3">Hasta 12 meses</td>
+                    <td className="px-4 py-3">Persistentes (variable)</td>
+                     <td className="px-4 py-3">Propias</td>
                   </tr>
                   <tr className={`${theme === 'dark' ? 'border-b border-gray-700' : 'border-b border-gray-300'}`}>
-                    <td className="px-4 py-3 font-medium">Propias</td>
+                    <td className="px-4 py-3 font-medium">Analíticas</td>
                     <td className="px-4 py-3">
-                      Cookies establecidas por nuestro sitio web directamente.
+                      Recopilan información sobre el uso del sitio para análisis y mejora.
                     </td>
-                    <td className="px-4 py-3">Variable</td>
+                    <td className="px-4 py-3">Persistentes (variable)</td>
+                     <td className="px-4 py-3">Propias y/o Terceros (ej. Google Analytics)</td>
                   </tr>
                   <tr className={`${theme === 'dark' ? 'border-b border-gray-700' : 'border-b border-gray-300'}`}>
-                    <td className="px-4 py-3 font-medium">De terceros</td>
+                    <td className="px-4 py-3 font-medium">De Seguridad</td>
                     <td className="px-4 py-3">
-                      Cookies establecidas por proveedores de servicios externos (como Google Analytics para análisis) que utilizamos para mejorar nuestros servicios.
+                      Ayudan a proteger la cuenta y detectar actividades maliciosas.
                     </td>
-                    <td className="px-4 py-3">Variable</td>
+                    <td className="px-4 py-3">Variable (Sesión/Persistente)</td>
+                     <td className="px-4 py-3">Propias</td>
                   </tr>
                 </tbody>
               </table>
@@ -121,11 +126,12 @@ const CookiesPage = () => {
           </div>
           
           <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
-            <h2 className="text-2xl font-semibold mb-4">Cookies específicas utilizadas</h2>
+            <h2 className="text-2xl font-semibold mb-4">Cookies específicas utilizadas (Ejemplos)</h2>
             
             <div className="space-y-6 mb-6">
               <div>
                 <h3 className="text-xl font-medium mb-3 text-blue-500">Cookies esenciales (estrictamente necesarias)</h3>
+                <p className="text-sm mb-2 italic">Estas cookies no requieren consentimiento previo.</p>
                 <div className="overflow-x-auto">
                   <table className={`w-full border-collapse ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
                     <thead>
@@ -138,22 +144,22 @@ const CookiesPage = () => {
                     </thead>
                     <tbody>
                       <tr className={`${theme === 'dark' ? 'border-b border-gray-700' : 'border-b border-gray-300'}`}>
-                        <td className="px-4 py-2">session_id</td>
-                        <td className="px-4 py-2">aimentalhealth.es</td>
-                        <td className="px-4 py-2">Mantiene tu sesión activa</td>
+                        <td className="px-4 py-2">session_id (ejemplo)</td>
+                        <td className="px-4 py-2">aimentalhealth.co</td>
+                        <td className="px-4 py-2">Mantiene tu sesión activa (si aplica)</td>
                         <td className="px-4 py-2">Sesión</td>
                       </tr>
                       <tr className={`${theme === 'dark' ? 'border-b border-gray-700' : 'border-b border-gray-300'}`}>
-                        <td className="px-4 py-2">auth_token</td>
-                        <td className="px-4 py-2">aimentalhealth.es</td>
-                        <td className="px-4 py-2">Autenticación de usuario</td>
-                        <td className="px-4 py-2">30 días</td>
-                      </tr>
-                      <tr className={`${theme === 'dark' ? 'border-b border-gray-700' : 'border-b border-gray-300'}`}>
-                        <td className="px-4 py-2">csrf_token</td>
-                        <td className="px-4 py-2">aimentalhealth.es</td>
+                        <td className="px-4 py-2">csrf_token (ejemplo)</td>
+                        <td className="px-4 py-2">aimentalhealth.co</td>
                         <td className="px-4 py-2">Previene ataques CSRF</td>
                         <td className="px-4 py-2">Sesión</td>
+                      </tr>
+                       <tr className={`${theme === 'dark' ? 'border-b border-gray-700' : 'border-b border-gray-300'}`}>
+                        <td className="px-4 py-2">cookie_consent</td>
+                        <td className="px-4 py-2">aimentalhealth.co</td>
+                        <td className="px-4 py-2">Almacena tus preferencias de consentimiento de cookies</td>
+                        <td className="px-4 py-2">1 año</td>
                       </tr>
                     </tbody>
                   </table>
@@ -161,7 +167,8 @@ const CookiesPage = () => {
               </div>
               
               <div>
-                <h3 className="text-xl font-medium mb-3 text-blue-500">Cookies de preferencias</h3>
+                <h3 className="text-xl font-medium mb-3 text-blue-500">Cookies de preferencias (Funcionales)</h3>
+                 <p className="text-sm mb-2 italic">Estas cookies requieren tu consentimiento.</p>
                 <div className="overflow-x-auto">
                   <table className={`w-full border-collapse ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
                     <thead>
@@ -175,20 +182,14 @@ const CookiesPage = () => {
                     <tbody>
                       <tr className={`${theme === 'dark' ? 'border-b border-gray-700' : 'border-b border-gray-300'}`}>
                         <td className="px-4 py-2">theme_preference</td>
-                        <td className="px-4 py-2">aimentalhealth.es</td>
+                        <td className="px-4 py-2">aimentalhealth.co</td>
                         <td className="px-4 py-2">Guarda tu preferencia de tema (claro/oscuro)</td>
                         <td className="px-4 py-2">1 año</td>
                       </tr>
                       <tr className={`${theme === 'dark' ? 'border-b border-gray-700' : 'border-b border-gray-300'}`}>
                         <td className="px-4 py-2">language</td>
-                        <td className="px-4 py-2">aimentalhealth.es</td>
+                        <td className="px-4 py-2">aimentalhealth.co</td>
                         <td className="px-4 py-2">Guarda tu preferencia de idioma</td>
-                        <td className="px-4 py-2">1 año</td>
-                      </tr>
-                      <tr className={`${theme === 'dark' ? 'border-b border-gray-700' : 'border-b border-gray-300'}`}>
-                        <td className="px-4 py-2">notification_settings</td>
-                        <td className="px-4 py-2">aimentalhealth.es</td>
-                        <td className="px-4 py-2">Almacena tus preferencias de notificación</td>
                         <td className="px-4 py-2">1 año</td>
                       </tr>
                     </tbody>
@@ -197,7 +198,8 @@ const CookiesPage = () => {
               </div>
               
               <div>
-                <h3 className="text-xl font-medium mb-3 text-blue-500">Cookies de análisis y rendimiento</h3>
+                <h3 className="text-xl font-medium mb-3 text-blue-500">Cookies de análisis y rendimiento (Analíticas)</h3>
+                 <p className="text-sm mb-2 italic">Estas cookies requieren tu consentimiento.</p>
                 <div className="overflow-x-auto">
                   <table className={`w-full border-collapse ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
                     <thead>
@@ -227,12 +229,7 @@ const CookiesPage = () => {
                         <td className="px-4 py-2">Se usa para limitar el porcentaje de solicitudes</td>
                         <td className="px-4 py-2">1 minuto</td>
                       </tr>
-                      <tr className={`${theme === 'dark' ? 'border-b border-gray-700' : 'border-b border-gray-300'}`}>
-                        <td className="px-4 py-2">amplitude_id</td>
-                        <td className="px-4 py-2">Amplitude</td>
-                        <td className="px-4 py-2">Análisis de comportamiento del usuario</td>
-                        <td className="px-4 py-2">1 año</td>
-                      </tr>
+                      {/* Añadir otras cookies analíticas si se usan (ej. Amplitude, Hotjar) */}
                     </tbody>
                   </table>
                 </div>
@@ -242,28 +239,28 @@ const CookiesPage = () => {
             <div className="p-4 border border-amber-300 rounded-md bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-300">
               <p className="font-bold mb-2">NOTA</p>
               <p>
-                La lista anterior no es exhaustiva y puede cambiar a medida que actualizamos nuestra plataforma. Para obtener la información más actualizada, consulta esta política periódicamente.
+                La lista anterior es ilustrativa y puede cambiar. Para obtener la información más actualizada, consulta esta política periódicamente o revisa la configuración de cookies en la plataforma.
               </p>
             </div>
           </div>
           
           <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
-            <h2 className="text-2xl font-semibold mb-4">Control de cookies</h2>
+            <h2 className="text-2xl font-semibold mb-4">Consentimiento y control de cookies</h2>
             
             <div className="mb-6">
-              <h3 className="text-xl font-medium mb-3 text-blue-500">Configuración en nuestra plataforma</h3>
+              <h3 className="text-xl font-medium mb-3 text-blue-500">Tu autorización</h3>
               <p className="mb-4">
-                La primera vez que visitas nuestra plataforma, se te mostrará un banner de cookies donde podrás elegir aceptar todas las cookies o personalizar tus preferencias. Puedes cambiar estas preferencias en cualquier momento accediendo a la configuración de cookies en el pie de página de nuestro sitio.
+                De acuerdo con la normativa colombiana, las cookies que no son estrictamente necesarias para el funcionamiento del sitio (como las funcionales y analíticas) requieren tu autorización previa. La primera vez que visitas nuestra plataforma, te presentaremos un banner o mecanismo claro para que gestiones tus preferencias.
               </p>
               <p>
-                Ten en cuenta que, si rechazas ciertas cookies, es posible que algunas funciones de nuestra plataforma no estén disponibles o no funcionen correctamente.
+                Puedes retirar tu consentimiento o modificar tus preferencias en cualquier momento a través del gestor de cookies disponible en nuestra plataforma (generalmente en el pie de página).
               </p>
             </div>
             
             <div className="mb-6">
               <h3 className="text-xl font-medium mb-3 text-blue-500">Configuración del navegador</h3>
               <p className="mb-4">
-                Además del control que ofrecemos, puedes configurar tu navegador para que rechace todas las cookies o te notifique cuando se envía una cookie. A continuación, te indicamos cómo puedes gestionar las cookies en los navegadores más populares:
+                Puedes configurar tu navegador para que rechace todas o algunas cookies, o para que te notifique cuando se envía una cookie. A continuación, te indicamos cómo puedes gestionar las cookies en los navegadores más populares (los enlaces pueden variar):
               </p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -289,14 +286,14 @@ const CookiesPage = () => {
               </div>
               
               <p className="text-sm italic">
-                Ten en cuenta que bloquear todas las cookies puede afectar significativamente tu experiencia de navegación en muchos sitios web, no solo en AI Mental Health.
+                Ten en cuenta que bloquear las cookies técnicas o esenciales puede afectar el funcionamiento de nuestra plataforma.
               </p>
             </div>
             
             <div className="mb-4">
               <h3 className="text-xl font-medium mb-3 text-blue-500">Eliminación de cookies</h3>
               <p>
-                Puedes eliminar las cookies que ya están almacenadas en tu dispositivo a través de la configuración de tu navegador. Las instrucciones varían según el navegador, pero generalmente puedes encontrar esta opción en la misma sección donde se gestionan las cookies.
+                Puedes eliminar las cookies que ya están almacenadas en tu dispositivo a través de la configuración de tu navegador.
               </p>
             </div>
           </div>
@@ -311,34 +308,28 @@ const CookiesPage = () => {
             <div className="mb-6">
               <h3 className="text-xl font-medium mb-3 text-blue-500">Web Beacons (Píxeles de seguimiento)</h3>
               <p>
-                Pequeñas imágenes transparentes que nos permiten, por ejemplo, saber si has abierto un correo electrónico que te hemos enviado o has visitado una determinada página de nuestra plataforma.
+                Pequeñas imágenes transparentes que nos permiten, por ejemplo, saber si has abierto un correo electrónico (con tu autorización previa) o has visitado una determinada página.
               </p>
             </div>
             
             <div className="mb-6">
               <h3 className="text-xl font-medium mb-3 text-blue-500">Almacenamiento local</h3>
               <p>
-                Tecnologías como localStorage y sessionStorage que permiten almacenar datos en tu navegador. A diferencia de las cookies, los datos almacenados en el almacenamiento local no se transmiten automáticamente al servidor con cada solicitud.
+                Tecnologías como localStorage y sessionStorage que permiten almacenar datos en tu navegador para mejorar el rendimiento o guardar preferencias, sin transmitirlos automáticamente al servidor.
               </p>
             </div>
             
-            <div>
-              <h3 className="text-xl font-medium mb-3 text-blue-500">Huellas digitales del dispositivo (Fingerprinting)</h3>
-              <p>
-                Técnica que recopila información sobre tu dispositivo (como la configuración, el sistema operativo, el navegador) para crear una "huella digital" que puede usarse para identificarte sin necesidad de cookies. Utilizamos esta tecnología exclusivamente con fines de seguridad y prevención de fraude.
-              </p>
-            </div>
           </div>
           
           <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
             <h2 className="text-2xl font-semibold mb-4">Cookies de terceros</h2>
             
             <p className="mb-4">
-              Algunos de nuestros socios de confianza pueden colocar cookies de terceros en tu dispositivo cuando visitas nuestra plataforma. Estas cookies permiten que estos terceros recopilen información para diversos fines, incluyendo proporcionar análisis estadísticos y funcionalidades específicas.
+              Algunos de nuestros socios (como proveedores de análisis) pueden colocar cookies de terceros en tu dispositivo, siempre con tu autorización previa si no son esenciales. Estas cookies permiten que recopilen información anónima o seudónima para análisis estadísticos.
             </p>
             
             <p className="mb-6">
-              Los principales terceros que pueden establecer cookies a través de nuestra plataforma son:
+              Los principales terceros que pueden establecer cookies analíticas (si las autorizas) son:
             </p>
             
             <div className="space-y-4 mb-6">
@@ -352,29 +343,12 @@ const CookiesPage = () => {
                 </p>
               </div>
               
-              <div className={`p-4 rounded-md ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                <h3 className="font-medium mb-2">Amplitude</h3>
-                <p className="text-sm mb-2">
-                  Utilizamos Amplitude para analizar el comportamiento del usuario y mejorar la experiencia.
-                </p>
-                <p className="text-xs">
-                  Política de privacidad: <a href="https://amplitude.com/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">https://amplitude.com/privacy</a>
-                </p>
-              </div>
+              {/* Añadir otros si aplican, ej: Amplitude, Hotjar */}
               
-              <div className={`p-4 rounded-md ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                <h3 className="font-medium mb-2">Hotjar</h3>
-                <p className="text-sm mb-2">
-                  Utilizamos Hotjar para entender mejor las necesidades de nuestros usuarios y optimizar la experiencia.
-                </p>
-                <p className="text-xs">
-                  Política de privacidad: <a href="https://www.hotjar.com/legal/policies/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">https://www.hotjar.com/legal/policies/privacy</a>
-                </p>
-              </div>
             </div>
             
             <p>
-              Te recomendamos revisar las políticas de privacidad de estos terceros para obtener más información sobre cómo utilizan tus datos.
+              Te recomendamos revisar las políticas de privacidad de estos terceros. No controlamos las cookies establecidas por ellos.
             </p>
           </div>
           
@@ -382,11 +356,11 @@ const CookiesPage = () => {
             <h2 className="text-2xl font-semibold mb-4">Cambios en nuestra política de cookies</h2>
             
             <p className="mb-4">
-              Podemos actualizar esta Política de Cookies periódicamente para reflejar cambios en las cookies que utilizamos o por otros motivos operativos, legales o regulatorios. Te recomendamos revisar esta política regularmente para estar informado sobre nuestro uso de cookies y tecnologías relacionadas.
+              Podemos actualizar esta Política de Cookies periódicamente para reflejar cambios en las cookies que utilizamos o por otros motivos operativos, legales o regulatorios en Colombia. Te recomendamos revisar esta política regularmente.
             </p>
             
             <p className="mb-4">
-              Cuando realicemos cambios significativos en esta política, te lo notificaremos a través de un aviso en nuestra plataforma o, en algunos casos, enviándote un correo electrónico.
+              Cuando realicemos cambios significativos, te lo notificaremos de manera efectiva.
             </p>
             
             <p>
@@ -398,14 +372,11 @@ const CookiesPage = () => {
             <h2 className="text-2xl font-semibold mb-4">Contacto</h2>
             
             <p className="mb-4">
-              Si tienes preguntas o comentarios sobre nuestra Política de Cookies o sobre las prácticas de privacidad en nuestra plataforma, no dudes en contactarnos:
+              Si tienes preguntas o comentarios sobre nuestra Política de Cookies, puedes contactarnos a través de los canales indicados en nuestra <Link href="/legal/privacidad" className="text-blue-500 hover:underline">Política de Privacidad</Link>.
             </p>
             
             <div className="mb-4">
-              <p><strong>Email:</strong> privacidad@aimentalhealth.es</p>
-              <p><strong>Delegado de Protección de Datos:</strong> dpd@aimentalhealth.es</p>
-              <p><strong>Dirección postal:</strong> AI Mental Health S.L., Calle Innovación 123, 28001 Madrid, España</p>
-              <p><strong>Teléfono:</strong> +34 91 123 45 67</p>
+              <p><strong>Email:</strong> privacidad.co@aimentalhealth.com (Email inventado)</p>
             </div>
           </div>
           

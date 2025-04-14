@@ -116,7 +116,7 @@ const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
           {/* Disclaimer para mensajes del asistente */}
           {!isUser && (
             <div className="mt-3 text-xs text-neutral-400 italic">
-              Este asistente está especializado en ansiedad y depresión pero no sustituye a un profesional.
+              Este asistente está especializado en ansiedad y depresión para el contexto colombiano, pero no sustituye a un profesional.
             </div>
           )}
         </div>
