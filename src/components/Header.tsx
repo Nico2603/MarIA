@@ -25,10 +25,12 @@ const Header = () => {
               transition={{ duration: 0.5 }}
               className="flex items-center"
             >
-              <span className="text-blue-600 text-3xl font-bold mr-2">AI</span>
-              <h1 className={`${theme === 'dark' ? 'text-white' : 'text-gray-800'} font-semibold text-xl transition-colors duration-300`}>
-                Mental Health
-              </h1>
+              <span className={`${theme === 'dark' ? 'text-white' : 'text-gray-800'} text-3xl font-semibold transition-colors duration-300`}>
+                Mar
+              </span>
+              <span className="text-blue-600 text-3xl font-semibold">
+                ia
+              </span>
             </motion.div>
           </Link>
 

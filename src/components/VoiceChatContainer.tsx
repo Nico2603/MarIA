@@ -154,8 +154,15 @@ const VoiceChatContainer: React.FC = () => {
 
     initializeConnection();
 
+    // Modificar la función de limpieza para ser más segura
     return () => {
-      roomRef.current?.disconnect();
+      // Solo desconectar si la sala existe y está conectada
+      if (roomRef.current && roomRef.current.state === 'connected') {
+          console.log("Desconectando de LiveKit desde cleanup del useEffect...");
+          roomRef.current.disconnect();
+      } else {
+          console.log("Cleanup de useEffect de LiveKit: No se desconecta (no conectado o sala no existe).")
+      }
     };
   }, [getLiveKitToken, connectionState, liveKitToken]); // Añadir liveKitToken para reintentar si cambia
 
