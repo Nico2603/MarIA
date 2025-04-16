@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from './ThemeProvider';
+import { Sun, Moon } from 'lucide-react';
 
 const Header = () => {
   const { theme, toggleTheme } = useTheme();
@@ -14,7 +15,7 @@ const Header = () => {
   ];
 
   return (
-    <header className={`${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'} shadow-sm sticky top-0 z-10 transition-colors duration-300`}>
+    <header className={`${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-white text-gray-800'} shadow-sm sticky top-0 z-50 transition-colors duration-300`}>
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center">
@@ -44,20 +45,31 @@ const Header = () => {
           </nav>
 
           <div className="flex items-center space-x-4">
-            <motion.button 
+                <button
               onClick={toggleTheme}
-              className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ease-in-out duration-200 focus:outline-none ${theme === 'dark' ? 'bg-blue-600' : 'bg-gray-300'}`}
-              whileTap={{ scale: 0.95 }}
+              className={`p-2 rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 
+                ${theme === 'dark' 
+                  ? 'text-yellow-400 hover:bg-gray-700 focus-visible:ring-yellow-400 focus-visible:ring-offset-gray-900' 
+                  : 'text-gray-600 hover:bg-gray-200 focus-visible:ring-blue-500 focus-visible:ring-offset-white'
+                }`}
               aria-label={`Cambiar a modo ${theme === 'dark' ? 'claro' : 'oscuro'}`}
-              aria-pressed={theme === 'dark'}
             >
-              <span className="sr-only">Cambiar tema</span>
-              <motion.span 
-                layout
-                transition={{ type: "spring", stiffness: 700, damping: 30 }}
-                className={`inline-block w-4 h-4 transform rounded-full bg-white shadow-md ${theme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`}
-              />
-            </motion.button>
+               <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                    key={theme}
+                    initial={{ opacity: 0, rotate: -90, scale: 0.8 }}
+                    animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                    exit={{ opacity: 0, rotate: 90, scale: 0.8 }}
+                    transition={{ duration: 0.2 }}
+                >
+                    {theme === 'dark' ? (
+                        <Sun className="w-5 h-5" />
+                    ) : (
+                        <Moon className="w-5 h-5" />
+                    )}
+                          </motion.div>
+                      </AnimatePresence>
+                      </button>
 
             <button 
               className="md:hidden"

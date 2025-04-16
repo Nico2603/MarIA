@@ -23,14 +23,14 @@ const ProfesionalesPage = () => {
       description: 'Directorio oficial de psicólogos registrados en Colombia. Puedes buscar por especialidad y ubicación.',
       icon: BookOpen,
       link: 'https://www.colpsic.org.co/' // Example link, update with actual if known
-    },
-    {
+  },
+  {
       name: 'Tu Entidad Promotora de Salud (EPS)',
       description: 'Consulta el directorio de profesionales y centros de atención en salud mental afiliados a tu EPS.',
       icon: CheckCircle,
       link: '#' // Placeholder - Users need to check their specific EPS
-    },
-    {
+  },
+  {
         name: 'Secretarías de Salud Departamentales/Municipales',
         description: 'Pueden ofrecer información sobre servicios de salud mental públicos o de bajo costo en tu área.',
         icon: MapPin,
@@ -65,11 +65,11 @@ const ProfesionalesPage = () => {
     'No dudes en hacer preguntas sobre el proceso terapéutico.',
     'Recuerda que encontrar al profesional adecuado puede llevar tiempo.'
   ];
-
+  
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-800'}`}>
       <div className="container mx-auto px-4 py-12">
-        <motion.div
+        <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
@@ -90,16 +90,16 @@ const ProfesionalesPage = () => {
               {professionalCategories.map((category, index) => (
                 <div key={index} className={`flex items-start p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
                   <category.icon className="w-8 h-8 mr-4 text-blue-500 flex-shrink-0 mt-1" />
-                  <div>
+              <div>
                     <h3 className="text-lg font-medium mb-1">{category.name}</h3>
                     <p className="text-sm">{category.description}</p>
-                  </div>
-                </div>
+              </div>
+            </div>
               ))}
             </div>
              <p className="text-sm italic mt-4">Es importante verificar que el profesional esté debidamente registrado y habilitado para ejercer en Colombia.</p>
-          </div>
-
+                          </div>
+                          
           {/* Dónde Buscar */}
           <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
             <h2 className="text-2xl font-semibold mb-4">Recursos para Encontrar Profesionales</h2>
@@ -110,7 +110,7 @@ const ProfesionalesPage = () => {
               {searchResources.map((resource, index) => (
                 <div key={index} className={`flex items-start p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
                   <resource.icon className="w-6 h-6 mr-4 text-blue-500 flex-shrink-0 mt-1" />
-                  <div>
+                        <div>
                     <h3 className="text-lg font-medium mb-1">
                       {resource.link && resource.link !== '#' ? (
                         <a href={resource.link} target="_blank" rel="noopener noreferrer" className="hover:underline hover:text-blue-400">
@@ -130,7 +130,7 @@ const ProfesionalesPage = () => {
           {/* Consideraciones al Elegir */}
           <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
             <h2 className="text-2xl font-semibold mb-4">Consejos para Elegir un Profesional</h2>
-             <p className="mb-4">
+            <p className="mb-4">
                 Elegir al profesional adecuado es una decisión personal. Aquí algunos puntos a considerar:
             </p>
             <ul className="space-y-3 list-disc pl-5">
@@ -139,7 +139,7 @@ const ProfesionalesPage = () => {
               ))}
             </ul>
           </div>
-
+          
           {/* Aviso Importante */}
           <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-yellow-900' : 'bg-yellow-100'} border-l-4 ${theme === 'dark' ? 'border-yellow-500' : 'border-yellow-400'} text-${theme === 'dark' ? 'yellow-200' : 'yellow-800'}`}>
             <h2 className="text-xl font-semibold mb-3 flex items-center">
@@ -148,7 +148,7 @@ const ProfesionalesPage = () => {
             </h2>
             <p>
               Si tú o alguien que conoces está experimentando una crisis de salud mental o tiene pensamientos de hacerse daño, busca ayuda inmediata. Llama a la línea de emergencia nacional <strong>123</strong> o a la línea de salud mental <strong>106</strong>.
-            </p>
+                </p>
             <div className="mt-4">
                 <Link 
                     href="/recursos/crisis" 
@@ -159,9 +159,9 @@ const ProfesionalesPage = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
                 </Link>
-             </div>
+            </div>
           </div>
-
+          
           <div className="flex justify-start mt-8">
             <Link 
               href="/recursos" 
