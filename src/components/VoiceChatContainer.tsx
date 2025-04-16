@@ -57,6 +57,52 @@ const VoiceChatContainer: React.FC = () => {
   // Función para limpiar errores
   const clearError = () => setAppError({ type: null, message: null });
   
+  // <<< INICIO: Funciones Manejadoras de Pistas de Audio >>>
+  const handleTrackSubscribed = (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
+    if (!roomRef.current || participant.identity === roomRef.current.localParticipant.identity || track.kind !== Track.Kind.Audio) {
+       console.log(`Ignorando pista: Local=${participant.identity === roomRef.current?.localParticipant.identity}, Kind=${track.kind}, Identity=${participant.identity}`);
+      return;
+    }
+    const elementId = `audio-${participant.identity}-${track.sid}`;
+    if (document.getElementById(elementId)) {
+        console.log(`Audio element ${elementId} ya existe.`);
+        return;
+    }
+    console.log(`Adjuntando pista de audio REMOTA de: ${participant.identity} (Track SID: ${track.sid})`);
+    const audioElement = track.attach();
+    audioElement.id = elementId;
+    document.body.appendChild(audioElement);
+  };
+
+  const handleTrackUnsubscribed = (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
+    if (!roomRef.current || participant.identity === roomRef.current.localParticipant.identity || track.kind !== Track.Kind.Audio) {
+      return;
+    }
+    const elementId = `audio-${participant.identity}-${track.sid}`;
+    const audioElement = document.getElementById(elementId) as HTMLAudioElement | null;
+    if (audioElement) {
+      console.log(`Desadjuntando pista de audio de: ${participant.identity} (Track SID: ${track.sid})`);
+      track.detach(audioElement);
+      audioElement.remove();
+    }
+  };
+  
+  const handleParticipantDisconnected = (participant: RemoteParticipant) => {
+      console.log(`Limpiando audios del participante desconectado: ${participant.identity}`);
+      participant.trackPublications.forEach(publication => {
+          if (publication.track?.kind === Track.Kind.Audio && publication.track.sid) {
+               const elementId = `audio-${participant.identity}-${publication.track.sid}`;
+               const audioElement = document.getElementById(elementId) as HTMLAudioElement | null;
+               if (audioElement) {
+                   publication.track.detach(audioElement);
+                   audioElement.remove();
+                   console.log(`Audio limpiado: ${elementId}`);
+               }
+          }
+      });
+  };
+  // <<< FIN: Funciones Manejadoras de Pistas de Audio >>>
+
   // --- Inicialización y Conexión a LiveKit ---
   
   // Función para obtener el token de LiveKit
@@ -88,7 +134,7 @@ const VoiceChatContainer: React.FC = () => {
     const connectToRoom = async (token: string) => { 
       if (connectionState !== 'connected') {
         setConnectionState('connecting');
-        clearError(); // Limpiar errores al intentar conectar
+        clearError();
         const room = new Room({
           adaptiveStream: true,
           dynacast: true,
@@ -104,8 +150,8 @@ const VoiceChatContainer: React.FC = () => {
           .on(RoomEvent.Connected, () => {
             console.log('Conectado a la sala LiveKit');
             setConnectionState('connected');
-            clearError(); // Limpiar errores de conexión al conectar exitosamente
-            room.localParticipant.setMicrophoneEnabled(true);
+            clearError();
+            console.log('Micrófono local NO habilitado automáticamente al conectar.');
           })
           .on(RoomEvent.Disconnected, (reason) => {
             console.log('Desconectado de la sala LiveKit:', reason);
@@ -113,21 +159,9 @@ const VoiceChatContainer: React.FC = () => {
             setAppError({ type: 'livekit', message: 'Desconectado del chat de voz.' });
             roomRef.current = null;
           })
-          .on(RoomEvent.TrackSubscribed, 
-            (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => { 
-             if (participant.isLocal) {
-                console.log('Ignorando pista de audio del participante local.');
-                return;
-             }
-             
-             if (track.kind === Track.Kind.Audio) {
-                console.log(`Adjuntando pista de audio de: ${participant.identity}`);
-                const audioElement = track.attach();
-                if (audioElement) {
-                    document.body.appendChild(audioElement);
-                }
-             }
-          });
+          .on(RoomEvent.TrackSubscribed, handleTrackSubscribed)
+          .on(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed)
+          .on(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
           
         try {
           const livekitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
@@ -148,7 +182,7 @@ const VoiceChatContainer: React.FC = () => {
     };
     
     const initializeConnection = async () => {
-        if (!liveKitToken && connectionState === 'disconnected') { // Solo intentar si está desconectado
+        if (!liveKitToken && connectionState === 'disconnected') {
             const token = await getLiveKitToken();
             if (token) { 
                 connectToRoom(token);
@@ -160,17 +194,25 @@ const VoiceChatContainer: React.FC = () => {
 
     initializeConnection();
 
-    // Modificar la función de limpieza para ser más segura
+    // <<< Modificar la función de limpieza >>>
     return () => {
-      // Solo desconectar si la sala existe y está conectada
-      if (roomRef.current && roomRef.current.state === 'connected') {
-          console.log("Desconectando de LiveKit desde cleanup del useEffect...");
-          roomRef.current.disconnect();
+      if (roomRef.current) {
+        console.log("Cleanup de useEffect de LiveKit...");
+        // Desadjuntar audios remotos ANTES de desconectar (esto está bien)
+        roomRef.current.remoteParticipants.forEach(p => handleParticipantDisconnected(p));
+
+        // Intentar desconectar solo si está conectado
+        if (roomRef.current.state === 'connected') {
+            console.log("Llamando a disconnect() desde cleanup del useEffect...");
+            roomRef.current.disconnect(); // Dejar que el evento 'Disconnected' maneje la limpieza final de la ref
+        } else {
+             console.log("Cleanup: No se llama a disconnect() (estado no 'connected').");
+        }
       } else {
-          console.log("Cleanup de useEffect de LiveKit: No se desconecta (no conectado o sala no existe).")
+        console.log("Cleanup de useEffect de LiveKit: Sala no existe (ref ya es null).");
       }
     };
-  }, [getLiveKitToken, connectionState, liveKitToken]); // Añadir liveKitToken para reintentar si cambia
+  }, [getLiveKitToken, connectionState, liveKitToken]);
 
   // --- Reconocimiento de Voz (STT - Web Speech API) ---
   useEffect(() => {
@@ -348,40 +390,61 @@ const VoiceChatContainer: React.FC = () => {
       setIsSpeaking(false);
       setCurrentSpeakingId(null);
     }
-    if (recognitionRef.current) {
-      if (connectionState === 'disconnected') {
-        // Intenta reconectar obteniendo un nuevo token si está desconectado
-        setAppError({ type: 'livekit', message: 'Conexión perdida. Intentando reconectar...' });
-        const token = await getLiveKitToken(); // Llama a getLiveKitToken para intentar obtener uno nuevo
-        if (!token) {
-          setAppError({ type: 'livekit', message: 'No se pudo reconectar. Verifica tu conexión y la configuración del servidor.' });
-          return;
+    
+    if (!roomRef.current || connectionState !== 'connected') {
+        setAppError({ type: 'livekit', message: 'Chat de voz no conectado. Espera o intenta reconectar.' });
+        if (connectionState === 'disconnected') {
+             getLiveKitToken();
         }
-        // La reconexión se manejará en el useEffect de conexión al actualizarse liveKitToken
-        return; // No continuar hasta que la conexión se establezca
-      }
-       if (connectionState !== 'connected') {
-         setAppError({ type: 'livekit', message: 'Aún no conectado al chat de voz. Espera un momento.' });
-         return; // No empezar a escuchar si no está conectado
-       }
+        return;
+    }
 
+    try {
+        console.log("Habilitando micrófono local...");
+        await roomRef.current.localParticipant.setMicrophoneEnabled(true);
+        console.log("Micrófono local habilitado.");
+    } catch (error) {
+        console.error("Error al habilitar micrófono local:", error);
+        setAppError({ type: 'livekit', message: 'No se pudo habilitar el micrófono.' });
+        return;
+    }
+
+    if (recognitionRef.current) {
       try {
+        console.log("Iniciando reconocimiento de voz (STT)...");
         setIsListening(true);
-        setUserInput(''); // Limpiar input anterior
+        setUserInput(''); 
         recognitionRef.current.start();
       } catch (error) {
-        console.error("Error al iniciar reconocimiento:", error);
-        setAppError({ type: 'stt', message: 'No se pudo iniciar el micrófono.' });
+        console.error("Error al iniciar reconocimiento STT:", error);
+        setAppError({ type: 'stt', message: 'No se pudo iniciar el reconocimiento de voz.' });
         setIsListening(false);
+        try {
+          await roomRef.current.localParticipant.setMicrophoneEnabled(false);
+          console.log("Micrófono local deshabilitado por fallo de STT.");
+        } catch (micError) {
+          console.error("Error al deshabilitar micrófono tras fallo STT:", micError);
+        }
       }
     }
   };
   
-  // Modificado para recibir el texto final directamente desde el evento onresult
-  const handleStopListening = (finalTranscript: string) => {
+  const handleStopListening = async (finalTranscript: string) => {
     if (recognitionRef.current && isListening) {
+      console.log("Deteniendo reconocimiento de voz (STT)...");
       recognitionRef.current.stop();
       setIsListening(false);
+      
+      if (roomRef.current && roomRef.current.localParticipant) {
+        try {
+            console.log("Deshabilitando micrófono local...");
+            await roomRef.current.localParticipant.setMicrophoneEnabled(false);
+            console.log("Micrófono local deshabilitado.");
+        } catch (error) {
+            console.error("Error al deshabilitar micrófono local:", error);
+        }
+      }
+      
       if (finalTranscript.trim()) {
         const newMessage: Message = {
           id: Date.now().toString(),
@@ -392,7 +455,7 @@ const VoiceChatContainer: React.FC = () => {
         setMessages(prevMessages => [...prevMessages, newMessage]);
         getOpenAIResponse(finalTranscript.trim());
       }
-      setUserInput(''); // Limpiar input visual
+      setUserInput('');
     }
   };
 
