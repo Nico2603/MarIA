@@ -305,44 +305,9 @@ const InteractiveVoiceAvatar: React.FC<InteractiveVoiceAvatarProps> = ({
       </div>
       
       {/* Visualización de audio */}
-      <div className="mt-4 h-8 flex items-center justify-center">
-        <div ref={audioVisualizerRef} className="flex items-end h-8 space-x-0.5"></div>
+      <div ref={audioVisualizerRef} className="mt-4 h-8 flex items-end justify-center">
+        {/* Las barras se generan dinámicamente aquí */}
       </div>
-      
-      {/* Botón circular de micrófono */}
-      <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        className={`mt-6 w-14 h-14 rounded-full flex items-center justify-center shadow-md ${
-          isListening ? "bg-red-500 text-white" : "bg-white text-primary-600 border border-primary-200"
-        }`}
-        onClick={handleAvatarClick}
-        aria-label={isListening ? "Detener micrófono" : "Activar micrófono"}
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-6 w-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          {isListening ? (
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"
-            />
-          ) : (
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-            />
-          )}
-        </svg>
-      </motion.button>
     </div>
   );
 };

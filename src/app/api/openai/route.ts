@@ -75,7 +75,7 @@ export async function POST(request: Request) {
 
     // Crear la conversación con OpenAI
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-realtime", // <<< Modelo cambiado a gpt-4o-realtime según solicitud
+      model: "gpt-4o", // <<< Corregido al modelo estándar gpt-4o
       messages: [
         {
           role: "system",

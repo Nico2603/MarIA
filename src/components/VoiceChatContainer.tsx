@@ -12,7 +12,7 @@ import {
 } from 'livekit-client';
 import InteractiveVoiceAvatar from './InteractiveVoiceAvatar';
 import TranscribedResponse from './TranscribedResponse';
-import { Send, AlertCircle } from 'lucide-react';
+import { Send, AlertCircle, Mic } from 'lucide-react';
 
 // Definir explícitamente la interfaz para los eventos de Web Speech API
 // ya que los tipos globales pueden no estar disponibles
@@ -52,6 +52,7 @@ const VoiceChatContainer: React.FC = () => {
   const roomRef = useRef<Room | null>(null);
   const recognitionRef = useRef<any>(null); // Web Speech API para STT
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null); // Web Speech API para TTS
+  const chatEndRef = useRef<HTMLDivElement>(null); // Para scroll automático
   
   // Función para limpiar errores
   const clearError = () => setAppError({ type: null, message: null });
@@ -306,190 +307,198 @@ const VoiceChatContainer: React.FC = () => {
   
   // --- Controladores de Interacción del Avatar ---
 
-  const handleStartListening = () => {
-    clearError(); 
+  const handleStartListening = async () => {
+    clearError();
     if (isSpeaking) {
-       window.speechSynthesis.cancel();
-       setIsSpeaking(false);
-       setCurrentSpeakingId(null);
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      setCurrentSpeakingId(null);
     }
-    if (recognitionRef.current && connectionState === 'connected') {
-      try {
-        setUserInput(''); 
-        recognitionRef.current.start();
-        setIsListening(true);
-      } catch (error) {
-        console.error('Error al iniciar reconocimiento:', error);
-        setAppError({ type: 'stt', message: 'No se pudo iniciar el reconocimiento de voz.' });
+    if (recognitionRef.current) {
+      if (connectionState === 'disconnected') {
+        // Intenta reconectar obteniendo un nuevo token si está desconectado
+        setAppError({ type: 'livekit', message: 'Conexión perdida. Intentando reconectar...' });
+        const token = await getLiveKitToken(); // Llama a getLiveKitToken para intentar obtener uno nuevo
+        if (!token) {
+          setAppError({ type: 'livekit', message: 'No se pudo reconectar. Verifica tu conexión y la configuración del servidor.' });
+          return;
+        }
+        // La reconexión se manejará en el useEffect de conexión al actualizarse liveKitToken
+        return; // No continuar hasta que la conexión se establezca
       }
-    } else if (connectionState !== 'connected') {
-        console.warn('LiveKit no está conectado.');
-        setAppError({ type: 'livekit', message: 'El chat de voz no está conectado.' });
-        // Intentar obtener token de nuevo si estamos desconectados para disparar el useEffect de conexión
-        if (connectionState === 'disconnected') getLiveKitToken(); 
-    } else {
-      console.warn('Reconocimiento de voz no está listo.');
-      setAppError({ type: 'stt', message: 'El reconocimiento de voz no está disponible.' });
+       if (connectionState !== 'connected') {
+         setAppError({ type: 'livekit', message: 'Aún no conectado al chat de voz. Espera un momento.' });
+         return; // No empezar a escuchar si no está conectado
+       }
+
+      try {
+        setIsListening(true);
+        setUserInput(''); // Limpiar input anterior
+        recognitionRef.current.start();
+      } catch (error) {
+        console.error("Error al iniciar reconocimiento:", error);
+        setAppError({ type: 'stt', message: 'No se pudo iniciar el micrófono.' });
+        setIsListening(false);
+      }
     }
   };
   
   // Modificado para recibir el texto final directamente desde el evento onresult
   const handleStopListening = (finalTranscript: string) => {
-    setIsListening(false);
-    if (finalTranscript.trim()) {
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        text: finalTranscript.trim(),
-        isUser: true,
-        timestamp: new Date().toLocaleTimeString(),
-      };
-      setMessages(prevMessages => [...prevMessages, userMessage]);
-      
-      // Enviar a OpenAI
-      getOpenAIResponse(finalTranscript.trim());
-      
+    if (recognitionRef.current && isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+      if (finalTranscript.trim()) {
+        const newMessage: Message = {
+          id: Date.now().toString(),
+          text: finalTranscript.trim(),
+          isUser: true,
+          timestamp: new Date().toLocaleTimeString(),
+        };
+        setMessages(prevMessages => [...prevMessages, newMessage]);
+        getOpenAIResponse(finalTranscript.trim());
+      }
       setUserInput(''); // Limpiar input visual
     }
   };
 
   // <<< Nueva función para enviar mensajes de texto >>>
-  const handleSendTextMessage = (event: FormEvent<HTMLFormElement>) => {
+  const handleSendTextMessage = (event: FormEvent) => {
     event.preventDefault();
-    const messageText = textInput.trim();
-    if (messageText) {
-      clearError(); // Limpiar errores al enviar
-      const userMessage: Message = {
+    if (textInput.trim()) {
+      if (isSpeaking) {
+        window.speechSynthesis.cancel();
+        setIsSpeaking(false);
+        setCurrentSpeakingId(null);
+      }
+      const newMessage: Message = {
         id: Date.now().toString(),
-        text: messageText,
+        text: textInput.trim(),
         isUser: true,
         timestamp: new Date().toLocaleTimeString(),
       };
-      setMessages(prevMessages => [...prevMessages, userMessage]);
-      
-      // Enviar a OpenAI
-      getOpenAIResponse(messageText);
-      
-      setTextInput(''); // Limpiar input de texto
+      setMessages(prevMessages => [...prevMessages, newMessage]);
+      getOpenAIResponse(textInput.trim());
+      setTextInput('');
     }
   };
 
+  // Scroll automático al final del chat
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
   // --- Renderizado ---
   return (
-    <div className="flex flex-col h-full">
-      {/* Banner de Error General */}
+    <div className="flex flex-1 h-[calc(100vh-64px)] bg-neutral-100 dark:bg-neutral-900">
+
+      {/* Error Banner */}
       {appError.message && (
-          <div className={`p-3 text-center text-white text-sm ${appError.type === 'livekit' ? 'bg-red-600' : 'bg-yellow-600'} flex items-center justify-center space-x-2`}>
-              <AlertCircle className="w-5 h-5"/>
-              <span>{appError.message}</span>
-              <button onClick={clearError} className="ml-4 text-xs underline">Descartar</button>
+        <div className="fixed top-16 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md p-4 bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg shadow-lg flex items-center justify-between">
+          <div className="flex items-center">
+            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-300 mr-2" />
+            <span className="text-sm text-red-700 dark:text-red-200">{appError.message}</span>
           </div>
-      )}
-      <div className="flex flex-col md:flex-row h-full flex-1 relative">
-        {/* Panel izquierdo */}
-        <div className="w-full md:w-1/3 p-6 flex flex-col items-center justify-center bg-white dark:bg-neutral-800 border-r border-neutral-200 dark:border-neutral-700"> {/* dark: aplicado */}
-          <div className="max-w-sm w-full">
-            <div className="mb-8 text-center">
-              <h2 className="text-2xl font-medium text-neutral-800 dark:text-neutral-100 mb-2">Asistente Virtual</h2>
-              <p className="text-neutral-500 dark:text-neutral-400">
-                Presiona el micrófono para hablar
-              </p>
-            </div>
-            
-            <InteractiveVoiceAvatar
-              isListening={isListening}
-              isProcessing={isProcessing}
-              isSpeaking={isSpeaking}
-              onStartListening={handleStartListening}
-              // handleStopListening ahora se llama internamente desde onresult con texto final
-              onStopListening={() => { if (recognitionRef.current) recognitionRef.current.stop(); }} // Para el botón explícito
-              size="lg"
-            />
-            
-            {isListening && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 rounded-lg text-center min-h-[60px]"
-              >
-                <p className="text-neutral-800 dark:text-neutral-200 font-medium mb-1">Escuchando...</p>
-                <p className="text-neutral-600 dark:text-neutral-300 italic">
-                  {userInput || "..."}
-                </p>
-              </motion.div>
-            )}
-             {isProcessing && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-6 p-4 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-100 dark:border-yellow-800 rounded-lg text-center min-h-[60px]"
-              >
-                 <p className="text-neutral-800 dark:text-neutral-200 font-medium mb-1">Procesando...</p>
-              </motion.div>
-            )}
-
-            {/* <<< Ocultar Consejos si está escuchando >>> */}
-            {!isListening && (
-            <div className="mt-8 bg-neutral-50 dark:bg-neutral-700 rounded-lg p-4 text-sm text-neutral-600 dark:text-neutral-300">
-                <h3 className="font-medium text-neutral-700 dark:text-neutral-100 mb-2">Consejos:</h3>
-              <ul className="space-y-2">
-                  <li className="flex items-start"><span className="text-primary-500 mr-2">•</span><span>Habla claro y cerca del micrófono.</span></li>
-                  <li className="flex items-start"><span className="text-primary-500 mr-2">•</span><span>Espera a que termine de hablar antes de responder.</span></li>
-                  <li className="flex items-start"><span className="text-primary-500 mr-2">•</span><span>Recuerda que soy una IA, no un terapeuta real.</span></li>
-              </ul>
-            </div>
-            )}
-          </div>
+          <button onClick={clearError} className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-200">
+             &times;
+          </button>
         </div>
-        
-        {/* Panel derecho (con chat y nuevo input) */}
-        <div className="flex-1 flex flex-col bg-neutral-50 dark:bg-neutral-850 overflow-hidden">
-          {/* Historial de Mensajes */}
-          <div className="flex-1 overflow-y-auto p-4 pb-20">
-            <div className="max-w-3xl mx-auto space-y-6">
-                {messages.map((msg) => (
-                  <TranscribedResponse
-                    key={msg.id}
-                    text={msg.text}
-                    isUser={msg.isUser}
-                    isHighlighted={currentSpeakingId === msg.id}
-                    timestamp={msg.timestamp}
-                  // Ya no pasamos tags
-                  />
-                ))}
-              {messages.length === 0 && (
-              <div className="text-center text-neutral-500 dark:text-neutral-400 py-12">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-neutral-300 dark:text-neutral-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-                </svg>
-                    <p className="text-lg">Hola, soy tu asistente de IA.</p>
-                    <p className="mt-2">Haz clic en el micrófono para comenzar.</p>
-              </div>
-            )}
-            </div>
-          </div>
+      )}
 
-          {/* <<< Input de Texto Fijo Abajo >>> */}
-          <div className="sticky bottom-0 left-0 right-0 p-4 bg-neutral-100 dark:bg-neutral-800 border-t border-neutral-200 dark:border-neutral-700">
-            <form onSubmit={handleSendTextMessage} className="max-w-3xl mx-auto flex items-center space-x-2">
-              <input
-                type="text"
-                value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                placeholder="Escribe tu mensaje aquí..."
-                className="flex-1 px-4 py-2 border border-neutral-300 dark:border-neutral-600 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500"
-                disabled={isProcessing || isListening} // Deshabilitar mientras procesa o escucha
+      {/* Panel Izquierdo: Chat Area */}
+      <div className="w-full md:w-1/3 flex flex-col">
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          {messages.length === 0 ? (
+            // Mensaje Inicial
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="flex flex-col items-center justify-center h-full text-center text-neutral-500 dark:text-neutral-400"
+            >
+              <svg className="w-16 h-16 mb-4 text-neutral-400 dark:text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+              <h2 className="text-xl font-medium text-neutral-700 dark:text-neutral-200 mb-2">Hola, soy tu asistente de IA.</h2>
+              <p>Haz clic en el micrófono o escribe para comenzar.</p>
+            </motion.div>
+          ) : (
+            // Historial de Chat
+            messages.map((msg) => (
+              <TranscribedResponse
+                key={msg.id}
+                text={msg.text}
+                isUser={msg.isUser}
+                timestamp={msg.timestamp}
+                isHighlighted={currentSpeakingId === msg.id}
               />
-              <button 
-                type="submit"
-                className="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-neutral-800"
-                disabled={!textInput.trim() || isProcessing || isListening}
-              >
-                <Send className="w-5 h-5" />
-              </button>
-            </form>
-          </div>
+            ))
+          )}
+          <div ref={chatEndRef} /> {/* Referencia para scroll */}
+        </div>
+
+        {/* Input Area */} 
+        <div className="p-4 bg-white dark:bg-neutral-800 border-t border-neutral-200 dark:border-neutral-700">
+          <form onSubmit={handleSendTextMessage} className="flex items-center space-x-3">
+            <textarea
+              value={textInput}
+              onChange={(e) => setTextInput(e.target.value)}
+              placeholder="Escribe tu mensaje aquí..."
+              rows={1}
+              className="flex-1 resize-none p-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 bg-neutral-50 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendTextMessage(e as unknown as FormEvent);
+                }
+              }}
+              disabled={isListening || isProcessing}
+            />
+            {/* Botón Micrófono */}
+            <button 
+              type="button"
+              onClick={isListening ? () => handleStopListening(userInput) : handleStartListening}
+              disabled={isProcessing} // Deshabilitar si OpenAI está procesando
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 ${ 
+                isListening 
+                ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-400' 
+                : 'bg-primary-600 hover:bg-primary-700 text-white focus:ring-primary-500'
+              } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+              aria-label={isListening ? "Detener micrófono" : "Activar micrófono"}
+            >
+              <Mic className="h-5 w-5" />
+            </button>
+            {/* Botón Enviar */}
+            <button
+              type="submit"
+              disabled={!textInput.trim() || isListening || isProcessing}
+              className="w-10 h-10 rounded-full flex items-center justify-center bg-primary-600 text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+              aria-label="Enviar mensaje"
+            >
+              {isProcessing ? (
+                <div className="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div>
+              ) : (
+                <Send className="h-5 w-5" />
+              )}
+            </button>
+          </form>
         </div>
       </div>
+
+      {/* Panel Derecho: Avatar Placeholder (para futuro video) */}
+      <div className="hidden md:flex md:w-2/3 p-6 flex-col items-center justify-center bg-white dark:bg-neutral-800 border-l border-neutral-200 dark:border-neutral-700">
+        <div className="max-w-sm w-full flex flex-col items-center justify-center h-full">
+            {/* Solo el avatar interactivo */}
+            <InteractiveVoiceAvatar 
+                isListening={isListening}
+                isSpeaking={isSpeaking}
+                isProcessing={isProcessing}
+                onStartListening={handleStartListening}
+                onStopListening={() => handleStopListening(userInput)}
+                size="lg"
+            />
+        </div>
+        {/* Se eliminaron: Título, Subtítulo, Botón Micrófono redundante, Consejos, Copyright */}
+      </div>
+
     </div>
   );
 };
