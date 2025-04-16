@@ -115,7 +115,13 @@ const VoiceChatContainer: React.FC = () => {
           })
           .on(RoomEvent.TrackSubscribed, 
             (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => { 
+             if (participant.isLocal) {
+                console.log('Ignorando pista de audio del participante local.');
+                return;
+             }
+             
              if (track.kind === Track.Kind.Audio) {
+                console.log(`Adjuntando pista de audio de: ${participant.identity}`);
                 const audioElement = track.attach();
                 if (audioElement) {
                     document.body.appendChild(audioElement);
