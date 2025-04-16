@@ -60,7 +60,7 @@ const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
       <div className={`max-w-[85%] ${isUser ? 'order-1' : 'order-2'}`}>
         {/* Indicador de quién habla */}
         <div className="mb-1 text-sm font-medium text-neutral-500">
-          {isUser ? 'Tú' : 'Asistente de Ansiedad y Depresión'}
+          {isUser ? 'Tú' : 'María'}
         </div>
         
         {/* Contenedor del mensaje */}
@@ -116,7 +116,7 @@ const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
           {/* Disclaimer para mensajes del asistente */}
           {!isUser && (
             <div className="mt-3 text-xs text-neutral-400 italic">
-              Este asistente está especializado en ansiedad y depresión para el contexto colombiano, pero no sustituye a un profesional.
+              Este asistente está especializado en ansiedad para el contexto colombiano, pero no sustituye a un profesional.
             </div>
           )}
         </div>

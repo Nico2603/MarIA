@@ -253,20 +253,41 @@ const VoiceChatContainer: React.FC = () => {
       clearError(); // Limpiar errores previos de TTS
       
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'es-CO'; // Voz de Colombia
+      utterance.lang = 'es-CO'; // Preferencia idioma Colombia
       utterance.rate = 1.0;
       utterance.pitch = 1.0;
       
-      // Buscar voz es-CO o es-419 (Latam) o es-ES como fallback
+      // Buscar voces disponibles
       const voices = window.speechSynthesis.getVoices();
-      const preferredVoices = voices.filter(voice => 
-          voice.lang === 'es-CO' || voice.lang === 'es-419' || voice.lang === 'es-ES'
-      );
-      // Seleccionar la primera voz preferida encontrada o una genérica en español
-      utterance.voice = preferredVoices[0] || voices.find(voice => voice.lang.startsWith('es')) || null;
       
-      if (!utterance.voice) {
-          console.warn("No se encontró voz en español, usando predeterminada.");
+      // Filtrar por idioma (es-CO, es-419, es-ES) y priorizar femenino
+      const preferredVoices = voices.filter(voice => 
+          (voice.lang === 'es-CO' || voice.lang === 'es-419' || voice.lang === 'es-ES')
+      );
+      
+      // Intentar encontrar una voz femenina dentro de las preferidas
+      let selectedVoice = preferredVoices.find(voice => 
+          voice.name.toLowerCase().includes('female') || 
+          voice.name.toLowerCase().includes('mujer') || 
+          voice.name.toLowerCase().includes('femenino') // Añadir más términos si es necesario
+      );
+      
+      // Si no se encuentra femenina, tomar la primera preferida (CO, 419, ES)
+      if (!selectedVoice) {
+          selectedVoice = preferredVoices[0];
+      }
+      
+      // Si no hay ninguna preferida, buscar cualquier voz en español
+      if (!selectedVoice) {
+           selectedVoice = voices.find(voice => voice.lang.startsWith('es'));
+      }
+      
+      utterance.voice = selectedVoice || null; // Asignar la voz encontrada o null (predeterminada)
+      
+      if (selectedVoice) {
+          console.log(`Voz TTS seleccionada: ${selectedVoice.name} (${selectedVoice.lang})`);
+      } else {
+          console.warn("No se encontró voz en español preferida o genérica, usando predeterminada del sistema.");
       }
       
       setIsSpeaking(true);
@@ -289,8 +310,8 @@ const VoiceChatContainer: React.FC = () => {
       };
 
       try {
-      window.speechSynthesis.speak(utterance);
-      speechSynthesisRef.current = utterance;
+        window.speechSynthesis.speak(utterance);
+        speechSynthesisRef.current = utterance;
       } catch (error) {
           console.error("Error al llamar a speechSynthesis.speak:", error);
           setAppError({ type: 'tts', message: 'No se pudo iniciar la síntesis de voz.' });
