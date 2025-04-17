@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, FormEvent } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Room, 
     RoomEvent, 
@@ -13,17 +13,6 @@ import {
 import InteractiveVoiceAvatar from './InteractiveVoiceAvatar';
 import TranscribedResponse from './TranscribedResponse';
 import { Send, AlertCircle, Mic } from 'lucide-react';
-
-// Definir explícitamente la interfaz para los eventos de Web Speech API
-// ya que los tipos globales pueden no estar disponibles
-interface SpeechRecognitionEvent extends Event {
-    results: SpeechRecognitionResultList;
-    resultIndex: number;
-}
-
-interface SpeechRecognitionErrorEvent extends Event {
-    error: string;
-}
 
 interface Message {
   id: string;
@@ -40,18 +29,23 @@ type AppError = { type: 'livekit' | 'openai' | 'stt' | 'tts' | null; message: st
 const VoiceChatContainer: React.FC = () => {
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false); // Para llamadas a OpenAI
-  const [isSpeaking, setIsSpeaking] = useState(false); // Para TTS del navegador
+  const [isSpeaking, setIsSpeaking] = useState(false); // << NUEVO: Para audio de OpenAI TTS
   const [currentSpeakingId, setCurrentSpeakingId] = useState<string | null>(null);
-  const [userInput, setUserInput] = useState('');
   const [textInput, setTextInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [liveKitToken, setLiveKitToken] = useState<string | null>(null);
   const [appError, setAppError] = useState<AppError>({ type: null, message: null }); // <<< Estado para errores
+  const [initialAudioUrl, setInitialAudioUrl] = useState<string | null>(null); // << NUEVO: Guardar URL saludo
+  const [greetingMessageId, setGreetingMessageId] = useState<string | null>(null); // << NUEVO: Guardar ID saludo
+  const [isReadyToStart, setIsReadyToStart] = useState(false); // << NUEVO: Estado para indicar si el saludo está listo
+  const [conversationActive, setConversationActive] = useState(false); // << NUEVO: Estado para overlay
   
   const roomRef = useRef<Room | null>(null);
-  const recognitionRef = useRef<any>(null); // Web Speech API para STT
-  const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null); // Web Speech API para TTS
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null); // << NUEVO: Ref para MediaRecorder
+  const audioChunksRef = useRef<Blob[]>([]); // << NUEVO: Ref para almacenar chunks de audio
+  const audioStreamRef = useRef<MediaStream | null>(null); // << NUEVO: Ref para el stream del mic
+  const audioRef = useRef<HTMLAudioElement | null>(null); // << NUEVO: Ref para el elemento <audio>
   const chatEndRef = useRef<HTMLDivElement>(null); // Para scroll automático
   
   // Función para limpiar errores
@@ -156,7 +150,9 @@ const VoiceChatContainer: React.FC = () => {
           .on(RoomEvent.Disconnected, (reason) => {
             console.log('Desconectado de la sala LiveKit:', reason);
             setConnectionState('disconnected');
-            setAppError({ type: 'livekit', message: 'Desconectado del chat de voz.' });
+            if (conversationActive) { 
+              setAppError({ type: 'livekit', message: 'Desconectado del chat de voz.' });
+            }
             roomRef.current = null;
           })
           .on(RoomEvent.TrackSubscribed, handleTrackSubscribed)
@@ -211,58 +207,119 @@ const VoiceChatContainer: React.FC = () => {
       } else {
         console.log("Cleanup de useEffect de LiveKit: Sala no existe (ref ya es null).");
       }
+      // << Limpiar audio al desmontar >>
+      if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.onended = null; // Remover listeners
+          audioRef.current.onerror = null;
+          audioRef.current = null;
+      }
     };
   }, [getLiveKitToken, connectionState, liveKitToken]);
 
-  // --- Reconocimiento de Voz (STT - Web Speech API) ---
+  // << MODIFICADO: useEffect para saludo inicial (solo prepara y marca como listo) >>
   useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false; 
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'es-CO'; 
-      
-      recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => { 
-        let interimTranscript = '';
-        let finalTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
-          } else {
-            interimTranscript += event.results[i][0].transcript;
-          }
-        }
-        setUserInput(interimTranscript || finalTranscript);
-        if (finalTranscript) {
-           handleStopListening(finalTranscript); 
-        }
-      };
-      
-      recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => { 
-        console.error('Error en reconocimiento de voz:', event.error);
-        setAppError({ type: 'stt', message: `Error STT: ${event.error}` });
-        setIsListening(false);
-      };
-
-      recognitionRef.current.onend = () => {
-        if (isListening) {
-             setIsListening(false); 
-        }
-      };
-    } else {
-        console.warn("Web Speech Recognition no soportado en este navegador.");
+    // Prevenir ejecución si ya hay mensajes o la conversación ya está activa
+    if (messages.length > 0 || conversationActive) {
+        return;
     }
+    
+    const prepareInitialGreeting = async () => {
+        const initialGreetingText = "Hola, soy María, tu asistente virtual de IA para la ansiedad. Estoy aquí para escucharte y ofrecerte apoyo. ¿Cómo te sientes hoy?";
+        const msgId = `greeting-${Date.now()}`;
+        setGreetingMessageId(msgId); // Guardar ID del saludo
+        
+        // Añadir mensaje a UI
+        const newMessage: Message = {
+            id: msgId,
+            text: initialGreetingText,
+            isUser: false,
+            timestamp: new Date().toLocaleTimeString(),
+        };
+        setMessages([newMessage]);
+        // No marcar como 'speaking' aún
+        
+        console.log("Generando audio para saludo inicial (sin reproducir)...");
+        try {
+            const ttsResponse = await fetch('/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: initialGreetingText })
+            });
 
-  }, []); // Ejecutar solo una vez para configurar
+            if (ttsResponse.ok) {
+                const { audioUrl } = await ttsResponse.json();
+                if (audioUrl) {
+                    console.log("Audio de saludo preparado, URL:", audioUrl);
+                    setInitialAudioUrl(audioUrl); // Guardar URL
+                    setIsReadyToStart(true); // << Marcar como listo para empezar >>
+                } else {
+                    throw new Error("URL de audio no recibida para saludo.");
+                }
+            } else {
+                const errorData = await ttsResponse.json().catch(() => ({}));
+                throw new Error(errorData.error || `Error del servidor TTS para saludo: ${ttsResponse.status}`);
+            }
+        } catch (ttsError) {
+            console.error("Error generando TTS inicial:", ttsError);
+            setAppError({ type: 'tts', message: ttsError instanceof Error ? ttsError.message : 'Error generando TTS inicial.' });
+            setInitialAudioUrl(null);
+            setIsReadyToStart(false); // Marcar como no listo si hay error
+        }
+    };
 
-  // --- Procesamiento con OpenAI y Síntesis de Voz (TTS - Web Speech API) ---
+    prepareInitialGreeting();
+
+  }, []); // Ejecutar solo al montar
+
+  // --- Procesamiento con OpenAI y Reproducción de Audio (TTS - OpenAI API) ---
   
-  // Función para enviar mensaje a la API de OpenAI
+  // Función para reproducir audio desde URL
+  const playAudio = (url: string, messageId: string) => {
+    if (audioRef.current) {
+      audioRef.current.pause(); // Detener audio anterior si existe
+      audioRef.current.onended = null; // Limpiar listeners anteriores
+      audioRef.current.onerror = null;
+      audioRef.current = null; // Limpiar la referencia anterior
+    }
+    clearError(); // Limpiar errores previos de TTS
+    const audio = new Audio(url);
+    audioRef.current = audio;
+    setCurrentSpeakingId(messageId);
+    setIsSpeaking(true);
+
+    audio.onended = () => {
+      console.log("Audio terminado:", messageId);
+      setIsSpeaking(false);
+      setCurrentSpeakingId(null);
+      audioRef.current = null; // Limpiar ref
+    };
+    audio.onerror = (e) => {
+      console.error("Error al reproducir audio:", url, e);
+      setAppError({ type: 'tts', message: 'Error al reproducir el archivo de audio.' });
+      setIsSpeaking(false);
+      setCurrentSpeakingId(null);
+      audioRef.current = null; // Limpiar ref
+    };
+    audio.play().catch(e => { // Manejar error de autoplay
+        console.error("Error al iniciar la reproducción:", e);
+        // Mostrar el error específico de autoplay si es el caso
+        const playErrorMessage = e.name === 'NotAllowedError' 
+            ? 'No se pudo iniciar la reproducción del audio. Puede requerir interacción del usuario.'
+            : 'Error al iniciar la reproducción del audio.';
+        setAppError({ type: 'tts', message: playErrorMessage });
+        setIsSpeaking(false);
+        setCurrentSpeakingId(null);
+        audioRef.current = null;
+    });
+  };
+
+  // Función para enviar mensaje a la API de OpenAI y luego a la API TTS
   const getOpenAIResponse = async (userMessage: string) => {
     setIsProcessing(true);
     clearError(); // Limpiar errores previos
     try {
+      // 1. Obtener respuesta de texto de OpenAI
       const response = await fetch('/api/openai', {
         method: 'POST',
         headers: {
@@ -280,7 +337,7 @@ const VoiceChatContainer: React.FC = () => {
       const aiText = data.response;
       if (!aiText) throw new Error("Respuesta vacía de OpenAI.");
 
-      // Añadir la respuesta del asistente
+      // Añadir la respuesta del asistente al historial
       const newMessage: Message = {
         id: Date.now().toString(),
         text: aiText,
@@ -288,183 +345,205 @@ const VoiceChatContainer: React.FC = () => {
         timestamp: new Date().toLocaleTimeString(),
       };
       setMessages(prevMessages => [...prevMessages, newMessage]);
-      setCurrentSpeakingId(newMessage.id);
+      setCurrentSpeakingId(newMessage.id); // Marcar como "pensando en hablar"
+      setIsProcessing(false); // Termina procesamiento de OpenAI
       
-      // Usar TTS del navegador para leer la respuesta
-      speakText(aiText, newMessage.id);
+      // 2. Obtener audio TTS para la respuesta
+      try {
+        const ttsResponse = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: aiText }) // Enviar el texto obtenido
+        });
+
+        if (ttsResponse.ok) {
+          const { audioUrl } = await ttsResponse.json();
+          if (audioUrl) {
+             playAudio(audioUrl, newMessage.id); // Reproducir el audio
+          } else {
+             throw new Error("URL de audio no recibida del endpoint TTS.");
+          }
+        } else {
+          const errorData = await ttsResponse.json().catch(() => ({}));
+          throw new Error(errorData.error || `Error del servidor TTS: ${ttsResponse.status}`);
+        }
+      } catch (ttsError) {
+          console.error("Error al obtener o reproducir audio TTS:", ttsError);
+          setAppError({ type: 'tts', message: ttsError instanceof Error ? ttsError.message : 'Error desconocido en TTS.' });
+          // Si falla el TTS, al menos el texto está visible
+          setIsSpeaking(false);
+          setCurrentSpeakingId(null);
+      }
 
     } catch (error) {
       console.error("Error al obtener respuesta de OpenAI:", error);
       setAppError({ type: 'openai', message: error instanceof Error ? error.message : 'Error desconocido al contactar OpenAI.' });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  // Función para sintetizar voz (TTS)
-  const speakText = (text: string, messageId: string) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      clearError(); // Limpiar errores previos de TTS
-      
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'es-CO'; // Preferencia idioma Colombia
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      
-      // Buscar voces disponibles
-      const voices = window.speechSynthesis.getVoices();
-      
-      // Filtrar por idioma (es-CO, es-419, es-ES) y priorizar femenino
-      const preferredVoices = voices.filter(voice => 
-          (voice.lang === 'es-CO' || voice.lang === 'es-419' || voice.lang === 'es-ES')
-      );
-      
-      // Intentar encontrar una voz femenina dentro de las preferidas
-      let selectedVoice = preferredVoices.find(voice => 
-          voice.name.toLowerCase().includes('female') || 
-          voice.name.toLowerCase().includes('mujer') || 
-          voice.name.toLowerCase().includes('femenino') // Añadir más términos si es necesario
-      );
-      
-      // Si no se encuentra femenina, tomar la primera preferida (CO, 419, ES)
-      if (!selectedVoice) {
-          selectedVoice = preferredVoices[0];
-      }
-      
-      // Si no hay ninguna preferida, buscar cualquier voz en español
-      if (!selectedVoice) {
-           selectedVoice = voices.find(voice => voice.lang.startsWith('es'));
-      }
-      
-      utterance.voice = selectedVoice || null; // Asignar la voz encontrada o null (predeterminada)
-      
-      if (selectedVoice) {
-          console.log(`Voz TTS seleccionada: ${selectedVoice.name} (${selectedVoice.lang})`);
-      } else {
-          console.warn("No se encontró voz en español preferida o genérica, usando predeterminada del sistema.");
-      }
-      
-      setIsSpeaking(true);
-      
-      utterance.onstart = () => {
-          setCurrentSpeakingId(messageId);
-          setIsSpeaking(true);
-      };
-      
-      utterance.onend = () => {
-        setIsSpeaking(false);
-        setCurrentSpeakingId(null);
-      };
-      
-      utterance.onerror = (event) => {
-          console.error('Error en síntesis de voz:', event);
-          setAppError({ type: 'tts', message: `Error TTS: ${event.error}` });
-          setIsSpeaking(false);
-          setCurrentSpeakingId(null);
-      };
-
-      try {
-        window.speechSynthesis.speak(utterance);
-        speechSynthesisRef.current = utterance;
-      } catch (error) {
-          console.error("Error al llamar a speechSynthesis.speak:", error);
-          setAppError({ type: 'tts', message: 'No se pudo iniciar la síntesis de voz.' });
-          setIsSpeaking(false);
-          setCurrentSpeakingId(null);
-      }
-    } else {
-      console.warn('Speech Synthesis no soportado.');
-      setAppError({ type: 'tts', message: 'Síntesis de voz no soportada por tu navegador.'});
-      setIsSpeaking(false);
+      setIsProcessing(false); // Asegurarse de resetear estado si falla OpenAI
+      setIsSpeaking(false); 
       setCurrentSpeakingId(null);
     }
+    // No necesitamos `finally` aquí porque `isProcessing` se maneja antes de la llamada a TTS
   };
-  
-  // --- Controladores de Interacción del Avatar ---
+
+  // --- Controladores de Interacción del Avatar --- (Modificados para llamar a /api/stt)
 
   const handleStartListening = async () => {
     clearError();
-    if (isSpeaking) {
-      window.speechSynthesis.cancel();
+    if (audioRef.current) { // Detener TTS si está hablando
+      audioRef.current.pause();
+      audioRef.current = null;
       setIsSpeaking(false);
       setCurrentSpeakingId(null);
     }
     
-    if (!roomRef.current || connectionState !== 'connected') {
-        setAppError({ type: 'livekit', message: 'Chat de voz no conectado. Espera o intenta reconectar.' });
-        if (connectionState === 'disconnected') {
-             getLiveKitToken();
-        }
-        return;
+    // Detener grabación anterior si existe
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
     }
+    // Detener stream anterior
+    if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(track => track.stop());
+        audioStreamRef.current = null;
+    }
+
+    console.log("Iniciando grabación de audio (MediaRecorder)...");
+    setIsListening(true);
+    audioChunksRef.current = []; // Limpiar chunks anteriores
 
     try {
-        console.log("Habilitando micrófono local...");
-        await roomRef.current.localParticipant.setMicrophoneEnabled(true);
-        console.log("Micrófono local habilitado.");
-    } catch (error) {
-        console.error("Error al habilitar micrófono local:", error);
-        setAppError({ type: 'livekit', message: 'No se pudo habilitar el micrófono.' });
-        return;
-    }
+        // Obtener stream de audio del micrófono
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioStreamRef.current = stream; // Guardar referencia al stream
 
-    if (recognitionRef.current) {
-      try {
-        console.log("Iniciando reconocimiento de voz (STT)...");
-        setIsListening(true);
-        setUserInput(''); 
-        recognitionRef.current.start();
-      } catch (error) {
-        console.error("Error al iniciar reconocimiento STT:", error);
-        setAppError({ type: 'stt', message: 'No se pudo iniciar el reconocimiento de voz.' });
-        setIsListening(false);
+        // Crear MediaRecorder
+        // Intentar con un mimetype específico si es necesario, si no, usar el default
+        const options = { mimeType: 'audio/webm;codecs=opus' }; // Opciones comunes
+        let recorder;
         try {
-          await roomRef.current.localParticipant.setMicrophoneEnabled(false);
-          console.log("Micrófono local deshabilitado por fallo de STT.");
-        } catch (micError) {
-          console.error("Error al deshabilitar micrófono tras fallo STT:", micError);
+            recorder = new MediaRecorder(stream, options);
+        } catch (e) {
+            console.warn("MimeType audio/webm no soportado, usando default:", e);
+            try {
+                 recorder = new MediaRecorder(stream); // Intentar sin opciones
+            } catch (e2) {
+                 console.error("MediaRecorder no soportado:", e2);
+                 throw new Error("Tu navegador no soporta la grabación de audio necesaria.");
+            }
         }
-      }
+        mediaRecorderRef.current = recorder;
+
+        // Evento cuando hay datos disponibles
+        recorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                audioChunksRef.current.push(event.data);
+            }
+        };
+
+        // Evento cuando se detiene la grabación
+        recorder.onstop = async () => {
+            console.log("Grabación detenida, enviando audio al backend STT...");
+            
+            if (audioChunksRef.current.length === 0) {
+                console.warn("No se grabó audio.");
+                 setIsListening(false);
+                return;
+            }
+            
+            const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+            audioChunksRef.current = [];
+            setIsProcessing(true); // Indicar que estamos procesando STT
+
+            const formData = new FormData();
+            formData.append('audio', audioBlob, 'audio.webm'); // Darle un nombre al archivo
+            try {
+                console.log(`Enviando ${audioBlob.size} bytes a /api/stt...`);
+                const response = await fetch('/api/stt', {
+                    method: 'POST',
+                    body: formData, // Enviar FormData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.transcription) {
+                        console.log("Transcripción recibida del backend:", data.transcription);
+                        handleTranscriptionResult(data.transcription);
+                    } else {
+                         console.warn("Backend STT no devolvió transcripción.");
+                         setAppError({ type: 'stt', message: 'No se pudo obtener la transcripción del backend.' });
+                    }
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    console.error("Error del backend STT:", response.status, errorData);
+                    setAppError({ type: 'stt', message: `Error del servidor STT: ${errorData.error || response.statusText}` });
+                }
+            } catch (fetchError: any) {
+                console.error("Error de red llamando a /api/stt:", fetchError);
+                setAppError({ type: 'stt', message: `Error de conexión STT: ${fetchError.message || 'Error desconocido'}` });
+            } finally {
+                setIsProcessing(false); // Termina procesamiento STT
+                setIsListening(false); // << Asegurar que isListening sea false aquí >>
+            }
+            
+            // Detener tracks del micrófono después de procesar
+            if (audioStreamRef.current) {
+                audioStreamRef.current.getTracks().forEach(track => track.stop());
+                audioStreamRef.current = null;
+            }
+        };
+
+        // Empezar a grabar
+        recorder.start();
+        console.log("MediaRecorder iniciado, estado:", recorder.state);
+    } catch (error: any) {
+        console.error("Error al iniciar MediaRecorder:", error);
+        setAppError({ type: 'stt', message: `Error al acceder al micrófono: ${error.message}` });
+        setIsListening(false);
+        // Limpiar stream si falló el inicio
+        if (audioStreamRef.current) {
+            audioStreamRef.current.getTracks().forEach(track => track.stop());
+            audioStreamRef.current = null;
+        }
     }
   };
   
-  const handleStopListening = async (finalTranscript: string) => {
-    if (recognitionRef.current && isListening) {
-      console.log("Deteniendo reconocimiento de voz (STT)...");
-      recognitionRef.current.stop();
-      setIsListening(false);
-      
-      if (roomRef.current && roomRef.current.localParticipant) {
-        try {
-            console.log("Deshabilitando micrófono local...");
-            await roomRef.current.localParticipant.setMicrophoneEnabled(false);
-            console.log("Micrófono local deshabilitado.");
-        } catch (error) {
-            console.error("Error al deshabilitar micrófono local:", error);
+  const handleStopListening = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      console.log("Deteniendo MediaRecorder...");
+      mediaRecorderRef.current.stop(); // Esto disparará el evento onstop
+      // Ya no paramos los tracks aquí, se hace en onstop después de enviar
+      // Tampoco seteamos isListening false aquí, se hace en onstop
+    } else if (isListening) {
+        // Si estaba escuchando pero no grabando (error previo?), resetear
+        console.warn("Deteniendo escucha sin grabación activa");
+        setIsListening(false);
+        if (audioStreamRef.current) {
+            audioStreamRef.current.getTracks().forEach(track => track.stop());
+            audioStreamRef.current = null;
         }
-      }
-      
-      if (finalTranscript.trim()) {
-        const newMessage: Message = {
-          id: Date.now().toString(),
-          text: finalTranscript.trim(),
-          isUser: true,
-          timestamp: new Date().toLocaleTimeString(),
-        };
-        setMessages(prevMessages => [...prevMessages, newMessage]);
-        getOpenAIResponse(finalTranscript.trim());
-      }
-      setUserInput('');
     }
   };
 
-  // <<< Nueva función para enviar mensajes de texto >>>
+  // << Función para manejar resultado transcripción (sin cambios internos) >>
+  const handleTranscriptionResult = (finalTranscript: string) => {
+      console.log(`Procesando transcripción: "${finalTranscript}"`);
+      const newMessage: Message = {
+        id: Date.now().toString(),
+        text: finalTranscript,
+        isUser: true,
+        timestamp: new Date().toLocaleTimeString(),
+      };
+      setMessages(prevMessages => [...prevMessages, newMessage]);
+      getOpenAIResponse(finalTranscript);
+  };
+
+  // Función para enviar mensajes de texto (Sin Cambios en la lógica del saludo)
   const handleSendTextMessage = (event: FormEvent) => {
     event.preventDefault();
+    
     if (textInput.trim()) {
-      if (isSpeaking) {
-        window.speechSynthesis.cancel();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
         setIsSpeaking(false);
         setCurrentSpeakingId(null);
       }
@@ -485,9 +564,47 @@ const VoiceChatContainer: React.FC = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // << NUEVO: Handler para el botón "Comenzar" >>
+  const handleStartConversation = () => {
+      if (initialAudioUrl && greetingMessageId) {
+          console.log("Comenzando conversación y reproduciendo saludo...");
+          setConversationActive(true); // Ocultar overlay
+          playAudio(initialAudioUrl, greetingMessageId); // Reproducir saludo
+      } else {
+          console.warn("Intento de iniciar conversación sin audio de saludo listo.");
+          // Opcionalmente, iniciar sin audio o mostrar un error diferente
+          setConversationActive(true); // Ocultar overlay de todas formas
+      }
+  };
+
   // --- Renderizado ---
   return (
-    <div className="flex flex-1 h-[calc(100vh-64px)] bg-neutral-100 dark:bg-neutral-900">
+    <div className="relative flex flex-1 h-[calc(100vh-64px)] bg-neutral-100 dark:bg-neutral-900">
+
+      {/* << NUEVO: Overlay y Botón Comenzar >> */}
+      <AnimatePresence>
+          {!conversationActive && (
+              <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="absolute inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+                  aria-hidden="true"
+              >
+                  <motion.button
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: isReadyToStart ? 1 : 0.5, scale: 1 }}
+                      transition={{ delay: 0.2 }}
+                      onClick={handleStartConversation}
+                      disabled={!isReadyToStart} // Deshabilitar hasta que el audio esté listo
+                      className="px-6 py-3 bg-primary-600 text-white rounded-lg text-lg font-semibold shadow-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-black/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                      {isReadyToStart ? 'Comenzar conversación' : 'Preparando saludo...'}
+                  </motion.button>
+              </motion.div>
+          )}
+      </AnimatePresence>
 
       {/* Error Banner */}
       {appError.message && (
@@ -547,18 +664,18 @@ const VoiceChatContainer: React.FC = () => {
                   handleSendTextMessage(e as unknown as FormEvent);
                 }
               }}
-              disabled={isListening || isProcessing}
+              disabled={isListening || isProcessing || isSpeaking} // << Deshabilitar si está hablando
             />
-            {/* Botón Micrófono */}
+            {/* Botón Micrófono (Actualizado onClick) */}
             <button 
               type="button"
-              onClick={isListening ? () => handleStopListening(userInput) : handleStartListening}
-              disabled={isProcessing} // Deshabilitar si OpenAI está procesando
+              onClick={isListening ? handleStopListening : handleStartListening} // << Usar las nuevas funciones
+              disabled={isProcessing || isSpeaking} // << Deshabilitar si está procesando O hablando (sin cambios)
               className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 ${ 
                 isListening 
                 ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-400' 
                 : 'bg-primary-600 hover:bg-primary-700 text-white focus:ring-primary-500'
-              } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+              } ${(isProcessing || isSpeaking) ? 'opacity-50 cursor-not-allowed' : ''}`} // << Actualizar estado disabled
               aria-label={isListening ? "Detener micrófono" : "Activar micrófono"}
             >
               <Mic className="h-5 w-5" />
@@ -566,11 +683,11 @@ const VoiceChatContainer: React.FC = () => {
             {/* Botón Enviar */}
             <button
               type="submit"
-              disabled={!textInput.trim() || isListening || isProcessing}
+              disabled={!textInput.trim() || isListening || isProcessing || isSpeaking} // << Deshabilitar si está hablando
               className="w-10 h-10 rounded-full flex items-center justify-center bg-primary-600 text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
               aria-label="Enviar mensaje"
             >
-              {isProcessing ? (
+              {(isProcessing || (isSpeaking && !audioRef.current)) ? ( // Mostrar spinner si procesa OpenAI o si TTS está inicializando
                 <div className="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div>
               ) : (
                 <Send className="h-5 w-5" />
@@ -580,16 +697,15 @@ const VoiceChatContainer: React.FC = () => {
         </div>
       </div>
 
-      {/* Panel Derecho: Avatar Placeholder (para futuro video) */}
+      {/* Panel Derecho: Avatar (Actualizado onClick) */}
       <div className="hidden md:flex md:w-2/3 p-6 flex-col items-center justify-center bg-white dark:bg-neutral-800 border-l border-neutral-200 dark:border-neutral-700">
         <div className="max-w-sm w-full flex flex-col items-center justify-center h-full">
-            {/* Solo el avatar interactivo */}
             <InteractiveVoiceAvatar 
                 isListening={isListening}
                 isSpeaking={isSpeaking}
                 isProcessing={isProcessing}
-                onStartListening={handleStartListening}
-                onStopListening={() => handleStopListening(userInput)}
+                onStartListening={handleStartListening} // << Usar nueva función
+                onStopListening={handleStopListening} // << Usar nueva función
                 size="lg"
             />
         </div>
