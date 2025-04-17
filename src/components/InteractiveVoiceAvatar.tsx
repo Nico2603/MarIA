@@ -217,7 +217,7 @@ const InteractiveVoiceAvatar: React.FC<InteractiveVoiceAvatarProps> = ({
     <div className="flex flex-col items-center justify-center">
       <div className={`relative ${getSizeClasses()}`}>
         <motion.button
-          whileHover={{ scale: 1.05 }}
+          whileHover={{ scale: (isListening || isProcessing || isSpeaking) ? 1 : 1.05 }}
           whileTap={{ scale: 0.98 }}
           className="w-full h-full bg-transparent border-0 p-0 cursor-pointer focus:outline-none"
           onClick={handleAvatarClick}

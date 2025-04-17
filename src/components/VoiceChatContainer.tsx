@@ -536,7 +536,7 @@ const VoiceChatContainer: React.FC = () => {
       getOpenAIResponse(finalTranscript);
   };
 
-  // Función para enviar mensajes de texto (Sin Cambios en la lógica del saludo)
+  // Función para enviar mensajes de texto (Sin cambios)
   const handleSendTextMessage = (event: FormEvent) => {
     event.preventDefault();
     
@@ -558,11 +558,6 @@ const VoiceChatContainer: React.FC = () => {
       setTextInput('');
     }
   };
-
-  // Scroll automático al final del chat
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
   // << NUEVO: Handler para el botón "Comenzar" >>
   const handleStartConversation = () => {

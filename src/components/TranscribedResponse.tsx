@@ -53,8 +53,9 @@ const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, x: isUser ? 20 : -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
       className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}
     >
       <div className={`max-w-[85%] ${isUser ? 'order-1' : 'order-2'}`}>

@@ -29,7 +29,7 @@ const Header = () => {
                 Mar
               </span>
               <span className="text-blue-600 text-3xl font-semibold">
-                ia
+                IA
               </span>
             </motion.div>
           </Link>
