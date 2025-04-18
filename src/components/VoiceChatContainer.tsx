@@ -153,7 +153,7 @@ const VoiceChatContainer: React.FC = () => {
             console.log('Desconectado de la sala LiveKit:', reason);
             setConnectionState('disconnected');
             if (conversationActive) { 
-              setAppError({ type: 'livekit', message: 'Desconectado del chat de voz.' });
+            setAppError({ type: 'livekit', message: 'Desconectado del chat de voz.' });
             }
             roomRef.current = null;
           })
@@ -256,7 +256,7 @@ const VoiceChatContainer: React.FC = () => {
                     setInitialAudioUrl(`/api/audio/${audioId}`); // Construir URL dinámica
                     setGreetingMessageId(msgId); // Guardar ID del mensaje también
                     setIsReadyToStart(true); // Marcar como listo para empezar
-                } else {
+          } else {
                     throw new Error("ID de audio no recibido para saludo.");
                 }
             } else {
@@ -383,12 +383,12 @@ const VoiceChatContainer: React.FC = () => {
       console.error("Error al obtener respuesta de OpenAI:", error);
       setAppError({ type: 'openai', message: error instanceof Error ? error.message : 'Error desconocido al contactar OpenAI.' });
       setIsProcessing(false); // Asegurarse de resetear estado si falla OpenAI
-      setIsSpeaking(false); 
+      setIsSpeaking(false);
       setCurrentSpeakingId(null);
     }
     // No necesitamos `finally` aquí porque `isProcessing` se maneja antes de la llamada a TTS
   };
-
+  
   // --- Controladores de Interacción del Avatar --- (Modificados para llamar a /api/stt)
 
   const handleStartListening = async () => {
@@ -450,9 +450,9 @@ const VoiceChatContainer: React.FC = () => {
             if (audioChunksRef.current.length === 0) {
                 console.warn("No se grabó audio.");
                  setIsListening(false);
-                return;
-            }
-            
+        return;
+    }
+
             const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
             audioChunksRef.current = [];
             setIsProcessing(true); // Indicar que estamos procesando STT
@@ -519,7 +519,7 @@ const VoiceChatContainer: React.FC = () => {
     } else if (isListening) {
         // Si estaba escuchando pero no grabando (error previo?), resetear
         console.warn("Deteniendo escucha sin grabación activa");
-        setIsListening(false);
+      setIsListening(false);
         if (audioStreamRef.current) {
             audioStreamRef.current.getTracks().forEach(track => track.stop());
             audioStreamRef.current = null;
@@ -530,13 +530,13 @@ const VoiceChatContainer: React.FC = () => {
   // << Función para manejar resultado transcripción (sin cambios internos) >>
   const handleTranscriptionResult = (finalTranscript: string) => {
       console.log(`Procesando transcripción: "${finalTranscript}"`);
-      const newMessage: Message = {
-        id: Date.now().toString(),
+        const newMessage: Message = {
+          id: Date.now().toString(),
         text: finalTranscript,
-        isUser: true,
-        timestamp: new Date().toLocaleTimeString(),
-      };
-      setMessages(prevMessages => [...prevMessages, newMessage]);
+          isUser: true,
+          timestamp: new Date().toLocaleTimeString(),
+        };
+        setMessages(prevMessages => [...prevMessages, newMessage]);
       getOpenAIResponse(finalTranscript);
   };
 
