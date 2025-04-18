@@ -10,7 +10,6 @@ import {
     Participant, 
     Track 
 } from 'livekit-client';
-import InteractiveVoiceAvatar from './InteractiveVoiceAvatar';
 import TranscribedResponse from './TranscribedResponse';
 import { Send, AlertCircle, Mic } from 'lucide-react';
 
@@ -47,6 +46,9 @@ const VoiceChatContainer: React.FC = () => {
   const audioStreamRef = useRef<MediaStream | null>(null); // << NUEVO: Ref para el stream del mic
   const audioRef = useRef<HTMLAudioElement | null>(null); // << NUEVO: Ref para el elemento <audio>
   const chatEndRef = useRef<HTMLDivElement>(null); // Para scroll automático
+  
+  // << NUEVO: Referencia para el video >>
+  const videoRef = useRef<HTMLVideoElement>(null);
   
   // Función para limpiar errores
   const clearError = () => setAppError({ type: null, message: null });
@@ -574,6 +576,23 @@ const VoiceChatContainer: React.FC = () => {
       }
   };
 
+  // << NUEVO: useEffect para controlar la fuente del video >>
+  useEffect(() => {
+    if (videoRef.current) {
+      const newSrc = isSpeaking ? '/videos/voz.mp4' : '/videos/mute.mp4';
+      if (videoRef.current.currentSrc !== newSrc) {
+         console.log(`Cambiando video a: ${newSrc}`);
+         videoRef.current.src = newSrc;
+         // Intentar cargar y reproducir de nuevo si es necesario
+         videoRef.current.load(); 
+         videoRef.current.play().catch(error => {
+            console.warn("Error al intentar reproducir el nuevo video:", error);
+            // Esto puede pasar si el usuario no ha interactuado aún
+         });
+      }
+    }
+  }, [isSpeaking]);
+
   // --- Renderizado ---
   return (
     <div className="relative flex flex-1 h-[calc(100vh-64px)] bg-neutral-100 dark:bg-neutral-900">
@@ -694,19 +713,26 @@ const VoiceChatContainer: React.FC = () => {
         </div>
       </div>
 
-      {/* Panel Derecho: Avatar (Actualizado onClick) */}
+      {/* Panel Derecho: Video Avatar */}
       <div className="hidden md:flex md:w-2/3 p-6 flex-col items-center justify-center bg-white dark:bg-neutral-800 border-l border-neutral-200 dark:border-neutral-700">
-        <div className="max-w-sm w-full flex flex-col items-center justify-center h-full">
-            <InteractiveVoiceAvatar 
-                isListening={isListening}
-                isSpeaking={isSpeaking}
-                isProcessing={isProcessing}
-                onStartListening={handleStartListening} // << Usar nueva función
-                onStopListening={handleStopListening} // << Usar nueva función
-                size="lg"
-            />
-        </div>
-        {/* Se eliminaron: Título, Subtítulo, Botón Micrófono redundante, Consejos, Copyright */}
+        {/* << ELIMINAR el div contenedor >> */}
+        {/* <div className="max-w-sm w-full flex items-center justify-center"> */}
+          {/* << NUEVO: Elemento Video (ahora hijo directo) >> */}
+          <video
+            ref={videoRef}
+            key={isSpeaking ? 'speaking' : 'muted'} // Fuerza el re-renderizado al cambiar de estado si src no es suficiente
+            // src se establecerá en el useEffect
+            autoPlay
+            loop
+            muted // Importante para autoplay en muchos navegadores
+            playsInline // Importante para iOS
+            className="w-full h-auto rounded-lg object-cover shadow-lg max-h-full" // Ajusta estilos - añadido max-h-full para seguridad
+            // Podrías añadir un poster con una imagen inicial si quieres: poster="/images/avatar_poster.jpg" 
+          >
+            {/* Fallback por si el navegador no soporta video */}
+            Tu navegador no soporta el elemento de video. 
+          </video>
+        {/* </div> */}
       </div>
 
     </div>
