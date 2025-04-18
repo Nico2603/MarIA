@@ -248,13 +248,14 @@ const VoiceChatContainer: React.FC = () => {
             });
 
             if (ttsResponse.ok) {
-                const { audioUrl } = await ttsResponse.json();
-                if (audioUrl) {
-                    console.log("Audio de saludo preparado, URL:", audioUrl);
-                    setInitialAudioUrl(audioUrl); // Guardar URL
-                    setIsReadyToStart(true); // << Marcar como listo para empezar >>
+                const { audioId } = await ttsResponse.json();
+                if (audioId) {
+                    console.log("Audio de saludo preparado, ID:", audioId);
+                    setInitialAudioUrl(`/api/audio/${audioId}`); // Construir URL dinámica
+                    setGreetingMessageId(msgId); // Guardar ID del mensaje también
+                    setIsReadyToStart(true); // Marcar como listo para empezar
                 } else {
-                    throw new Error("URL de audio no recibida para saludo.");
+                    throw new Error("ID de audio no recibido para saludo.");
                 }
             } else {
                 const errorData = await ttsResponse.json().catch(() => ({}));
@@ -348,7 +349,7 @@ const VoiceChatContainer: React.FC = () => {
       setCurrentSpeakingId(newMessage.id); // Marcar como "pensando en hablar"
       setIsProcessing(false); // Termina procesamiento de OpenAI
       
-      // 2. Obtener audio TTS para la respuesta
+      // 2. Obtener ID de audio TTS para la respuesta
       try {
         const ttsResponse = await fetch('/api/tts', {
           method: 'POST',
@@ -357,11 +358,12 @@ const VoiceChatContainer: React.FC = () => {
         });
 
         if (ttsResponse.ok) {
-          const { audioUrl } = await ttsResponse.json();
-          if (audioUrl) {
-             playAudio(audioUrl, newMessage.id); // Reproducir el audio
+          const { audioId } = await ttsResponse.json();
+          if (audioId) {
+             const audioUrlToPlay = `/api/audio/${audioId}`; // Construir URL dinámica
+             playAudio(audioUrlToPlay, newMessage.id); // Reproducir el audio
           } else {
-             throw new Error("URL de audio no recibida del endpoint TTS.");
+             throw new Error("ID de audio no recibido del endpoint TTS.");
           }
         } else {
           const errorData = await ttsResponse.json().catch(() => ({}));

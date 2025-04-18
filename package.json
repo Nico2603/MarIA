@@ -26,9 +26,9 @@
   },
   "homepage": "https://github.com/Nico2603/AI-Mental-Health#readme",
   "dependencies": {
+    "@deepgram/sdk": "^3.12.1",
     "@types/uuid": "^10.0.0",
     "autoprefixer": "^10.4.16",
-    "elevenlabs": "^1.56.1",
     "framer-motion": "^10.16.4",
     "livekit-client": "^2.11.2",
     "livekit-server-sdk": "^2.12.0",
