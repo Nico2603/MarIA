@@ -39,6 +39,8 @@ const VoiceChatContainer: React.FC = () => {
   const [greetingMessageId, setGreetingMessageId] = useState<string | null>(null); // << NUEVO: Guardar ID saludo
   const [isReadyToStart, setIsReadyToStart] = useState(false); // << NUEVO: Estado para indicar si el saludo está listo
   const [conversationActive, setConversationActive] = useState(false); // << NUEVO: Estado para overlay
+  // << NUEVO: Estado para saber si la escucha fue iniciada por Push-to-Talk >>
+  const [isPushToTalkActive, setIsPushToTalkActive] = useState(false);
   
   const roomRef = useRef<Room | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null); // << NUEVO: Ref para MediaRecorder
@@ -49,6 +51,8 @@ const VoiceChatContainer: React.FC = () => {
   
   // << NUEVO: Referencia para el video >>
   const videoRef = useRef<HTMLVideoElement>(null);
+  // << NUEVO: Ref para el textarea para comprobar el foco >>
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
   
   // Función para limpiar errores
   const clearError = () => setAppError({ type: null, message: null });
@@ -391,44 +395,42 @@ const VoiceChatContainer: React.FC = () => {
   
   // --- Controladores de Interacción del Avatar --- (Modificados para llamar a /api/stt)
 
-  const handleStartListening = async () => {
+  const handleStartListening = useCallback(async () => {
+    // << Añadir comprobación para no iniciar si ya está escuchando >>
+    if (isListening || isProcessing || isSpeaking) return;
+    
     clearError();
-    if (audioRef.current) { // Detener TTS si está hablando
+    if (audioRef.current) { 
       audioRef.current.pause();
       audioRef.current = null;
-      setIsSpeaking(false);
+      setIsSpeaking(false); 
       setCurrentSpeakingId(null);
     }
     
-    // Detener grabación anterior si existe
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
         mediaRecorderRef.current.stop();
     }
-    // Detener stream anterior
     if (audioStreamRef.current) {
         audioStreamRef.current.getTracks().forEach(track => track.stop());
         audioStreamRef.current = null;
     }
 
     console.log("Iniciando grabación de audio (MediaRecorder)...");
-    setIsListening(true);
-    audioChunksRef.current = []; // Limpiar chunks anteriores
+    setIsListening(true); // Marcar como escuchando
+    audioChunksRef.current = []; 
 
     try {
-        // Obtener stream de audio del micrófono
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        audioStreamRef.current = stream; // Guardar referencia al stream
+        audioStreamRef.current = stream; 
 
-        // Crear MediaRecorder
-        // Intentar con un mimetype específico si es necesario, si no, usar el default
-        const options = { mimeType: 'audio/webm;codecs=opus' }; // Opciones comunes
+        const options = { mimeType: 'audio/webm;codecs=opus' }; 
         let recorder;
         try {
             recorder = new MediaRecorder(stream, options);
         } catch (e) {
             console.warn("MimeType audio/webm no soportado, usando default:", e);
             try {
-                 recorder = new MediaRecorder(stream); // Intentar sin opciones
+                 recorder = new MediaRecorder(stream); 
             } catch (e2) {
                  console.error("MediaRecorder no soportado:", e2);
                  throw new Error("Tu navegador no soporta la grabación de audio necesaria.");
@@ -436,34 +438,40 @@ const VoiceChatContainer: React.FC = () => {
         }
         mediaRecorderRef.current = recorder;
 
-        // Evento cuando hay datos disponibles
         recorder.ondataavailable = (event) => {
             if (event.data.size > 0) {
                 audioChunksRef.current.push(event.data);
             }
         };
 
-        // Evento cuando se detiene la grabación
         recorder.onstop = async () => {
+            // << SOLO cambiar isListening a false aquí si NO fue iniciado por PTT >>
+            // if (!isPushToTalkActive) {
+            //     setIsListening(false);
+            // }
+            // << MEJOR: Siempre poner isListening a false al parar >>
+            setIsListening(false); 
+            setIsPushToTalkActive(false); // Resetear PTT siempre al parar
+            
             console.log("Grabación detenida, enviando audio al backend STT...");
             
             if (audioChunksRef.current.length === 0) {
                 console.warn("No se grabó audio.");
-                 setIsListening(false);
-        return;
-    }
-
+                 // No necesitamos hacer nada más, ya no está escuchando
+                return;
+            }
+            
             const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
             audioChunksRef.current = [];
-            setIsProcessing(true); // Indicar que estamos procesando STT
+            setIsProcessing(true); // Indicar STT
 
             const formData = new FormData();
-            formData.append('audio', audioBlob, 'audio.webm'); // Darle un nombre al archivo
+            formData.append('audio', audioBlob, 'audio.webm'); 
             try {
                 console.log(`Enviando ${audioBlob.size} bytes a /api/stt...`);
                 const response = await fetch('/api/stt', {
                     method: 'POST',
-                    body: formData, // Enviar FormData
+                    body: formData, 
                 });
 
                 if (response.ok) {
@@ -484,48 +492,38 @@ const VoiceChatContainer: React.FC = () => {
                 console.error("Error de red llamando a /api/stt:", fetchError);
                 setAppError({ type: 'stt', message: `Error de conexión STT: ${fetchError.message || 'Error desconocido'}` });
             } finally {
-                setIsProcessing(false); // Termina procesamiento STT
-                setIsListening(false); // << Asegurar que isListening sea false aquí >>
+                setIsProcessing(false); 
+                // setIsListening(false); // <<-- Ya se hizo al inicio del onstop
             }
             
-            // Detener tracks del micrófono después de procesar
             if (audioStreamRef.current) {
                 audioStreamRef.current.getTracks().forEach(track => track.stop());
                 audioStreamRef.current = null;
             }
         };
 
-        // Empezar a grabar
         recorder.start();
         console.log("MediaRecorder iniciado, estado:", recorder.state);
     } catch (error: any) {
         console.error("Error al iniciar MediaRecorder:", error);
         setAppError({ type: 'stt', message: `Error al acceder al micrófono: ${error.message}` });
         setIsListening(false);
-        // Limpiar stream si falló el inicio
+        setIsPushToTalkActive(false); // Resetear PTT en error
         if (audioStreamRef.current) {
             audioStreamRef.current.getTracks().forEach(track => track.stop());
             audioStreamRef.current = null;
         }
     }
-  };
+  }, [isListening, isProcessing, isSpeaking]); // << Añadir dependencias
   
-  const handleStopListening = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      console.log("Deteniendo MediaRecorder...");
-      mediaRecorderRef.current.stop(); // Esto disparará el evento onstop
-      // Ya no paramos los tracks aquí, se hace en onstop después de enviar
-      // Tampoco seteamos isListening false aquí, se hace en onstop
-    } else if (isListening) {
-        // Si estaba escuchando pero no grabando (error previo?), resetear
-        console.warn("Deteniendo escucha sin grabación activa");
-      setIsListening(false);
-        if (audioStreamRef.current) {
-            audioStreamRef.current.getTracks().forEach(track => track.stop());
-            audioStreamRef.current = null;
-        }
-    }
-  };
+  const handleStopListening = useCallback(() => {
+    // << Añadir comprobación para no parar si no está escuchando >>
+    if (!isListening || !mediaRecorderRef.current || mediaRecorderRef.current.state !== 'recording') return;
+    
+    console.log("Deteniendo MediaRecorder (handleStopListening)...");
+    mediaRecorderRef.current.stop(); // Esto disparará el evento onstop
+    // No cambiamos isListening aquí, se hace en onstop
+  }, [isListening]); // << Añadir dependencia
 
   // << Función para manejar resultado transcripción (sin cambios internos) >>
   const handleTranscriptionResult = (finalTranscript: string) => {
@@ -593,6 +591,54 @@ const VoiceChatContainer: React.FC = () => {
     }
   }, [isSpeaking]);
 
+  // << NUEVO: useEffect para manejar Push-to-Talk (Espacio) >>
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Comprobar si el foco está en el textarea
+      if (document.activeElement === textAreaRef.current) {
+        return; // Permitir escribir espacios en el textarea
+      }
+
+      // Comprobar si la tecla es Espacio y si se puede iniciar la escucha
+      if (event.code === 'Space' && !isListening && !isProcessing && !isSpeaking) {
+        event.preventDefault(); // Prevenir scroll de página u otra acción default
+        console.log("Push-to-Talk (Espacio) presionado - Iniciando escucha...");
+        setIsPushToTalkActive(true); // Marcar que fue iniciado por PTT
+        handleStartListening();
+      }
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+       // Comprobar si el foco está en el textarea
+       if (document.activeElement === textAreaRef.current) {
+        return; 
+      }
+      
+      // Comprobar si la tecla es Espacio y si la escucha fue iniciada por PTT
+      if (event.code === 'Space' && isPushToTalkActive) {
+         event.preventDefault();
+         console.log("Push-to-Talk (Espacio) liberado - Deteniendo escucha...");
+         // setIsPushToTalkActive(false); // Se resetea en el onStop del recorder
+         handleStopListening();
+      }
+    };
+
+    // Añadir listeners
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    // Limpiar listeners al desmontar
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      // Asegurarse de detener la escucha si el componente se desmonta mientras PTT está activo
+      if (isPushToTalkActive && mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+          console.log("Cleanup PTT: Deteniendo grabación por desmontaje");
+          mediaRecorderRef.current.stop();
+      }
+    };
+  }, [isListening, isProcessing, isSpeaking, isPushToTalkActive, handleStartListening, handleStopListening]); // << Dependencias clave
+
   // --- Renderizado ---
   return (
     <div className="relative flex flex-1 h-[calc(100vh-64px)] bg-neutral-100 dark:bg-neutral-900">
@@ -648,7 +694,7 @@ const VoiceChatContainer: React.FC = () => {
             >
               <svg className="w-16 h-16 mb-4 text-neutral-400 dark:text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
               <h2 className="text-xl font-medium text-neutral-700 dark:text-neutral-200 mb-2">Hola, soy tu asistente de IA.</h2>
-              <p>Haz clic en el micrófono o escribe para comenzar.</p>
+              <p>Haz clic en el micrófono o <span className="font-semibold">mantén [Espacio]</span> para hablar.</p> {/* << Indicador PTT */}
             </motion.div>
           ) : (
             // Historial de Chat
@@ -669,6 +715,7 @@ const VoiceChatContainer: React.FC = () => {
         <div className="p-4 bg-white dark:bg-neutral-800 border-t border-neutral-200 dark:border-neutral-700">
           <form onSubmit={handleSendTextMessage} className="flex items-center space-x-3">
             <textarea
+              ref={textAreaRef} // << Añadir ref al textarea
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
               placeholder="Escribe tu mensaje aquí..."
@@ -691,7 +738,9 @@ const VoiceChatContainer: React.FC = () => {
                 isListening 
                 ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-400' 
                 : 'bg-primary-600 hover:bg-primary-700 text-white focus:ring-primary-500'
-              } ${(isProcessing || isSpeaking) ? 'opacity-50 cursor-not-allowed' : ''}`} // << Actualizar estado disabled
+                // << NUEVO: Feedback visual si PTT está activo (opcional) >>
+              } ${(isPushToTalkActive) ? 'ring-4 ring-offset-0 ring-green-400' : '' }
+                ${(isProcessing || isSpeaking) ? 'opacity-50 cursor-not-allowed' : ''}`} // << Actualizar estado disabled
               aria-label={isListening ? "Detener micrófono" : "Activar micrófono"}
             >
               <Mic className="h-5 w-5" />
@@ -710,6 +759,10 @@ const VoiceChatContainer: React.FC = () => {
               )}
             </button>
           </form>
+           {/* << NUEVO: Indicador textual PTT (opcional) >>*/}
+           <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2 text-center">
+                Mantén pulsada la tecla [Espacio] para hablar.
+            </p>
         </div>
       </div>
 
