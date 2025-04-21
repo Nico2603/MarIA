@@ -594,14 +594,20 @@ const VoiceChatContainer: React.FC = () => {
   // << NUEVO: useEffect para manejar Push-to-Talk (Espacio) >>
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Comprobar si el foco está en el textarea
+      // Salir si la tecla no es Espacio
+      if (event.code !== 'Space') return;
+      
+      // Si el foco está en el textarea, permitir el comportamiento normal (escribir espacio)
       if (document.activeElement === textAreaRef.current) {
-        return; // Permitir escribir espacios en el textarea
+        return; 
       }
 
-      // Comprobar si la tecla es Espacio y si se puede iniciar la escucha
-      if (event.code === 'Space' && !isListening && !isProcessing && !isSpeaking) {
-        event.preventDefault(); // Prevenir scroll de página u otra acción default
+      // << MOVER preventDefault() aquí >>
+      // Si la tecla es Espacio y NO estamos en el textarea, SIEMPRE prevenir scroll
+      event.preventDefault(); 
+
+      // Ahora, comprobar si podemos iniciar la escucha
+      if (!isListening && !isProcessing && !isSpeaking) {
         console.log("Push-to-Talk (Espacio) presionado - Iniciando escucha...");
         setIsPushToTalkActive(true); // Marcar que fue iniciado por PTT
         handleStartListening();
@@ -609,16 +615,21 @@ const VoiceChatContainer: React.FC = () => {
     };
 
     const handleKeyUp = (event: KeyboardEvent) => {
-       // Comprobar si el foco está en el textarea
-       if (document.activeElement === textAreaRef.current) {
+      // Salir si la tecla no es Espacio
+      if (event.code !== 'Space') return;
+       
+      // Si el foco está en el textarea, no hacer nada especial aquí
+      if (document.activeElement === textAreaRef.current) {
         return; 
       }
       
-      // Comprobar si la tecla es Espacio y si la escucha fue iniciada por PTT
-      if (event.code === 'Space' && isPushToTalkActive) {
-         event.preventDefault();
+      // << MOVER preventDefault() aquí >>
+      // Si la tecla es Espacio y NO estamos en el textarea, prevenir acción (puede no ser necesario aquí, pero es seguro)
+      event.preventDefault();
+
+      // Comprobar si la escucha fue iniciada por PTT para detenerla
+      if (isPushToTalkActive) {
          console.log("Push-to-Talk (Espacio) liberado - Deteniendo escucha...");
-         // setIsPushToTalkActive(false); // Se resetea en el onStop del recorder
          handleStopListening();
       }
     };
@@ -631,13 +642,12 @@ const VoiceChatContainer: React.FC = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
-      // Asegurarse de detener la escucha si el componente se desmonta mientras PTT está activo
       if (isPushToTalkActive && mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
           console.log("Cleanup PTT: Deteniendo grabación por desmontaje");
           mediaRecorderRef.current.stop();
       }
     };
-  }, [isListening, isProcessing, isSpeaking, isPushToTalkActive, handleStartListening, handleStopListening]); // << Dependencias clave
+  }, [isListening, isProcessing, isSpeaking, isPushToTalkActive, handleStartListening, handleStopListening]); // Dependencias clave
 
   // --- Renderizado ---
   return (
