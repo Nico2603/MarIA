@@ -93,27 +93,6 @@ const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
             {timestamp}
           </div>
           
-          {/* Pequeño indicador de audio solo para los mensajes del asistente cuando está hablando */}
-          {!isUser && isHighlighted && (
-            <div className="flex space-x-1 mt-2">
-              <motion.div
-                animate={{ height: [3, 8, 3] }}
-                transition={{ duration: 0.5, repeat: Infinity }}
-                className="w-0.5 bg-primary-500 rounded-full"
-              />
-              <motion.div
-                animate={{ height: [4, 12, 4] }}
-                transition={{ duration: 0.5, repeat: Infinity, delay: 0.1 }}
-                className="w-0.5 bg-primary-500 rounded-full"
-              />
-              <motion.div
-                animate={{ height: [2, 6, 2] }}
-                transition={{ duration: 0.5, repeat: Infinity, delay: 0.2 }}
-                className="w-0.5 bg-primary-500 rounded-full"
-              />
-            </div>
-          )}
-          
           {/* Disclaimer para mensajes del asistente */}
           {!isUser && (
             <div className="mt-3 text-xs text-neutral-400 italic">

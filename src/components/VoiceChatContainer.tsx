@@ -11,7 +11,7 @@ import {
     Track 
 } from 'livekit-client';
 import TranscribedResponse from './TranscribedResponse';
-import { Send, AlertCircle, Mic } from 'lucide-react';
+import { Send, AlertCircle, Mic, ChevronsLeft, ChevronsRight, MessageSquare } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -41,6 +41,8 @@ const VoiceChatContainer: React.FC = () => {
   const [conversationActive, setConversationActive] = useState(false); // << NUEVO: Estado para overlay
   // << NUEVO: Estado para saber si la escucha fue iniciada por Push-to-Talk >>
   const [isPushToTalkActive, setIsPushToTalkActive] = useState(false);
+  // << NUEVO: Estado para visibilidad del chat >>
+  const [isChatVisible, setIsChatVisible] = useState(true);
   
   const roomRef = useRef<Room | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null); // << NUEVO: Ref para MediaRecorder
@@ -649,11 +651,27 @@ const VoiceChatContainer: React.FC = () => {
     };
   }, [isListening, isProcessing, isSpeaking, isPushToTalkActive, handleStartListening, handleStopListening]); // Dependencias clave
 
+  // << NUEVO: Función para alternar visibilidad del chat >>
+  const toggleChatVisibility = () => {
+    setIsChatVisible(prev => !prev);
+  };
+
   // --- Renderizado ---
   return (
-    <div className="relative flex flex-1 h-[calc(100vh-64px)] bg-neutral-100 dark:bg-neutral-900">
+    <div className="relative flex flex-1 h-[calc(100vh-64px)] bg-neutral-100 dark:bg-neutral-900 overflow-hidden">
 
-      {/* << NUEVO: Overlay y Botón Comenzar >> */}
+      {/* << NUEVO: Botón para ocultar/mostrar chat >> */}
+      <button 
+        onClick={toggleChatVisibility}
+        className="absolute top-1/2 -translate-y-1/2 z-30 p-2 bg-neutral-200 dark:bg-neutral-700 rounded-full shadow-md hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-all duration-300 ease-in-out"
+        // Posicionar el botón justo en el borde entre paneles
+        style={{ left: isChatVisible ? 'calc(33.3333% - 20px)' : '10px' }} // Ajusta 33.33% y 20px según necesites
+        aria-label={isChatVisible ? "Ocultar chat" : "Mostrar chat"}
+      >
+        {isChatVisible ? <ChevronsLeft className="h-5 w-5 text-neutral-700 dark:text-neutral-200" /> : <ChevronsRight className="h-5 w-5 text-neutral-700 dark:text-neutral-200" />}
+      </button>
+
+      {/* Overlay y Botón Comenzar (sin cambios) */}
       <AnimatePresence>
           {!conversationActive && (
               <motion.div
@@ -691,112 +709,148 @@ const VoiceChatContainer: React.FC = () => {
         </div>
       )}
 
-      {/* Panel Izquierdo: Chat Area */}
-      <div className="w-full md:w-1/3 flex flex-col">
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {messages.length === 0 ? (
-            // Mensaje Inicial
+      {/* << MODIFICADO: Panel Izquierdo: Chat Area con Animación >> */}
+      <AnimatePresence>
+        {isChatVisible && (
             <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="flex flex-col items-center justify-center h-full text-center text-neutral-500 dark:text-neutral-400"
+              key="chat-panel" 
+              initial={{ x: '-100%', opacity: 0 }}
+              animate={{ x: '0%', opacity: 1 }}
+              exit={{ x: '-100%', opacity: 0 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="w-full md:w-1/3 flex flex-col h-full bg-neutral-100 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-700"
             >
-              <svg className="w-16 h-16 mb-4 text-neutral-400 dark:text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
-              <h2 className="text-xl font-medium text-neutral-700 dark:text-neutral-200 mb-2">Hola, soy tu asistente de IA.</h2>
-              <p>Haz clic en el micrófono o <span className="font-semibold">mantén [Espacio]</span> para hablar.</p> {/* << Indicador PTT */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                {messages.length === 0 ? (
+                    <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="flex flex-col items-center justify-center h-full text-center text-neutral-500 dark:text-neutral-400"
+                    >
+                    <svg className="w-16 h-16 mb-4 text-neutral-400 dark:text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                    <h2 className="text-xl font-medium text-neutral-700 dark:text-neutral-200 mb-2">Hola, soy tu asistente de IA.</h2>
+                    <p>Haz clic en el micrófono o <span className="font-semibold">mantén [Espacio]</span> para hablar.</p> 
+                    </motion.div>
+                ) : (
+                    messages.map((msg) => (
+                    <TranscribedResponse
+                        key={msg.id}
+                        text={msg.text}
+                        isUser={msg.isUser}
+                        timestamp={msg.timestamp}
+                        isHighlighted={currentSpeakingId === msg.id}
+                    />
+                    ))
+                )}
+                <div ref={chatEndRef} /> 
+              </div>
+
+              {/* << CORREGIDO: Input Area VUELVE AQUÍ DENTRO >> */}
+              <div className="p-4 bg-white dark:bg-neutral-800 border-t border-neutral-200 dark:border-neutral-700">
+                 {/* Formulario de input */}
+                 <form onSubmit={handleSendTextMessage} className="flex items-center space-x-3">
+                    <textarea
+                    ref={textAreaRef} 
+                    value={textInput}
+                    onChange={(e) => setTextInput(e.target.value)}
+                    placeholder="Escribe tu mensaje aquí..."
+                    rows={1}
+                    className="flex-1 resize-none p-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 bg-neutral-50 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500"
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendTextMessage(e as unknown as FormEvent);
+                        }
+                    }}
+                    disabled={isListening || isProcessing || isSpeaking} 
+                    />
+                    {/* Botón Micrófono */}
+                    <button 
+                    type="button"
+                    onClick={isListening ? handleStopListening : handleStartListening} 
+                    disabled={isProcessing || isSpeaking} 
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 ${ 
+                        isListening 
+                        ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-400' 
+                        : 'bg-primary-600 hover:bg-primary-700 text-white focus:ring-primary-500'
+                    } ${(isPushToTalkActive) ? 'ring-4 ring-offset-0 ring-green-400' : '' }
+                        ${(isProcessing || isSpeaking) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    aria-label={isListening ? "Detener micrófono" : "Activar micrófono"}
+                    >
+                    <Mic className="h-5 w-5" />
+                    </button>
+                    {/* Botón Enviar */}
+                    <button
+                    type="submit"
+                    disabled={!textInput.trim() || isListening || isProcessing || isSpeaking} 
+                    className="w-10 h-10 rounded-full flex items-center justify-center bg-primary-600 text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+                    aria-label="Enviar mensaje"
+                    >
+                    {(isProcessing || (isSpeaking && !audioRef.current)) ? ( 
+                        <div className="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div>
+                    ) : (
+                        <Send className="h-5 w-5" />
+                    )}
+                    </button>
+                 </form>
+                  <p className={`text-xs mt-2 text-center text-neutral-500 dark:text-neutral-400`}>
+                        Mantén pulsada la tecla [Espacio] para hablar.
+                    </p>
+              </div>
             </motion.div>
-          ) : (
-            // Historial de Chat
-            messages.map((msg) => (
-              <TranscribedResponse
-                key={msg.id}
-                text={msg.text}
-                isUser={msg.isUser}
-                timestamp={msg.timestamp}
-                isHighlighted={currentSpeakingId === msg.id}
-              />
-            ))
-          )}
-          <div ref={chatEndRef} /> {/* Referencia para scroll */}
-        </div>
+        )}
+      </AnimatePresence>
 
-        {/* Input Area */} 
-        <div className="p-4 bg-white dark:bg-neutral-800 border-t border-neutral-200 dark:border-neutral-700">
-          <form onSubmit={handleSendTextMessage} className="flex items-center space-x-3">
-            <textarea
-              ref={textAreaRef} // << Añadir ref al textarea
-              value={textInput}
-              onChange={(e) => setTextInput(e.target.value)}
-              placeholder="Escribe tu mensaje aquí..."
-              rows={1}
-              className="flex-1 resize-none p-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 bg-neutral-50 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendTextMessage(e as unknown as FormEvent);
-                }
-              }}
-              disabled={isListening || isProcessing || isSpeaking} // << Deshabilitar si está hablando
-            />
-            {/* Botón Micrófono (Actualizado onClick) */}
-            <button 
-              type="button"
-              onClick={isListening ? handleStopListening : handleStartListening} // << Usar las nuevas funciones
-              disabled={isProcessing || isSpeaking} // << Deshabilitar si está procesando O hablando (sin cambios)
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 ${ 
-                isListening 
-                ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-400' 
-                : 'bg-primary-600 hover:bg-primary-700 text-white focus:ring-primary-500'
-                // << NUEVO: Feedback visual si PTT está activo (opcional) >>
-              } ${(isPushToTalkActive) ? 'ring-4 ring-offset-0 ring-green-400' : '' }
-                ${(isProcessing || isSpeaking) ? 'opacity-50 cursor-not-allowed' : ''}`} // << Actualizar estado disabled
-              aria-label={isListening ? "Detener micrófono" : "Activar micrófono"}
-            >
-              <Mic className="h-5 w-5" />
-            </button>
-            {/* Botón Enviar */}
-            <button
-              type="submit"
-              disabled={!textInput.trim() || isListening || isProcessing || isSpeaking} // << Deshabilitar si está hablando
-              className="w-10 h-10 rounded-full flex items-center justify-center bg-primary-600 text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-              aria-label="Enviar mensaje"
-            >
-              {(isProcessing || (isSpeaking && !audioRef.current)) ? ( // Mostrar spinner si procesa OpenAI o si TTS está inicializando
-                <div className="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div>
-              ) : (
-                <Send className="h-5 w-5" />
-              )}
-            </button>
-          </form>
-           {/* << NUEVO: Indicador textual PTT (opcional) >>*/}
-           <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2 text-center">
-                Mantén pulsada la tecla [Espacio] para hablar.
-            </p>
-        </div>
-      </div>
-
-      {/* Panel Derecho: Video Avatar */}
-      <div className="hidden md:flex md:w-2/3 p-6 flex-col items-center justify-center bg-white dark:bg-neutral-800 border-l border-neutral-200 dark:border-neutral-700">
-        {/* << ELIMINAR el div contenedor >> */}
-        {/* <div className="max-w-sm w-full flex items-center justify-center"> */}
-          {/* << NUEVO: Elemento Video (ahora hijo directo) >> */}
+      {/* << MODIFICADO: Panel Derecho: Video Avatar >> */}
+      <div className={`relative flex flex-col items-center justify-center flex-1 h-full bg-white dark:bg-neutral-800 transition-all duration-300 ease-in-out p-6 ${isChatVisible ? 'md:w-2/3' : 'w-full'}`}>
+        {/* << CORREGIDO: Cambiado bg-black a bg-white dark:bg-neutral-800 >> */}
+        {/* Contenedor para el marco del video */}
+        <div className="relative w-full h-full rounded-lg overflow-hidden shadow-lg">
+          {/* Video */}
           <video
             ref={videoRef}
-            key={isSpeaking ? 'speaking' : 'muted'} // Fuerza el re-renderizado al cambiar de estado si src no es suficiente
-            // src se establecerá en el useEffect
+            key={isSpeaking ? 'speaking' : 'muted'} 
             autoPlay
             loop
-            muted // Importante para autoplay en muchos navegadores
-            playsInline // Importante para iOS
-            className="w-full h-auto rounded-lg object-cover shadow-lg max-h-full" // Ajusta estilos - añadido max-h-full para seguridad
-            // Podrías añadir un poster con una imagen inicial si quieres: poster="/images/avatar_poster.jpg" 
+            muted 
+            playsInline 
+            className="w-full h-full object-cover" 
           >
-            {/* Fallback por si el navegador no soporta video */}
             Tu navegador no soporta el elemento de video. 
           </video>
-        {/* </div> */}
+        </div>
       </div>
+
+      {/* << CORREGIDO: Renderizado Condicional SOLO para controles inferiores >> */}
+      {/* Solo se muestra cuando el chat NO está visible */}
+      {!isChatVisible && (
+          <div className={`absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/70 via-black/50 to-transparent pb-4 pt-12`}>
+             {/* Contenedor interno para centrar */}
+             <div className={`mx-auto px-4 max-w-md`}>
+                <div className={`p-4 rounded-t-lg bg-transparent flex justify-center`}> 
+                    {/* Botón Micrófono (Centrado) */}
+                    <button 
+                    type="button"
+                    onClick={isListening ? handleStopListening : handleStartListening} 
+                    disabled={isProcessing || isSpeaking} 
+                    className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 ${ 
+                        isListening 
+                        ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-400 scale-110' 
+                        : 'bg-primary-600 hover:bg-primary-700 text-white focus:ring-primary-500'
+                    } ${(isPushToTalkActive) ? 'ring-4 ring-offset-0 ring-green-400' : '' }
+                        ${(isProcessing || isSpeaking) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    aria-label={isListening ? "Detener micrófono" : "Activar micrófono"}
+                    >
+                    <Mic className="h-6 w-6" />
+                    </button>
+                 </div>
+                 <p className={`text-xs mt-2 text-center text-neutral-300`}>
+                        Mantén pulsada la tecla [Espacio] para hablar.
+                    </p>
+             </div>
+          </div>
+      )}
 
     </div>
   );
