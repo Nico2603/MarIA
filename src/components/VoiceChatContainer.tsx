@@ -43,6 +43,8 @@ const VoiceChatContainer: React.FC = () => {
   const [isPushToTalkActive, setIsPushToTalkActive] = useState(false);
   // << NUEVO: Estado para visibilidad del chat >>
   const [isChatVisible, setIsChatVisible] = useState(true);
+  // << NUEVO: Estado para la hora de inicio de la sesión >>
+  const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
   
   const roomRef = useRef<Room | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null); // << NUEVO: Ref para MediaRecorder
@@ -242,7 +244,7 @@ const VoiceChatContainer: React.FC = () => {
             id: msgId,
             text: initialGreetingText,
             isUser: false,
-            timestamp: new Date().toLocaleTimeString(),
+            timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
         };
         setMessages([newMessage]);
         // No marcar como 'speaking' aún
@@ -326,15 +328,18 @@ const VoiceChatContainer: React.FC = () => {
   // Función para enviar mensaje a la API de OpenAI y luego a la API TTS
   const getOpenAIResponse = async (userMessage: string) => {
     setIsProcessing(true);
-    clearError(); // Limpiar errores previos
+    clearError(); 
     try {
-      // 1. Obtener respuesta de texto de OpenAI
+      // << MODIFICADO: Enviar también sessionStartTime >>
+      const requestBody = {
+        message: userMessage,
+        sessionStartTime: sessionStartTime // Puede ser null si la conversación no ha empezado formalmente
+      };
+
       const response = await fetch('/api/openai', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message: userMessage }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody), // Usar el nuevo cuerpo
       });
 
       if (!response.ok) {
@@ -346,30 +351,28 @@ const VoiceChatContainer: React.FC = () => {
       const aiText = data.response;
       if (!aiText) throw new Error("Respuesta vacía de OpenAI.");
 
-      // Añadir la respuesta del asistente al historial
       const newMessage: Message = {
         id: Date.now().toString(),
         text: aiText,
         isUser: false,
-        timestamp: new Date().toLocaleTimeString(),
+        timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
       };
       setMessages(prevMessages => [...prevMessages, newMessage]);
-      setCurrentSpeakingId(newMessage.id); // Marcar como "pensando en hablar"
-      setIsProcessing(false); // Termina procesamiento de OpenAI
+      setCurrentSpeakingId(newMessage.id); 
+      setIsProcessing(false); 
       
-      // 2. Obtener ID de audio TTS para la respuesta
       try {
         const ttsResponse = await fetch('/api/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: aiText }) // Enviar el texto obtenido
+          body: JSON.stringify({ text: aiText }) 
         });
 
         if (ttsResponse.ok) {
           const { audioId } = await ttsResponse.json();
           if (audioId) {
-             const audioUrlToPlay = `/api/audio/${audioId}`; // Construir URL dinámica
-             playAudio(audioUrlToPlay, newMessage.id); // Reproducir el audio
+             const audioUrlToPlay = `/api/audio/${audioId}`; 
+             playAudio(audioUrlToPlay, newMessage.id); 
           } else {
              throw new Error("ID de audio no recibido del endpoint TTS.");
           }
@@ -380,19 +383,17 @@ const VoiceChatContainer: React.FC = () => {
       } catch (ttsError) {
           console.error("Error al obtener o reproducir audio TTS:", ttsError);
           setAppError({ type: 'tts', message: ttsError instanceof Error ? ttsError.message : 'Error desconocido en TTS.' });
-          // Si falla el TTS, al menos el texto está visible
-          setIsSpeaking(false);
+          setIsSpeaking(false); 
           setCurrentSpeakingId(null);
       }
 
     } catch (error) {
       console.error("Error al obtener respuesta de OpenAI:", error);
       setAppError({ type: 'openai', message: error instanceof Error ? error.message : 'Error desconocido al contactar OpenAI.' });
-      setIsProcessing(false); // Asegurarse de resetear estado si falla OpenAI
-      setIsSpeaking(false);
+      setIsProcessing(false); 
+      setIsSpeaking(false); 
       setCurrentSpeakingId(null);
-    }
-    // No necesitamos `finally` aquí porque `isProcessing` se maneja antes de la llamada a TTS
+    } 
   };
   
   // --- Controladores de Interacción del Avatar --- (Modificados para llamar a /api/stt)
@@ -534,7 +535,7 @@ const VoiceChatContainer: React.FC = () => {
           id: Date.now().toString(),
         text: finalTranscript,
           isUser: true,
-          timestamp: new Date().toLocaleTimeString(),
+          timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
         };
         setMessages(prevMessages => [...prevMessages, newMessage]);
       getOpenAIResponse(finalTranscript);
@@ -555,7 +556,7 @@ const VoiceChatContainer: React.FC = () => {
         id: Date.now().toString(),
         text: textInput.trim(),
         isUser: true,
-        timestamp: new Date().toLocaleTimeString(),
+        timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
       };
       setMessages(prevMessages => [...prevMessages, newMessage]);
       getOpenAIResponse(textInput.trim());
@@ -567,12 +568,16 @@ const VoiceChatContainer: React.FC = () => {
   const handleStartConversation = () => {
       if (initialAudioUrl && greetingMessageId) {
           console.log("Comenzando conversación y reproduciendo saludo...");
-          setConversationActive(true); // Ocultar overlay
-          playAudio(initialAudioUrl, greetingMessageId); // Reproducir saludo
+          setConversationActive(true); 
+          // << NUEVO: Registrar hora de inicio >>
+          setSessionStartTime(Date.now()); 
+          playAudio(initialAudioUrl, greetingMessageId); 
       } else {
           console.warn("Intento de iniciar conversación sin audio de saludo listo.");
           // Opcionalmente, iniciar sin audio o mostrar un error diferente
-          setConversationActive(true); // Ocultar overlay de todas formas
+          setConversationActive(true); 
+          // << NUEVO: Registrar hora de inicio también aquí si se permite empezar sin saludo >>
+          setSessionStartTime(Date.now());
       }
   };
 
