@@ -13,6 +13,9 @@ import {
 import TranscribedResponse from './TranscribedResponse';
 import { Send, AlertCircle, Mic, ChevronsLeft, ChevronsRight, MessageSquare } from 'lucide-react';
 
+// Definir constante para la longitud del historial (debe coincidir con backend)
+const HISTORY_LENGTH = 8;
+
 interface Message {
   id: string;
   text: string;
@@ -45,6 +48,8 @@ const VoiceChatContainer: React.FC = () => {
   const [isChatVisible, setIsChatVisible] = useState(true);
   // << NUEVO: Estado para la hora de inicio de la sesión >>
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
+  // << NUEVO: Estado para controlar la introducción del flujo >>
+  const [isFirstInteraction, setIsFirstInteraction] = useState(true);
   
   const roomRef = useRef<Room | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null); // << NUEVO: Ref para MediaRecorder
@@ -329,22 +334,34 @@ const VoiceChatContainer: React.FC = () => {
   const getOpenAIResponse = async (userMessage: string) => {
     setIsProcessing(true);
     clearError(); 
+    
+    // Determinar si debemos introducir el flujo en esta llamada
+    const shouldIntroduceFlow = isFirstInteraction;
+    
     try {
-      // << MODIFICADO: Enviar también sessionStartTime >>
-      const requestBody = {
+      // Preparar el cuerpo de la solicitud
+      const requestBody: any = {
         message: userMessage,
-        sessionStartTime: sessionStartTime // Puede ser null si la conversación no ha empezado formalmente
+        history: messages.map(msg => ({ role: msg.isUser ? 'user' : 'assistant', content: msg.text })).slice(-HISTORY_LENGTH), // Enviar historial reciente
+        sessionStartTime: sessionStartTime,
+        introduceFlow: shouldIntroduceFlow // Añadir el flag
       };
 
       const response = await fetch('/api/openai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody), // Usar el nuevo cuerpo
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || `Error del servidor OpenAI: ${response.status}`);
+      }
+      
+      // Si la llamada fue exitosa Y era la primera interacción, actualizamos el estado
+      if (shouldIntroduceFlow) {
+        setIsFirstInteraction(false);
+        console.log("Flag isFirstInteraction establecido en false.");
       }
 
       const data = await response.json();
@@ -393,6 +410,7 @@ const VoiceChatContainer: React.FC = () => {
       setIsProcessing(false); 
       setIsSpeaking(false); 
       setCurrentSpeakingId(null);
+      // No cambiamos isFirstInteraction aquí, solo tras éxito
     } 
   };
   
