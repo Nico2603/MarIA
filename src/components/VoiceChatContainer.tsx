@@ -14,7 +14,18 @@ import TranscribedResponse from './TranscribedResponse';
 import { Send, AlertCircle, Mic, ChevronsLeft, ChevronsRight, MessageSquare } from 'lucide-react';
 
 // Definir constante para la longitud del historial (debe coincidir con backend)
-const HISTORY_LENGTH = 8;
+const HISTORY_LENGTH = 12;
+
+// << NUEVO: Frases clave para detectar el cierre de sesión por parte de María >>
+const CLOSING_PHRASES = [
+  "ha sido un placer hablar contigo",
+  "espero que esto te sea útil",
+  "cuídate mucho",
+  "que tengas un buen día",
+  "sesión finalizada", // Añadir por si acaso
+  "hasta la próxima",
+  "espero haberte podido ayudar hoy"
+];
 
 interface Message {
   id: string;
@@ -50,6 +61,8 @@ const VoiceChatContainer: React.FC = () => {
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
   // << NUEVO: Estado para controlar la introducción del flujo >>
   const [isFirstInteraction, setIsFirstInteraction] = useState(true);
+  // << NUEVO: Estado para controlar si la sesión ha finalizado >>
+  const [isSessionClosed, setIsSessionClosed] = useState(false);
   
   const roomRef = useRef<Room | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null); // << NUEVO: Ref para MediaRecorder
@@ -234,19 +247,20 @@ const VoiceChatContainer: React.FC = () => {
     };
   }, [getLiveKitToken, connectionState, liveKitToken]);
 
-  // << MODIFICADO: useEffect para saludo inicial (solo prepara y marca como listo) >>
+  // << MODIFICADO: useEffect para saludo inicial (depende de conversationActive) >>
   useEffect(() => {
-    // Prevenir ejecución si ya hay mensajes o la conversación ya está activa
-    if (messages.length > 0 || conversationActive) {
+    // Prevenir ejecución si ya hay mensajes o la conversación YA está activa
+    // O si ya estamos listos para empezar (evitar re-ejecución innecesaria)
+    if (messages.length > 0 || conversationActive || isReadyToStart) {
+        // console.log('Skipping greeting prep:', { messages: messages.length, conversationActive, isReadyToStart });
         return;
     }
     
+    console.log("Ejecutando useEffect para preparar saludo inicial...");
     const prepareInitialGreeting = async () => {
         const initialGreetingText = "Hola, soy María, tu asistente virtual de IA para la ansiedad. Estoy aquí para escucharte y ofrecerte apoyo. ¿Cómo te sientes hoy?";
         const msgId = `greeting-${Date.now()}`;
-        setGreetingMessageId(msgId); // Guardar ID del saludo
-        
-        // Añadir mensaje a UI
+        setGreetingMessageId(msgId); 
         const newMessage: Message = {
             id: msgId,
             text: initialGreetingText,
@@ -254,8 +268,6 @@ const VoiceChatContainer: React.FC = () => {
             timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
         };
         setMessages([newMessage]);
-        // No marcar como 'speaking' aún
-        
         console.log("Generando audio para saludo inicial (sin reproducir)...");
         try {
             const ttsResponse = await fetch('/api/tts', {
@@ -263,15 +275,14 @@ const VoiceChatContainer: React.FC = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: initialGreetingText })
             });
-
             if (ttsResponse.ok) {
                 const { audioId } = await ttsResponse.json();
                 if (audioId) {
                     console.log("Audio de saludo preparado, ID:", audioId);
-                    setInitialAudioUrl(`/api/audio/${audioId}`); // Construir URL dinámica
-                    setGreetingMessageId(msgId); // Guardar ID del mensaje también
-                    setIsReadyToStart(true); // Marcar como listo para empezar
-          } else {
+                    setInitialAudioUrl(`/api/audio/${audioId}`);
+                    setGreetingMessageId(msgId);
+                    setIsReadyToStart(true); 
+                } else {
                     throw new Error("ID de audio no recibido para saludo.");
                 }
             } else {
@@ -282,18 +293,18 @@ const VoiceChatContainer: React.FC = () => {
             console.error("Error generando TTS inicial:", ttsError);
             setAppError({ type: 'tts', message: ttsError instanceof Error ? ttsError.message : 'Error generando TTS inicial.' });
             setInitialAudioUrl(null);
-            setIsReadyToStart(false); // Marcar como no listo si hay error
+            setIsReadyToStart(false); 
         }
     };
-
     prepareInitialGreeting();
 
-  }, []); // Ejecutar solo al montar
+  }, [conversationActive, isReadyToStart]); // << MODIFICADO: Depende de conversationActive e isReadyToStart
 
   // --- Procesamiento con OpenAI y Reproducción de Audio (TTS - OpenAI API) ---
   
   // Función para reproducir audio desde URL
-  const playAudio = (url: string, messageId: string) => {
+  // << MODIFICADO: Acepta flag opcional para cierre >>
+  const playAudio = (url: string, messageId: string, isClosingAudio = false) => {
     if (audioRef.current) {
       audioRef.current.pause(); // Detener audio anterior si existe
       audioRef.current.onended = null; // Limpiar listeners anteriores
@@ -306,11 +317,17 @@ const VoiceChatContainer: React.FC = () => {
     setCurrentSpeakingId(messageId);
     setIsSpeaking(true);
 
+    // << MODIFICADO: Lógica onended para manejar cierre >>
     audio.onended = () => {
       console.log("Audio terminado:", messageId);
       setIsSpeaking(false);
       setCurrentSpeakingId(null);
       audioRef.current = null; // Limpiar ref
+      // Si era el audio de cierre, marcar la sesión como cerrada AHORA
+      if (isClosingAudio) {
+        console.log("Audio de cierre finalizado. Marcando sesión como cerrada.");
+        setIsSessionClosed(true);
+      }
     };
     audio.onerror = (e) => {
       console.error("Error al reproducir audio:", url, e);
@@ -318,10 +335,14 @@ const VoiceChatContainer: React.FC = () => {
       setIsSpeaking(false);
       setCurrentSpeakingId(null);
       audioRef.current = null; // Limpiar ref
+      // Si falla la reproducción del audio de cierre, cerramos igualmente
+      if (isClosingAudio) {
+          console.warn("Error al reproducir audio de cierre. Forzando cierre de sesión.");
+          setIsSessionClosed(true);
+      }
     };
     audio.play().catch(e => { // Manejar error de autoplay
         console.error("Error al iniciar la reproducción:", e);
-        // Mostrar el error específico de autoplay si es el caso
         const playErrorMessage = e.name === 'NotAllowedError' 
             ? 'No se pudo iniciar la reproducción del audio. Puede requerir interacción del usuario.'
             : 'Error al iniciar la reproducción del audio.';
@@ -329,6 +350,11 @@ const VoiceChatContainer: React.FC = () => {
         setIsSpeaking(false);
         setCurrentSpeakingId(null);
         audioRef.current = null;
+        // Si falla el play() del audio de cierre, cerramos igualmente
+        if (isClosingAudio) {
+            console.warn("Error al iniciar reproducción de audio de cierre. Forzando cierre de sesión.");
+            setIsSessionClosed(true);
+        }
     });
   };
 
@@ -360,7 +386,6 @@ const VoiceChatContainer: React.FC = () => {
         throw new Error(errorData.error || `Error del servidor OpenAI: ${response.status}`);
       }
       
-      // Si la llamada fue exitosa Y era la primera interacción, actualizamos el estado
       if (shouldIntroduceFlow) {
         setIsFirstInteraction(false);
         console.log("Flag isFirstInteraction establecido en false.");
@@ -376,11 +401,19 @@ const VoiceChatContainer: React.FC = () => {
         isUser: false,
         timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
       };
+      
+      const lowerAiText = aiText.toLowerCase();
+      const isClosingMessage = CLOSING_PHRASES.some(phrase => lowerAiText.includes(phrase.toLowerCase()));
+
+      // Añadir siempre el mensaje a la lista
       setMessages(prevMessages => [...prevMessages, newMessage]);
-      setCurrentSpeakingId(newMessage.id); 
+      
+      // Marcar procesamiento OpenAI como terminado aquí
       setIsProcessing(false); 
       
+      // Intentar obtener y reproducir TTS (incluso para mensaje de cierre)
       try {
+        setCurrentSpeakingId(newMessage.id); // Marcar como hablando ANTES de llamar a TTS
         const ttsResponse = await fetch('/api/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -391,7 +424,8 @@ const VoiceChatContainer: React.FC = () => {
           const { audioId } = await ttsResponse.json();
           if (audioId) {
              const audioUrlToPlay = `/api/audio/${audioId}`; 
-             playAudio(audioUrlToPlay, newMessage.id); 
+             // << MODIFICADO: Pasar flag isClosingMessage a playAudio >>
+             playAudio(audioUrlToPlay, newMessage.id, isClosingMessage); 
           } else {
              throw new Error("ID de audio no recibido del endpoint TTS.");
           }
@@ -404,6 +438,11 @@ const VoiceChatContainer: React.FC = () => {
           setAppError({ type: 'tts', message: ttsError instanceof Error ? ttsError.message : 'Error desconocido en TTS.' });
           setIsSpeaking(false); 
           setCurrentSpeakingId(null);
+          // Si falla el TTS del mensaje de cierre, cerramos igualmente
+          if (isClosingMessage) {
+            console.warn("Fallo TTS para mensaje de cierre. Forzando cierre.");
+            setIsSessionClosed(true);
+          }
       }
 
     } catch (error) {
@@ -412,7 +451,6 @@ const VoiceChatContainer: React.FC = () => {
       setIsProcessing(false); 
       setIsSpeaking(false); 
       setCurrentSpeakingId(null);
-      // No cambiamos isFirstInteraction aquí, solo tras éxito
     } 
   };
   
@@ -690,6 +728,30 @@ const VoiceChatContainer: React.FC = () => {
     setIsChatVisible(prev => !prev);
   };
 
+  // << NUEVO: Handler para el botón "Nueva Sesión" >>
+  const handleNewSession = () => {
+    console.log("Iniciando nueva sesión...");
+    // Reiniciar todos los estados relevantes
+    setMessages([]);
+    setTextInput('');
+    setIsListening(false);
+    setIsProcessing(false);
+    setIsSpeaking(false);
+    setCurrentSpeakingId(null);
+    setAppError({ type: null, message: null });
+    setSessionStartTime(null); // Reiniciar tiempo de sesión
+    setIsFirstInteraction(true); // Permitir introducción de flujo de nuevo
+    setIsSessionClosed(false); // Marcar sesión como activa de nuevo
+    setConversationActive(false); // Mostrar overlay de "Comenzar" de nuevo
+    setIsReadyToStart(false); // Requerir preparación de saludo de nuevo
+    setInitialAudioUrl(null); // Limpiar saludo anterior
+    setGreetingMessageId(null);
+    // Podríamos llamar a prepareInitialGreeting aquí si queremos que se regenere
+    // o dejar que el useEffect lo haga al cambiar el estado. Mejor dejar al useEffect.
+    // También desconectar/reconectar LiveKit si fuera necesario, aunque
+    // podría ser suficiente con la lógica existente si solo reiniciamos UI.
+  };
+
   // --- Renderizado ---
   return (
     <div className="relative flex flex-1 h-[calc(100vh-64px)] bg-neutral-100 dark:bg-neutral-900 overflow-hidden">
@@ -788,28 +850,28 @@ const VoiceChatContainer: React.FC = () => {
                     ref={textAreaRef} 
                     value={textInput}
                     onChange={(e) => setTextInput(e.target.value)}
-                    placeholder="Escribe tu mensaje aquí..."
+                    placeholder={isSessionClosed ? "Sesión finalizada." : "Escribe tu mensaje aquí..."}
                     rows={1}
-                    className="flex-1 resize-none p-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 bg-neutral-50 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500"
+                    className="flex-1 resize-none p-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 bg-neutral-50 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 disabled:opacity-60 disabled:cursor-not-allowed"
                     onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
                         handleSendTextMessage(e as unknown as FormEvent);
                         }
                     }}
-                    disabled={isListening || isProcessing || isSpeaking} 
+                    disabled={isListening || isProcessing || isSpeaking || isSessionClosed} // << Añadido isSessionClosed
                     />
                     {/* Botón Micrófono */}
                     <button 
                     type="button"
                     onClick={isListening ? handleStopListening : handleStartListening} 
-                    disabled={isProcessing || isSpeaking} 
+                    disabled={isProcessing || isSpeaking || isSessionClosed} // << Añadido isSessionClosed
                     className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 ${ 
                         isListening 
                         ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-400' 
                         : 'bg-primary-600 hover:bg-primary-700 text-white focus:ring-primary-500'
-                    } ${(isPushToTalkActive) ? 'ring-4 ring-offset-0 ring-green-400' : '' }
-                        ${(isProcessing || isSpeaking) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    } ${(isPushToTalkActive) ? 'ring-4 ring-offset-0 ring-green-400' : '' } 
+                        ${(isProcessing || isSpeaking || isSessionClosed) ? 'opacity-50 cursor-not-allowed' : ''}`} // << Añadido isSessionClosed
                     aria-label={isListening ? "Detener micrófono" : "Activar micrófono"}
                     >
                     <Mic className="h-5 w-5" />
@@ -817,7 +879,7 @@ const VoiceChatContainer: React.FC = () => {
                     {/* Botón Enviar */}
                     <button
                     type="submit"
-                    disabled={!textInput.trim() || isListening || isProcessing || isSpeaking} 
+                    disabled={!textInput.trim() || isListening || isProcessing || isSpeaking || isSessionClosed} // << Añadido isSessionClosed
                     className="w-10 h-10 rounded-full flex items-center justify-center bg-primary-600 text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
                     aria-label="Enviar mensaje"
                     >
@@ -828,9 +890,21 @@ const VoiceChatContainer: React.FC = () => {
                     )}
                     </button>
                  </form>
-                  <p className={`text-xs mt-2 text-center text-neutral-500 dark:text-neutral-400`}>
-                        Mantén pulsada la tecla [Espacio] para hablar.
-                    </p>
+                  {/* << MODIFICADO: Mostrar botón "Nueva Sesión" o texto PTT >> */}
+                  {isSessionClosed ? (
+                    <div className="text-center mt-3">
+                      <button 
+                        onClick={handleNewSession}
+                        className="px-4 py-2 bg-secondary-600 text-white rounded-lg text-sm font-semibold shadow hover:bg-secondary-700 focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 transition-colors"
+                      >
+                        Iniciar Nueva Sesión
+                      </button>
+                    </div>
+                  ) : (
+                     <p className={`text-xs mt-2 text-center text-neutral-500 dark:text-neutral-400`}>
+                          Mantén pulsada la tecla [Espacio] para hablar.
+                      </p>
+                  )}
               </div>
             </motion.div>
         )}

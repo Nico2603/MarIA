@@ -74,6 +74,7 @@ const systemPromptContent = `
 5. **REGLA POST-ACEPTACIÓN:** Iniciar SOLO con paso 1 de la técnica.
 6. **REGLA CIERRE TÉCNICA:** Tras último paso, preguntar "¿cómo te sientes ahora?".
 7. LÍMITES CLAROS: NO diagnosticar, NO medicación, NO reemplazo terapia.
+8. **REGLA DE FINALIZACIÓN (INQUEBRANTABLE):** Cuando detectes que el usuario quiere cerrar ("finalizar", "cerrar sesión", "ya basta", "terminar", "acabar", etc.) o si recibes el mensaje de sistema "USER_WANTS_TO_CLOSE", activa la regla de finalización inmediatamente: resumen de 1-2 frases + despedida única + **terminar**. **NO HAGAS MÁS PREGUNTAS.**
 
 **Gestión del Tiempo (Instrucción para IA):**
 * Recibirás: "[Contexto de Sesión: Han transcurrido X minutos...]".
@@ -81,12 +82,12 @@ const systemPromptContent = `
 * ~20 min (19+): INICIA fase Cierre FIRMEMENTE.
 * Uso puntual: Menciona tiempo solo en esos momentos clave.
 
-**Objetivo Final:** Asistente empática, segura, confiable, **enfocada en ansiedad**. Ofrecer escucha, alivio momentáneo y herramientas básicas, respetando límites/estructura y reglas conversacionales (especialmente anti-repetición y flujo de técnicas). Empoderar.
+**Objetivo Final:** Asistente empática, segura, confiable, **enfocada en ansiedad**. Ofrecer escucha, alivio momentáneo y herramientas básicas, respetando límites/estructura y reglas conversacionales (especialmente anti-repetición, flujo de técnicas **y finalización clara**). Empoderar.
 `;
 
 // Constante para definir cuántos mensajes del historial mantener (Aborda Evaluación Punto 3 - Truncamiento Simple)
 // Nota: El truncamiento avanzado o summarization requiere lógica más compleja/costosa.
-const HISTORY_LENGTH = 8; // 4 intercambios user/assistant. Ajustable.
+const HISTORY_LENGTH = 12; // 6 intercambios user/assistant. Ajustable.
 
 // Esquema de validación con Zod (Aplica Sugerencia 3)
 const requestBodySchema = z.object({
@@ -102,6 +103,9 @@ const requestBodySchema = z.object({
   // Podrías añadir un clientRequestId aquí para trazabilidad E2E
   // clientRequestId: z.string().uuid().optional(),
 });
+
+// --- Lista de Keywords para detectar cierre ---
+const CLOSE_KEYWORDS = [/finalizar/i, /cerrar sesión/i, /terminar/i, /acabar/i, /ya con esto/i, /suficiente por hoy/i, /vamos a cerrar/i, /dejémoslo aquí/i, /ya basta/i];
 
 // --- Función Principal de la Ruta API ---
 
@@ -172,6 +176,13 @@ export async function POST(request: Request) {
     }
     // ---------------------------------------------------------------------------
 
+    // --- Detección de Intención de Cierre (Aplica Sugerencia 5) ---
+    const wantsToClose = CLOSE_KEYWORDS.some(rx => rx.test(message));
+    if (wantsToClose) {
+      console.log(`[${requestId}] Detectada intención de cierre en mensaje: "${message}"`);
+    }
+    // -------------------------------------------------------------
+
     // --- Gestión del Contexto / Historial (Aplica Sugerencia 4) ---
     // Conserva los últimos HISTORY_LENGTH mensajes (intercambios).
     // Nota sobre límite de tokens (Sugerencia 4):
@@ -207,6 +218,11 @@ export async function POST(request: Request) {
 
     // Añadir el mensaje real del usuario al final
     finalMessages.push({ role: "user", content: userMessageForAI });
+
+    // Añadir mensaje de sistema si se detectó intención de cierre
+    if (wantsToClose) {
+      finalMessages.push({ role: 'system', content: 'USER_WANTS_TO_CLOSE' });
+    }
 
     // --- Llamada a la API de OpenAI ---
     // Nota sobre Parámetros:
