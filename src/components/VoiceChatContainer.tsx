@@ -56,7 +56,9 @@ const VoiceChatContainer: React.FC = () => {
   const audioChunksRef = useRef<Blob[]>([]); // << NUEVO: Ref para almacenar chunks de audio
   const audioStreamRef = useRef<MediaStream | null>(null); // << NUEVO: Ref para el stream del mic
   const audioRef = useRef<HTMLAudioElement | null>(null); // << NUEVO: Ref para el elemento <audio>
-  const chatEndRef = useRef<HTMLDivElement>(null); // Para scroll automático
+  const chatEndRef = useRef<HTMLDivElement>(null); // Para scroll automático (se mantiene por si acaso, pero no se usará para scroll)
+  // << NUEVO: Ref para el contenedor scrollable del chat >>
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   
   // << NUEVO: Referencia para el video >>
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -674,6 +676,15 @@ const VoiceChatContainer: React.FC = () => {
     };
   }, [isListening, isProcessing, isSpeaking, isPushToTalkActive, handleStartListening, handleStopListening]); // Dependencias clave
 
+  // << MODIFICADO: useEffect para scroll automático DENTRO del contenedor de chat >>
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      // Establecer scrollTop a la altura total del scroll para ir al fondo
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+    // Ya no usamos chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]); // Ejecutar cada vez que el array de mensajes cambie
+
   // << NUEVO: Función para alternar visibilidad del chat >>
   const toggleChatVisibility = () => {
     setIsChatVisible(prev => !prev);
@@ -743,7 +754,8 @@ const VoiceChatContainer: React.FC = () => {
               transition={{ duration: 0.3, ease: "easeInOut" }}
               className="w-full md:w-1/3 flex flex-col h-full bg-neutral-100 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-700"
             >
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {/* << MODIFICADO: Añadir ref al contenedor scrollable >> */}
+              <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-6 space-y-4">
                 {messages.length === 0 ? (
                     <motion.div 
                     initial={{ opacity: 0, y: 20 }}
@@ -766,7 +778,6 @@ const VoiceChatContainer: React.FC = () => {
                     />
                     ))
                 )}
-                <div ref={chatEndRef} /> 
               </div>
 
               {/* << CORREGIDO: Input Area VUELVE AQUÍ DENTRO >> */}
