@@ -1,7 +1,7 @@
 ---
 description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 # 3. Code Quality Guidelines
 Description: Guidelines focusing on code quality.
