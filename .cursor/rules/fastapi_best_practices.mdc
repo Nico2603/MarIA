@@ -1,0 +1,88 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# 6. FastAPI Best Practices
+Description: Best practices and patterns for building modern Python web APIs with FastAPI.
+
+## 6.1 Project Structure
+- Use proper directory structure.
+- Implement proper module organization.
+- Use proper dependency injection.
+- Keep routes organized by domain.
+- Implement proper middleware.
+- Use proper configuration management.
+
+## 6.2 API Design
+- Use proper HTTP methods.
+- Implement proper status codes.
+- Use proper request/response models.
+- Implement proper validation.
+- Use proper error handling.
+- Document APIs with OpenAPI.
+
+## 6.3 Models
+- Use Pydantic models.
+- Implement proper validation.
+- Use proper type hints.
+- Keep models organized.
+- Use proper inheritance.
+- Implement proper serialization.
+
+## 6.4 Database
+- Use proper ORM (SQLAlchemy).
+- Implement proper migrations.
+- Use proper connection pooling.
+- Implement proper transactions.
+- Use proper query optimization.
+- Handle database errors properly.
+
+## 6.5 Authentication
+- Implement proper JWT authentication.
+- Use proper password hashing.
+- Implement proper role-based access.
+- Use proper session management.
+- Implement proper OAuth2.
+- Handle authentication errors properly.
+
+## 6.6 Security
+- Implement proper CORS.
+- Use proper rate limiting.
+- Implement proper input validation.
+- Use proper security headers.
+- Handle security errors properly.
+- Implement proper logging.
+
+## 6.7 Performance
+- Use proper caching.
+- Implement proper async operations.
+- Use proper background tasks.
+- Implement proper connection pooling.
+- Use proper query optimization.
+- Monitor performance metrics.
+
+## 6.8 Testing
+- Write proper unit tests.
+- Implement proper integration tests.
+- Use proper test fixtures.
+- Implement proper mocking.
+- Test error scenarios.
+- Use proper test coverage.
+
+## 6.9 Deployment
+- Use proper Docker configuration.
+- Implement proper CI/CD.
+- Use proper environment variables.
+- Implement proper logging.
+- Use proper monitoring.
+- Handle deployment errors properly.
+
+## 6.10 Documentation
+- Use proper docstrings.
+- Implement proper API documentation.
+- Use proper type hints.
+- Keep documentation updated.
+- Document error scenarios.
+- Use proper versioning.
+
