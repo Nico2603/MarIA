@@ -12,6 +12,7 @@ import {
 } from 'livekit-client';
 import TranscribedResponse from './TranscribedResponse';
 import { Send, AlertCircle, Mic, ChevronsLeft, ChevronsRight, MessageSquare } from 'lucide-react';
+import ThinkingIndicator from './ThinkingIndicator';
 
 // Definir constante para la longitud del historial (debe coincidir con backend)
 const HISTORY_LENGTH = 12;
@@ -32,7 +33,7 @@ interface Message {
   text: string;
   isUser: boolean;
   timestamp: string;
-  // Ya no necesitamos tags ni topic, OpenAI manejará el contexto
+  suggestedVideo?: { title: string; url: string }; // << NUEVO: Campo opcional para video
 }
 
 // Nuevo estado para la conexión de LiveKit y Errores
@@ -63,6 +64,10 @@ const VoiceChatContainer: React.FC = () => {
   const [isFirstInteraction, setIsFirstInteraction] = useState(true);
   // << NUEVO: Estado para controlar si la sesión ha finalizado >>
   const [isSessionClosed, setIsSessionClosed] = useState(false);
+  // << NUEVO: Estado para indicar María está "pensando" (OpenAI + TTS) >>
+  const [isThinking, setIsThinking] = useState(false);
+  // << NUEVO: Estado para almacenar temporalmente el mensaje de la IA >>
+  const [pendingAiMessage, setPendingAiMessage] = useState<Message | null>(null);
   
   const roomRef = useRef<Room | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null); // << NUEVO: Ref para MediaRecorder
@@ -258,7 +263,7 @@ const VoiceChatContainer: React.FC = () => {
     
     console.log("Ejecutando useEffect para preparar saludo inicial...");
     const prepareInitialGreeting = async () => {
-        const initialGreetingText = "Hola, soy María, tu asistente virtual de IA para la ansiedad. Estoy aquí para escucharte y ofrecerte apoyo. ¿Cómo te sientes hoy?";
+        const initialGreetingText = "Hola, soy María. Estoy aquí para escucharte y ofrecerte apoyo. ¿Cómo te sientes hoy?";
         const msgId = `greeting-${Date.now()}`;
         setGreetingMessageId(msgId); 
         const newMessage: Message = {
@@ -321,6 +326,11 @@ const VoiceChatContainer: React.FC = () => {
     audio.onended = () => {
       console.log("Audio terminado:", messageId);
       setIsSpeaking(false);
+      // Si el mensaje que acaba de terminar era el pendiente, limpiarlo
+      // (esto es una doble seguridad, normalmente ya debería estar limpio)
+      if (pendingAiMessage && pendingAiMessage.id === messageId) {
+        setPendingAiMessage(null);
+      }
       setCurrentSpeakingId(null);
       audioRef.current = null; // Limpiar ref
       // Si era el audio de cierre, marcar la sesión como cerrada AHORA
@@ -360,7 +370,9 @@ const VoiceChatContainer: React.FC = () => {
 
   // Función para enviar mensaje a la API de OpenAI y luego a la API TTS
   const getOpenAIResponse = async (userMessage: string) => {
-    setIsProcessing(true);
+    // << MODIFICADO: Usar setIsThinking en lugar de setIsProcessing aquí >>
+    setIsThinking(true);
+    setIsProcessing(false); // Asegurarnos que isProcessing (para STT) esté desactivado
     clearError(); 
     
     // Determinar si debemos introducir el flujo en esta llamada
@@ -391,29 +403,32 @@ const VoiceChatContainer: React.FC = () => {
         console.log("Flag isFirstInteraction establecido en false.");
       }
 
+      // << MODIFICADO: Extraer texto y video sugerido >>
       const data = await response.json();
       const aiText = data.response;
+      const suggestedVideoData = data.suggestedVideo; // Puede ser null o {title, url}
+      
       if (!aiText) throw new Error("Respuesta vacía de OpenAI.");
 
-      const newMessage: Message = {
+      // << MODIFICADO: Crear el mensaje incluyendo suggestedVideo >>
+      const incomingAiMessage: Message = {
         id: Date.now().toString(),
         text: aiText,
         isUser: false,
         timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
+        suggestedVideo: suggestedVideoData || undefined, // Asignar si existe, sino undefined
       };
+      
+      // << MODIFICADO: Guardar en estado pendiente >>
+      setPendingAiMessage(incomingAiMessage);
       
       const lowerAiText = aiText.toLowerCase();
       const isClosingMessage = CLOSING_PHRASES.some(phrase => lowerAiText.includes(phrase.toLowerCase()));
 
-      // Añadir siempre el mensaje a la lista
-      setMessages(prevMessages => [...prevMessages, newMessage]);
-      
-      // Marcar procesamiento OpenAI como terminado aquí
-      setIsProcessing(false); 
-      
       // Intentar obtener y reproducir TTS (incluso para mensaje de cierre)
       try {
-        setCurrentSpeakingId(newMessage.id); // Marcar como hablando ANTES de llamar a TTS
+        // << No marcar como hablando aquí aún >>
+        // setCurrentSpeakingId(newMessage.id); 
         const ttsResponse = await fetch('/api/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -424,16 +439,37 @@ const VoiceChatContainer: React.FC = () => {
           const { audioId } = await ttsResponse.json();
           if (audioId) {
              const audioUrlToPlay = `/api/audio/${audioId}`; 
-             // << MODIFICADO: Pasar flag isClosingMessage a playAudio >>
-             playAudio(audioUrlToPlay, newMessage.id, isClosingMessage); 
+             // << SINCRONIZACIÓN: Ahora que el audio está listo... >>
+             // 1. Añadir el mensaje pendiente al chat
+             setMessages(prevMessages => [...prevMessages, incomingAiMessage]);
+             // 2. Iniciar la reproducción del audio (y activar isSpeaking)
+             playAudio(audioUrlToPlay, incomingAiMessage.id, isClosingMessage); 
+             // 3. Desactivar el indicador de "pensando"
+             setIsThinking(false);
+             // 4. Limpiar el mensaje pendiente
+             setPendingAiMessage(null);
           } else {
+             // Si no hay audioId, mostrar el mensaje igualmente y parar de pensar
+             setMessages(prevMessages => [...prevMessages, incomingAiMessage]);
+             setIsThinking(false); // << DESACTIVAR THINKING si no hay audioId >>
+             setPendingAiMessage(null);
              throw new Error("ID de audio no recibido del endpoint TTS.");
           }
         } else {
+          // Si falla TTS, mostrar el mensaje igualmente y parar de pensar
+          setMessages(prevMessages => [...prevMessages, incomingAiMessage]);
+          setIsThinking(false); // << DESACTIVAR THINKING si falla TTS >>
+          setPendingAiMessage(null);
           const errorData = await ttsResponse.json().catch(() => ({}));
           throw new Error(errorData.error || `Error del servidor TTS: ${ttsResponse.status}`);
         }
       } catch (ttsError) {
+          // Si hay error en TTS, mostrar el mensaje pendiente y parar de pensar
+          if (pendingAiMessage) { // Solo si aún existe el mensaje pendiente
+             setMessages(prevMessages => [...prevMessages, pendingAiMessage]);
+             setPendingAiMessage(null);
+          }
+          setIsThinking(false); // << DESACTIVAR THINKING en catch de TTS >>
           console.error("Error al obtener o reproducir audio TTS:", ttsError);
           setAppError({ type: 'tts', message: ttsError instanceof Error ? ttsError.message : 'Error desconocido en TTS.' });
           setIsSpeaking(false); 
@@ -446,9 +482,11 @@ const VoiceChatContainer: React.FC = () => {
       }
 
     } catch (error) {
+      // Si hay error general, asegurarse de limpiar el estado pendiente y thinking
+      setPendingAiMessage(null);
+      setIsThinking(false); // << DESACTIVAR THINKING en catch general de OpenAI >>
       console.error("Error al obtener respuesta de OpenAI:", error);
       setAppError({ type: 'openai', message: error instanceof Error ? error.message : 'Error desconocido al contactar OpenAI.' });
-      setIsProcessing(false); 
       setIsSpeaking(false); 
       setCurrentSpeakingId(null);
     } 
@@ -603,7 +641,9 @@ const VoiceChatContainer: React.FC = () => {
   const handleSendTextMessage = (event: FormEvent) => {
     event.preventDefault();
     
+    // << Añadir activación de isThinking aquí >>
     if (textInput.trim()) {
+      setIsThinking(true);
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
@@ -646,12 +686,31 @@ const VoiceChatContainer: React.FC = () => {
       if (videoRef.current.currentSrc !== newSrc) {
          console.log(`Cambiando video a: ${newSrc}`);
          videoRef.current.src = newSrc;
-         // Intentar cargar y reproducir de nuevo si es necesario
+         
+         // Función para intentar la reproducción
+         const playVideo = () => {
+            // Intentar reproducir SOLO si aún estamos en el estado correcto (isSpeaking o !isSpeaking)
+            const shouldBeSpeaking = isSpeaking;
+            const currentVideoIsSpeakingVideo = videoRef.current?.currentSrc.includes('voz.mp4');
+            if (shouldBeSpeaking === currentVideoIsSpeakingVideo) {
+               videoRef.current?.play().catch(error => {
+                  console.warn("Error al intentar reproducir el nuevo video tras loadeddata:", error);
+                  // Esto puede pasar si el usuario no ha interactuado aún o por políticas del navegador
+               });
+            } else {
+               console.log("Estado de isSpeaking cambió antes de que loadeddata se disparara, no se reproduce.");
+            }
+         };
+ 
+         // Limpiar listener anterior para evitar duplicados
+         const currentVideoRef = videoRef.current;
+         currentVideoRef.removeEventListener('loadeddata', playVideo);
+         
+         // Añadir listener para reproducir cuando esté listo
+         currentVideoRef.addEventListener('loadeddata', playVideo);
+         
+         // Iniciar la carga del nuevo video
          videoRef.current.load(); 
-         videoRef.current.play().catch(error => {
-            console.warn("Error al intentar reproducir el nuevo video:", error);
-            // Esto puede pasar si el usuario no ha interactuado aún
-         });
       }
     }
   }, [isSpeaking]);
@@ -721,7 +780,7 @@ const VoiceChatContainer: React.FC = () => {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
     // Ya no usamos chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]); // Ejecutar cada vez que el array de mensajes cambie
+  }, [messages, isThinking]); // << MODIFICADO: Añadir isThinking como dependencia >>
 
   // << NUEVO: Función para alternar visibilidad del chat >>
   const toggleChatVisibility = () => {
@@ -837,9 +896,12 @@ const VoiceChatContainer: React.FC = () => {
                         isUser={msg.isUser}
                         timestamp={msg.timestamp}
                         isHighlighted={currentSpeakingId === msg.id}
+                        suggestedVideo={msg.suggestedVideo}
                     />
                     ))
                 )}
+                {/* << NUEVO: Mostrar indicador de pensando >> */}
+                {isThinking && <ThinkingIndicator />} 
               </div>
 
               {/* << CORREGIDO: Input Area VUELVE AQUÍ DENTRO >> */}
@@ -964,4 +1026,4 @@ const VoiceChatContainer: React.FC = () => {
   );
 };
 
-export default VoiceChatContainer; 
+export default VoiceChatContainer;

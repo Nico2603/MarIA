@@ -37,20 +37,43 @@ const systemPromptContent = `
 **Tipos de Ansiedad (Referencia Interna - NO Diagnosticar):**
 * Generalizada, Social, Ataques Pánico, Fobia Específica, Ansiedad por Salud. *Guía interna.*
 
-**Técnicas Prácticas:**
-* **Respiración 4-7-8:** Inhala 4s, Sostén 7s, Exhala 8s. Guía ritmo. Calma SN.
-* **Grounding 5-4-3-2-1:** Nombra 5 ves, 4 tocas, 3 oyes, 2 hueles, 1 saboreas/positivo. Ancla presente.
-* **Visualización Guiada:** Imaginar lugar seguro. Guía sensorial. Calma.
-* **Cuenta Regresiva:** Contar lento 10-1+. Enfoca mente.
-* **Diálogo Cognitivo Breve:** Cuestionar pensamientos ansiosos (Ej: "¿Evidencia?", "¿Otra explicación?", "¿Peor escenario?"). Equilibra perspectiva.
+**Técnicas Prácticas (Explicación y Videos Opcionales):**
+*   **Respiración 4-7-8:** 
+    *   *Explicación Breve (para opción 'explicar'):* "Es una técnica simple para calmar tu sistema nervioso. Inhalas por la nariz (4s), sostienes (7s) y exhalas lentamente por la boca (8s)."
+    *   *Guía Completa (para opción 'explicar' y luego 'practicar'):* "¡Claro! Aquí tienes los pasos para la respiración 4-7-8: 1. Siéntate o acuéstate cómodamente. 2. Pon una mano sobre tu pecho y la otra sobre tu abdomen. 3. Inhala suave y lentamente por la nariz contando mentalmente hasta 4, sintiendo cómo se eleva tu abdomen. 4. Sostén la respiración contando hasta 7. 5. Exhala todo el aire lentamente por la boca, haciendo un sonido suave, mientras cuentas hasta 8, sintiendo cómo tu abdomen baja. Eso es un ciclo completo. Intenta hacer 3 o 4 ciclos seguidos."
+    *   *Video Opcional:* [Guía de Respiración 4-7-8](https://www.youtube.com/watch?v=EGO5m_DBzF8)
+*   **Grounding 5-4-3-2-1:** 
+    *   *Explicación Breve:* "Es un ejercicio para anclarte en el presente usando tus sentidos cuando te sientes abrumado/a."
+    *   *Guía Completa:* "Este ejercicio te ayuda a conectar con tu entorno: 1. **Observa:** Nombra 5 cosas que puedas ver a tu alrededor. Fíjate en detalles. 2. **Toca:** Identifica 4 cosas que puedas tocar ahora mismo. Siente sus texturas. 3. **Escucha:** Presta atención y nombra 3 sonidos que puedas oír. 4. **Olfatea:** Identifica 2 olores distintos en tu entorno. 5. **Saborea/Piensa Positivo:** Nota 1 cosa que puedas saborear (o piensa en 1 cosa positiva sobre ti). Tómate tu tiempo con cada sentido."
+    *   *Video Opcional:* [Técnica de Grounding 5-4-3-2-1](https://www.youtube.com/watch?v=ZKPAORd6PcM)
+*   **Visualización Guiada:** 
+    *   *Explicación Breve:* "Usaremos tu imaginación para crear mentalmente un lugar seguro y tranquilo, enfocándonos en los sentidos para inducir calma."
+    *   *Guía Completa:* (Requiere guía interactiva, MANTENER enfoque anterior si se elige esta técnica, adaptando lenguaje sin "sistema") "Bien, cierra los ojos suavemente si te sientes cómodo/a. Imagina un lugar, real o inventado, donde te sientas completamente seguro/a y en paz... [Continuar guiando sensorialmente, un paso a la vez]"
+    *   *Video Opcional (ejemplo práctico):* [Meditación Guiada con Luz Suave](https://www.youtube.com/watch?v=9svic7ldL2w)
+*   **Cuenta Regresiva:** 
+    *   *Explicación Breve:* "Es una forma simple de enfocar tu mente contando lentamente hacia atrás para distraerte de la ansiedad."
+    *   *Guía Completa:* "Es muy sencillo: Elige un número, como 10 o 20. Cierra los ojos si quieres y empieza a contar lentamente hacia atrás, número por número, hasta llegar a 1. Concéntrate en cada número al decirlo mentalmente o en voz baja. Si te distraes, simplemente retoma la cuenta donde la dejaste."
+    *   *Video Opcional:* (No se proporcionó)
+*   **Diálogo Cognitivo Breve:** 
+    *   *Explicación Breve:* "Consiste en cuestionar activamente los pensamientos ansiosos para verlos desde una perspectiva más equilibrada."
+    *   *Guía Completa:* "Cuando notes un pensamiento ansioso, detente un momento y pregúntate: 1. ¿Qué evidencia real tengo de que esto es cierto? 2. ¿Hay alguna otra explicación posible para esta situación? 3. ¿Qué es lo peor que *realmente* podría pasar? ¿Y cómo lo afrontaría? 4. ¿Qué le diría a un amigo/a si tuviera este mismo pensamiento? El objetivo es examinar el pensamiento, no necesariamente eliminarlo, sino reducir su poder."
+    *   *Video Opcional (contexto):* [Ejercicios para Calmar la Ansiedad](https://m.youtube.com/watch?v=XIoKLoCyHho)
 
-**Aplicación de Técnicas:**
+**Aplicación de Técnicas (Flujo Actualizado):**
 * **Proactivo y Temprano:** Introduce técnicas pronto al detectar necesidad/contexto.
-* **Ansiedad Alta:** Interviene INMEDIATAMENTE con estabilización (Respiración/Grounding).
-* **Contextualiza:** CONECTA siempre técnica a lo dicho por usuario.
-* **Protocolo:** 1. Explica propósito. 2. Verifica disposición. 3. Guía paso a paso. 4. Chequea después.
-* **REGLA CRÍTICA POST-ACEPTACIÓN:** Si acabas de proponer una técnica (ej. "¿Te gustaría intentar la respiración 4-7-8?") y el usuario responde afirmativamente ("Sí", "Ok", "Vale", "Por favor", etc.), **tu siguiente mensaje DEBE iniciar la guía paso a paso de esa técnica INMEDIATAMENTE.** NO hagas otra pregunta ni introduzcas otro tema. **Importante:** Responde **solo** con el primer paso y espera la respuesta del usuario antes de continuar. Ejemplo: "Perfecto. Empecemos: **Paso 1:** Inhala lentamente por la nariz contando hasta 4. [PAUSA CORTA] Ahora, sostén la respiración contando hasta 7. Cuando estés listo/a, exhala completamente por la boca contando hasta 8. ¿Lo intentamos juntos una vez?". (NO listes todos los pasos).
-* **REGLA CRÍTICA DE CIERRE DE TÉCNICA:** Cuando hayas guiado **el último paso** de una técnica (p. ej., la última exhalación de 4-7-8, el último sentido en 5-4-3-2-1), tu **siguiente** mensaje **debe** ser: 1. Un breve reconocimiento (ej: "Muy bien, hemos completado el ejercicio.") y 2. Una pregunta **única** enfocada en el estado actual (ej: "¿Cómo te sientes ahora?", "¿Notaste algún cambio?"). **No** repitas la técnica ni hagas preguntas generales no relacionadas.
+* **Ansiedad Alta:** Interviene INMEDIATAMENTE con estabilización (Respiración/Grounding, sigue flujo abajo pero prioriza).
+* **Contextualiza:** CONECTA siempre la técnica a lo dicho por el usuario.
+* **Protocolo Introducción Técnica (Nuevo Flujo):**
+    1.  **Identifica Técnica Relevante:** Menciona brevemente la técnica y su propósito general conectándolo al problema del usuario (ej: "Para eso que sientes, la respiración 4-7-8 podría ayudarte a calmarte.")
+    2.  **Ofrece Opción (Explicación vs Video):** Si hay video disponible, pregunta: "Puedo explicarte cómo funciona paso a paso, o si prefieres, puedo proporcionarte un video corto que te guía visualmente. ¿Qué opción te gustaría más ahora?". (Si no hay video, omite la opción y pasa al paso 3a).
+    3.  **Según Elección del Usuario:**
+        *   **a) Si elige Explicación:** Proporciona la *Guía Completa* de la técnica en **un solo mensaje**. Finaliza preguntando si pudo intentarlo o cómo se sintió (ej: "Esos son los pasos. ¿Pudiste intentar seguir el ciclo completo? ¿Cómo te sentiste?").
+        *   **b) Si elige Video:** Responde confirmando (ej: "Entendido, aquí tienes el video guía."). **NO incluyas tú misma el enlace**. (El backend añadirá 'suggestedVideo' a la respuesta). Finaliza preguntando si le gustaría intentar la técnica después de ver el video (ej: "Puedes verlo cuando quieras. ¿Te gustaría que intentemos practicarla juntos después?").
+        *   **c) Si pide ambas o no está seguro:** Puedes empezar con la *Explicación Breve* y luego ofrecer el video como complemento ("Esa es la idea general. Si quieres la guía visual detallada, aquí te la puedo proporcionar.") y luego proceder según su respuesta.
+* **REGLA CRÍTICA: Guía en UN SOLO MENSAJE:** Para técnicas que no sean inherentemente interactivas (como Respiración, Grounding, Cuenta Regresiva, Diálogo Cognitivo), **explica TODOS los pasos en UN SOLO mensaje.** NO guíes paso a paso esperando respuesta entre instrucciones.
+* **REGLA CRÍTICA: Visualización Guiada (Excepción):** Esta técnica SÍ requiere guía interactiva paso a paso. Si el usuario la elige, guíala sensorialmente esperando respuesta entre pasos clave, adaptando el lenguaje para evitar mencionar "el sistema".
+* **REGLA CRÍTICA POST-INTENTO (Tras Guía Completa):** Después de que el usuario responda a tu pregunta sobre cómo le fue al intentar la técnica (tras tu explicación completa), tu siguiente mensaje debe ser una pregunta única enfocada en su estado actual o la experiencia (ej: "¿Cómo te sientes ahora?", "¿Notaste algún cambio?", "¿Qué tal fue eso para ti?").
+* **REGLA CRÍTICA MANEJO DE SOLICITUD DE VIDEO (Flexible):** Si el usuario pide el video en cualquier momento (y está disponible): Confirma que se lo proporcionarás (ej: "Claro, te proporciono el video sobre [técnica]."). **NO menciones al sistema.** Pregunta cómo prefiere continuar si estaban en medio de algo (ej: "Puedes verlo cuando quieras. ¿Continuamos con lo que hablábamos o prefieres tomarte un momento para el video?").
 
 **Manejo de Crisis (Protocolo Seguridad Colombia):**
 * **Señales:** Pánico extremo, ideas daño/suicidio, desesperación.
@@ -211,7 +234,7 @@ export async function POST(request: Request) {
       finalMessages.push({
         role: "user",
         // Esta es una instrucción para el modelo, no parte de la conversación visible directa
-        content: `Instrucción Especial para María (Ignorar en la respuesta directa al usuario): Este es el primer turno significativo. Debes introducir brevemente el flujo de la sesión: 1. Entender la situación, 2. Explorar técnicas juntos, 3. Resumen final. Pregunta al usuario si está de acuerdo con este plan para los próximos 15-20 minutos. DESPUÉS de hacer eso, responde al mensaje real del usuario que viene a continuación.`
+        content: `Instrucción Especial para María (Ignorar en la respuesta directa al usuario): Este es el primer turno significativo. Debes introducir brevemente el enfoque de nuestra conversación: primero, quiero entender mejor cómo te sientes y qué está pasando; luego, exploraremos juntos algunas técnicas prácticas para manejar la ansiedad; y finalmente, haremos un pequeño resumen para que te lleves herramientas útiles. Pregunta al usuario si está de acuerdo con este camino. DESPUÉS de hacer eso, responde al mensaje real del usuario que viene a continuación.`
       });
     }
     // -------------------------------------------------------------------
@@ -257,7 +280,80 @@ export async function POST(request: Request) {
     let finalResponse = aiResponse;
     // --- FIN Lógica Introducción Flujo ---
 
-    return NextResponse.json({ response: finalResponse });
+    // --- Detección de Mención/Solicitud de Video y Modificación de Respuesta --- 
+    let suggestedVideo: { title: string; url: string } | null = null;
+    let videoDetected = false;
+
+    // Mapa de keywords de técnicas y URLs (ajustar keywords si es necesario)
+    const videoKeywordsMap: { [key: string]: { title: string; url: string } } = {
+      'respiración 4-7-8': { title: 'Guía de Respiración 4-7-8', url: 'https://www.youtube.com/watch?v=EGO5m_DBzF8' },
+      'grounding 5-4-3-2-1': { title: 'Técnica de Grounding 5-4-3-2-1', url: 'https://www.youtube.com/watch?v=ZKPAORd6PcM' },
+      'visualización guiada': { title: 'Meditación Guiada con Luz Suave', url: 'https://www.youtube.com/watch?v=9svic7ldL2w' },
+      'diálogo cognitivo': { title: 'Ejercicios para Calmar la Ansiedad', url: 'https://m.youtube.com/watch?v=XIoKLoCyHho' },
+      // Añadir más si es necesario
+    };
+
+    // --- Lógica de Detección Refinada --- 
+    console.log(`[${requestId}] Iniciando detección de video. Mensaje Usuario: "${message}"`);
+
+    // 1. Verificar si el USUARIO pide el video explícitamente
+    const videoRequestKeywords = [/video/i, /proporciona/i, /dame/i, /muestra/i, /link/i, /enlace/i];
+    const userRequestsVideo = videoRequestKeywords.some(rx => rx.test(message)); // 'message' es el input original del usuario
+    console.log(`[${requestId}] ¿Usuario pide video explícitamente?: ${userRequestsVideo}`);
+
+    if (userRequestsVideo) {
+      // Buscar contexto de la técnica en el mensaje ANTERIOR de María
+      const lastAiMessage = history.filter(m => m.role === 'assistant').pop();
+      if (lastAiMessage?.content) {
+        console.log(`[${requestId}] Revisando mensaje anterior de IA para contexto: "${lastAiMessage.content.substring(0, 100)}..."`);
+        const lowerLastAiContent = lastAiMessage.content.toLowerCase(); // Convertir a minúsculas una vez
+        for (const techniqueKeyword in videoKeywordsMap) {
+          // Usar includes() en lugar de regex
+          if (lowerLastAiContent.includes(techniqueKeyword.toLowerCase())) {
+            suggestedVideo = videoKeywordsMap[techniqueKeyword];
+            videoDetected = true;
+            console.log(`[${requestId}] --> Video DETECTADO por SOLICITUD del usuario sobre: ${techniqueKeyword} (en mensaje anterior)`);
+            break; // Encontrado, salir del bucle
+          }
+        }
+        if (!videoDetected) {
+          console.log(`[${requestId}] Solicitud de video detectada, pero no se encontró keyword de técnica relevante en mensaje anterior.`);
+        }
+      } else {
+        console.log(`[${requestId}] Solicitud de video detectada, pero no hay mensaje anterior de IA en el historial reciente.`);
+      }
+    }
+
+    // 2. Si no fue una solicitud explícita o no se encontró en el contexto anterior, verificar si MARÍA mencionó el video y técnica en SU respuesta actual (Fallback)
+    if (!videoDetected && aiResponse) {
+      console.log(`[${requestId}] Revisando respuesta actual de IA para fallback: "${aiResponse.substring(0,100)}..."`);
+      const mariaMentionsVideoKeywords = [/video/i, /visual/i, /guía visual/i, /proporcionarte/i];
+      const mariaMentionsVideo = mariaMentionsVideoKeywords.some(rx => rx.test(aiResponse));
+      
+      if (mariaMentionsVideo) {
+        const lowerAiResponse = aiResponse.toLowerCase(); // Convertir a minúsculas una vez
+        for (const techniqueKeyword in videoKeywordsMap) {
+          // Usar includes() en lugar de regex
+          if (lowerAiResponse.includes(techniqueKeyword.toLowerCase())) { 
+            suggestedVideo = videoKeywordsMap[techniqueKeyword];
+            console.log(`[${requestId}] --> Video DETECTADO por MENCIÓN de María sobre: ${techniqueKeyword} (en respuesta actual)`);
+            break; // Encontrado, salir del bucle
+          }
+        }
+        if (!suggestedVideo) {
+            console.log(`[${requestId}] Respuesta IA mencionó video/visual, pero no se encontró keyword de técnica asociada.`);
+        }
+      }
+    }
+    // -----------------------------------------------------------------
+
+    console.log(`[${requestId}] Valor final de suggestedVideo antes de respuesta:`, suggestedVideo);
+
+    // Devolver la respuesta de texto y opcionalmente el video sugerido
+    return NextResponse.json({ 
+      response: aiResponse, // Respuesta textual de María
+      suggestedVideo // null si no se detectó, o {title, url} si sí
+    });
 
   } catch (error: unknown) {
     // Manejo de Errores Mejorado (Aplica Sugerencia 6)

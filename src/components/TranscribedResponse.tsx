@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { Video } from 'lucide-react';
 
 interface TranscribedResponseProps {
   text: string;
@@ -7,6 +8,7 @@ interface TranscribedResponseProps {
   isHighlighted?: boolean;
   timestamp?: string;
   tags?: string[];
+  suggestedVideo?: { title: string; url: string };
 }
 
 const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
@@ -14,7 +16,8 @@ const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
   isUser,
   isHighlighted = false,
   timestamp,
-  tags = []
+  tags = [],
+  suggestedVideo
 }) => {
   // Renderizar las etiquetas con colores según categoría
   const renderTags = () => {
@@ -97,6 +100,21 @@ const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
           {!isUser && (
             <div className="mt-3 text-xs text-neutral-400 italic">
               Este asistente está especializado en ansiedad para el contexto colombiano, pero no sustituye a un profesional.
+            </div>
+          )}
+
+          {/* Botón para video sugerido */}
+          {!isUser && suggestedVideo && (
+            <div className="mt-3 pt-3 border-t border-neutral-200">
+              <a 
+                href={suggestedVideo.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-secondary-600 hover:bg-secondary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary-500 transition-colors"
+              >
+                <Video className="-ml-0.5 mr-1.5 h-4 w-4" aria-hidden="true" />
+                {suggestedVideo.title}
+              </a>
             </div>
           )}
         </div>
