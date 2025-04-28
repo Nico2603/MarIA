@@ -2,6 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Asegurar que las animaciones estén disponibles */
+.animate-fadeIn {
+  animation-name: fadeIn;
+}
+
+.animate-fadeInUp {
+  animation-name: fadeInUp;
+}
+
+/* Estilos base adicionales si son necesarios */
+html,
+body,
+:root {
+  height: 100%;
+  /* Ejemplo: Definir variables de color si se usan */
+  /* --primary-color: #3b82f6; */
+}
+
+/* Estilos para modo oscuro si se usa toggle manual */
+.dark body {
+  background-color: #1a202c; /* O el color de fondo oscuro que prefieras */
+  color: #cbd5e0; /* O el color de texto oscuro que prefieras */
+}
+
 :root {
   --primary-50: #f0f9ff;
   --primary-100: #e0f2fe;
@@ -45,12 +69,6 @@ body {
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11'; /* Mejoras tipográficas */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-.dark body {
-  /* Estilos base para modo oscuro */
-  color: var(--neutral-200); /* Texto claro */
-  background-color: var(--neutral-900); /* Fondo oscuro base */
 }
 
 @layer base {
@@ -181,5 +199,36 @@ body {
       padding-left: 0;
       padding-right: 0;
     }
+  }
+}
+
+@layer utilities {
+  @keyframes gradient-animation {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .animate-gradient {
+    /* Light mode gradient - Más vibrante */
+    background: linear-gradient(-45deg, var(--primary-400), var(--secondary-300), #ffffff, var(--primary-200), var(--secondary-400)); /* Ajustado con blanco y tonos más vivos */
+    background-size: 400% 400%;
+    animation: gradient-animation 15s ease infinite;
+  }
+
+  .dark .dark\:animate-gradient {
+    /* Dark mode gradient - Más llamativo y contrastante */
+    background: linear-gradient(-45deg, var(--primary-500), var(--secondary-500), var(--neutral-900), var(--primary-700), var(--secondary-600)); /* Ajustado con negro y tonos más intensos */
+    background-size: 400% 400%;
+    animation: gradient-animation 15s ease infinite;
+  }
+
+  /* Efecto de sombra sutil para texto */
+  .text-shadow-subtle {
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .dark .dark\:text-shadow-subtle {
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.4); /* Sombra ligeramente más oscura para modo oscuro */
   }
 } 

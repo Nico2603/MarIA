@@ -13,103 +13,118 @@ type Tip = {
 };
 
 export default function ConsejosPage() {
-  // Lista de consejos de bienestar
+  // Lista de consejos - ACTUALIZADA Y ENFOCADA EN ANSIEDAD
   const tips: Tip[] = [
     {
       id: 1,
-      title: 'Practica respiración consciente',
-      description: 'Dedica 5 minutos al día a respirar profundamente. Inhala por la nariz contando hasta 4, mantén el aire contando hasta 2, y exhala por la boca contando hasta 6.',
+      title: 'Respiración Diafragmática para Calmar',
+      description: 'Dedica 5 min/día a respirar lento y profundo desde el abdomen. Ayuda a activar la respuesta de relajación del cuerpo ante la ansiedad. Inhala (4s), Sostén (2s), Exhala (6s).',
       icon: '🧘',
-      category: 'diario',
+      category: 'ejercicios', // Más que diario, es un ejercicio específico
     },
     {
-      id: 2,
-      title: 'Limita el uso de redes sociales',
-      description: 'Establece horarios específicos para revisar tus redes sociales. El consumo excesivo puede afectar tu autoestima y aumentar la ansiedad.',
-      icon: '📱',
+      id: 5, // Mantengo ID original para animaciones
+      title: 'Técnica 5-4-3-2-1 (Anclaje Sensorial)',
+      description: 'Cuando la ansiedad abrume, nombra 5 cosas que ves, 4 que tocas, 3 que oyes, 2 que hueles, 1 que saboreas. Te trae al presente y reduce la intensidad.',
+      icon: '👀', // Ícono más descriptivo
+      category: 'crisis',
+    },
+     {
+      id: 10,
+      title: 'Enraizamiento (Grounding)',
+      description: 'Concéntrate en la sensación de tus pies en el suelo. Siente la conexión con la tierra. Ayuda a estabilizarte durante picos de ansiedad.',
+      icon: '🌱',
+      category: 'ejercicios',
+    },
+     {
+      id: 13, // Nuevo ID
+      title: 'Identifica y Cuestiona Pensamientos Ansiosos',
+      description: 'Pregúntate: ¿Este pensamiento es realista? ¿Hay otra forma de verlo? ¿Qué es lo peor que REALMENTE podría pasar? Desafiar pensamientos reduce su poder.',
+      icon: '🤔',
+      category: 'ejercicios',
+    },
+    {
+      id: 8,
+      title: 'Ejercicio Físico Regular',
+      description: 'El movimiento (caminata, baile, etc.) libera tensión y mejora el ánimo, actuando como un ansiolítico natural. Busca actividades que disfrutes.',
+      icon: '🚶‍♀️', // Más específico
       category: 'habitos',
     },
     {
-      id: 3,
-      title: 'Mantén un diario de gratitud',
-      description: 'Anota 3 cosas por las que estés agradecido/a cada día. Esto entrena tu cerebro para enfocarse en aspectos positivos de tu vida.',
-      icon: '📔',
-      category: 'diario',
-    },
-    {
-      id: 4,
-      title: 'Crea límites saludables',
-      description: 'Aprende a decir "no" a compromisos que afecten tu bienestar. Establecer límites claros en relaciones personales y laborales es esencial para tu salud mental.',
-      icon: '🛑',
-      category: 'relaciones',
-    },
-    {
-      id: 5,
-      title: 'Técnica 5-4-3-2-1 para ansiedad',
-      description: 'Nombra 5 cosas que puedes ver, 4 que puedes tocar, 3 que puedes oír, 2 que puedes oler y 1 que puedes saborear. Este ejercicio te ayuda a anclarte en el presente.',
-      icon: '😰',
-      category: 'crisis',
-    },
-    {
       id: 6,
-      title: 'Rutina de sueño consistente',
-      description: 'Intenta acostarte y levantarte a la misma hora todos los días. Un buen descanso es fundamental para regular el estado de ánimo.',
+      title: 'Prioriza el Sueño Reparador',
+      description: 'La falta de sueño dispara la ansiedad. Mantén horarios regulares y crea una rutina relajante antes de dormir (sin pantallas).',
       icon: '😴',
       category: 'habitos',
     },
     {
+      id: 12,
+      title: 'Escáner Corporal para Liberar Tensión',
+      description: 'Recorre mentalmente tu cuerpo notando dónde acumulas tensión por la ansiedad (mandíbula, hombros, estómago) y relaja conscientemente esa zona.',
+      icon: '👣',
+      category: 'ejercicios',
+    },
+    {
+      id: 3,
+      title: 'Enfócate en la Gratitud',
+      description: 'Anota diariamente 1-3 cosas por las que te sientes agradecido/a. Ayuda a contrarrestar el enfoque en preocupaciones y miedos ansiosos.',
+      icon: '📔',
+      category: 'diario',
+    },
+     {
+      id: 14, // Nuevo ID
+      title: 'Aceptación Radical (Cuando Aplique)',
+      description: 'A veces, luchar contra la ansiedad la intensifica. Practica aceptar la sensación sin juzgarla, permitiendo que fluya y disminuya naturalmente.',
+      icon: '🌊', // Ícono que sugiere fluir
+      category: 'ejercicios',
+    },
+    {
+      id: 2,
+      title: 'Modera Noticias y Redes Sociales',
+      description: 'Limita la exposición a noticias negativas o comparaciones en redes que pueden aumentar la ansiedad. Establece horarios definidos.',
+      icon: '📵', // Ícono más directo
+      category: 'habitos',
+    },
+    {
+      id: 4,
+      title: 'Comunica tus Límites',
+      description: 'Decir "no" a compromisos excesivos protege tu energía y reduce la ansiedad por sobrecarga. Comunica tus necesidades asertivamente.',
+      icon: '🗣️', // Ícono comunicación
+      category: 'relaciones',
+    },
+    {
+      id: 9,
+      title: 'Autocompasión vs. Autocrítica',
+      description: 'Sé amable contigo mismo/a cuando sientas ansiedad. Reemplaza la autocrítica ("soy débil") por frases compasivas ("estoy pasando un mal momento, es normal").',
+      icon: '💖',
+      category: 'autoestima',
+    },
+    // Se mantienen hidratación y desconexión, pero con menor énfasis
+    {
       id: 7,
-      title: 'Hidratación adecuada',
-      description: 'Beber suficiente agua tiene un impacto directo en tu nivel de energía y claridad mental. Intenta consumir al menos 2 litros diarios.',
+      title: 'Mantén una Hidratación Óptima',
+      description: 'La deshidratación puede empeorar síntomas físicos asociados a la ansiedad. Asegúrate de beber suficiente agua durante el día.',
       icon: '💧',
       category: 'habitos',
     },
     {
-      id: 8,
-      title: 'Movimiento diario',
-      description: 'Incluso 15 minutos de actividad física liberan endorfinas que mejoran tu estado de ánimo. No necesita ser intenso, un paseo es suficiente.',
-      icon: '🚶',
-      category: 'diario',
-    },
-    {
-      id: 9,
-      title: 'Afirmaciones positivas',
-      description: 'Crea frases positivas y realistas sobre ti mismo/a y repítelas diariamente. "Estoy haciendo lo mejor que puedo" o "Soy suficiente tal como soy".',
-      icon: '💚',
-      category: 'autoestima',
-    },
-    {
-      id: 10,
-      title: 'Ejercicio de enraizamiento',
-      description: 'Cuando te sientas abrumado/a, concéntrate en la sensación de tus pies tocando el suelo. Visualiza raíces extendiéndose desde tus pies hacia la tierra.',
-      icon: '🌱',
-      category: 'ejercicios',
-    },
-    {
       id: 11,
-      title: 'Desconexión digital',
-      description: 'Destina un período (al menos 1 hora) antes de dormir sin pantallas. La luz azul afecta la calidad del sueño y aumenta la actividad mental.',
+      title: 'Programa Pausas Digitales',
+      description: 'Reduce la sobreestimulación que puede aumentar la ansiedad. Desconéctate de pantallas (móvil, PC) por periodos cortos durante el día y antes de dormir.',
       icon: '🔌',
       category: 'habitos',
     },
-    {
-      id: 12,
-      title: 'Escáner corporal',
-      description: 'Recorre mentalmente tu cuerpo desde los pies hasta la cabeza, notando tensiones y liberándolas conscientemente. Ideal antes de dormir.',
-      icon: '👣',
-      category: 'ejercicios',
-    },
   ];
 
-  // Categorías de consejos
+  // Categorías de consejos (sin cambios, siguen siendo relevantes)
   const categories = [
     { id: 'todos', name: 'Todos los consejos', icon: '✨' },
+    { id: 'ejercicios', name: 'Ejercicios prácticos', icon: '🧠' }, // Reordenada para destacar
+    { id: 'habitos', name: 'Hábitos saludables', icon: '🏆' },
     { id: 'diario', name: 'Prácticas diarias', icon: '📆' },
     { id: 'crisis', name: 'Manejo de crisis', icon: '🆘' },
-    { id: 'autoestima', name: 'Autoestima', icon: '💖' },
-    { id: 'habitos', name: 'Hábitos saludables', icon: '🏆' },
-    { id: 'relaciones', name: 'Relaciones', icon: '👥' },
-    { id: 'ejercicios', name: 'Ejercicios prácticos', icon: '🧠' },
+    { id: 'autoestima', name: 'Autocompasión', icon: '💖' }, // Renombrada ligeramente
+    { id: 'relaciones', name: 'Límites y Apoyo', icon: '👥' }, // Renombrada ligeramente
   ];
 
   // Estado para filtrar por categoría
@@ -121,7 +136,7 @@ export default function ConsejosPage() {
     : tips.filter(tip => tip.category === selectedCategory);
 
   return (
-    <div className="min-h-screen bg-neutral-50 py-12 px-4">
+    <div className="min-h-screen bg-neutral-50 dark:bg-gray-900 py-12 px-4">
       <div className="container mx-auto max-w-5xl">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -129,9 +144,10 @@ export default function ConsejosPage() {
           transition={{ duration: 0.5 }}
           className="text-center mb-10"
         >
-          <h1 className="text-3xl md:text-4xl font-bold text-neutral-800 mb-3">Consejos de Bienestar</h1>
-          <p className="text-neutral-600 max-w-3xl mx-auto text-lg">
-            Pequeñas acciones que puedes incorporar en tu día a día para mejorar tu bienestar emocional y mental
+          {/* TÍTULO ACTUALIZADO */}
+          <h1 className="text-3xl md:text-4xl font-bold text-neutral-800 dark:text-white mb-3">Consejos para Manejar la Ansiedad</h1>
+          <p className="text-neutral-600 dark:text-neutral-300 max-w-3xl mx-auto text-lg">
+            Pequeñas acciones y ejercicios prácticos que puedes incorporar para reducir la ansiedad y mejorar tu bienestar.
           </p>
         </motion.div>
 
@@ -147,7 +163,7 @@ export default function ConsejosPage() {
                 className={`px-4 py-2 rounded-full font-medium text-sm md:text-base flex items-center 
                   ${selectedCategory === category.id 
                     ? 'bg-blue-600 text-white shadow-md' 
-                    : 'bg-white text-neutral-700 border border-neutral-200 hover:border-blue-300 hover:bg-blue-50'
+                    : 'bg-white dark:bg-gray-800 dark:text-neutral-300 text-neutral-700 border border-neutral-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-gray-700'
                   } transition-all duration-200`}
               >
                 <span className="mr-2">{category.icon}</span>
@@ -165,11 +181,11 @@ export default function ConsejosPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.1 * (tip.id % 10) }}
-              className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow border border-neutral-100"
+              className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow border border-neutral-100 dark:border-gray-700 flex flex-col"
             >
               <div className="text-4xl mb-4">{tip.icon}</div>
-              <h3 className="text-xl font-medium text-neutral-800 mb-3">{tip.title}</h3>
-              <p className="text-neutral-600">{tip.description}</p>
+              <h3 className="text-xl font-medium text-neutral-800 dark:text-neutral-100 mb-3">{tip.title}</h3>
+              <p className="text-neutral-600 dark:text-neutral-300 flex-grow">{tip.description}</p>
             </motion.div>
           ))}
         </div>
@@ -177,7 +193,7 @@ export default function ConsejosPage() {
         {/* Si no hay consejos para mostrar */}
         {filteredTips.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-neutral-500 text-lg">No hay consejos disponibles en esta categoría aún.</p>
+            <p className="text-neutral-500 dark:text-neutral-400 text-lg">No hay consejos disponibles en esta categoría aún.</p>
           </div>
         )}
 
@@ -186,10 +202,10 @@ export default function ConsejosPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="mt-16 bg-neutral-100 border border-neutral-200 rounded-lg p-5 text-center max-w-3xl mx-auto"
+          className="mt-16 bg-neutral-100 dark:bg-gray-800 border border-neutral-200 dark:border-gray-700 rounded-lg p-5 text-center max-w-3xl mx-auto"
         >
-          <p className="text-neutral-600">
-            <strong>Importante:</strong> Estos consejos son sugerencias generales. Cada persona es única y lo que funciona para algunos puede no funcionar para otros. Si estás experimentando dificultades significativas, considera consultar con un profesional de salud mental.
+          <p className="text-neutral-600 dark:text-neutral-300">
+            <strong>Importante:</strong> Estos consejos son sugerencias generales para el manejo de la <strong>ansiedad</strong>. Cada persona es única. Si experimentas ansiedad significativa, considera consultar con un profesional.
           </p>
         </motion.div>
 
@@ -198,11 +214,11 @@ export default function ConsejosPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
-          className="mt-10 bg-blue-50 border border-blue-100 rounded-xl p-6 text-center max-w-3xl mx-auto"
+          className="mt-10 bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 rounded-xl p-6 text-center max-w-3xl mx-auto"
         >
-          <h2 className="text-xl font-semibold text-blue-800 mb-2">¿Tienes un consejo que te ha ayudado?</h2>
-          <p className="text-blue-700 mb-4">
-            Nos encantaría conocerlo y posiblemente incluirlo en nuestra colección para ayudar a otros.
+          <h2 className="text-xl font-semibold text-blue-800 dark:text-blue-300 mb-2">¿Tienes un consejo para la ansiedad que te ha ayudado?</h2>
+          <p className="text-blue-700 dark:text-blue-400 mb-4">
+            Nos encantaría conocerlo y posiblemente incluirlo para ayudar a otros.
           </p>
           <a 
             href="/contacto" 

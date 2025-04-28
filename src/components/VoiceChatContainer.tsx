@@ -40,6 +40,27 @@ interface Message {
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 type AppError = { type: 'livekit' | 'openai' | 'stt' | 'tts' | null; message: string | null };
 
+// Nuevo componente para mostrar errores
+const ErrorDisplay: React.FC<{ error: AppError; onClose: () => void }> = ({ error, onClose }) => {
+  if (!error.message) return null;
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 10 }}
+      className="fixed bottom-4 right-4 z-50 bg-red-100 border border-red-300 text-red-800 px-4 py-3 rounded-lg shadow-md flex items-center max-w-sm dark:bg-red-900/80 dark:text-red-200 dark:border-red-700"
+    >
+      <AlertCircle className="w-5 h-5 mr-3 flex-shrink-0" />
+      <span className="text-sm mr-3">{error.message}</span>
+      <button onClick={onClose} className="ml-auto p-1 rounded-full hover:bg-red-200 dark:hover:bg-red-800 transition-colors">
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </motion.div>
+  );
+};
+
 const VoiceChatContainer: React.FC = () => {
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false); // Para llamadas a OpenAI
@@ -776,11 +797,13 @@ const VoiceChatContainer: React.FC = () => {
   // << MODIFICADO: useEffect para scroll automático DENTRO del contenedor de chat >>
   useEffect(() => {
     if (chatContainerRef.current) {
-      // Establecer scrollTop a la altura total del scroll para ir al fondo
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      const { scrollHeight, clientHeight, scrollTop } = chatContainerRef.current;
+      // Solo hacer scroll si el usuario está cerca del fondo (ej. a 100px)
+      if (scrollHeight - scrollTop <= clientHeight + 150) { 
+        chatContainerRef.current.scrollTo({ top: scrollHeight, behavior: 'smooth' });
+      }
     }
-    // Ya no usamos chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isThinking]); // << MODIFICADO: Añadir isThinking como dependencia >>
+  }, [messages, pendingAiMessage]); // Se activa con nuevos mensajes o mensaje pendiente
 
   // << NUEVO: Función para alternar visibilidad del chat >>
   const toggleChatVisibility = () => {
@@ -1021,6 +1044,11 @@ const VoiceChatContainer: React.FC = () => {
              </div>
           </div>
       )}
+
+      {/* Display de Error - NUEVO */}
+      <AnimatePresence>
+         <ErrorDisplay error={appError} onClose={clearError} />
+      </AnimatePresence>
 
     </div>
   );

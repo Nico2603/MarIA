@@ -4,7 +4,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useTheme } from '@/components/ThemeProvider';
-import { MapPin, Phone, Mail, Search, Users, CheckCircle, Globe, BookOpen } from 'lucide-react';
+import { MapPin, Phone, Search, Users, CheckCircle, Globe, BookOpen, ArrowRight, ExternalLink } from 'lucide-react';
 
 const ProfesionalesPage = () => {
   const { theme } = useTheme();
@@ -20,39 +20,45 @@ const ProfesionalesPage = () => {
   const searchResources = [
     {
       name: 'Colegio Colombiano de Psicólogos (COLPSIC)',
-      description: 'Directorio oficial de psicólogos registrados en Colombia. Puedes buscar por especialidad y ubicación.',
+      description: 'Directorio oficial. Busca por especialidad y ubicación.',
       icon: BookOpen,
-      link: 'https://www.colpsic.org.co/' // Example link, update with actual if known
-  },
-  {
+      link: 'https://www.colpsic.org.co/',
+      cta: 'Buscar en COLPSIC'
+    },
+    {
       name: 'Tu Entidad Promotora de Salud (EPS)',
-      description: 'Consulta el directorio de profesionales y centros de atención en salud mental afiliados a tu EPS.',
+      description: 'Consulta el directorio de profesionales de tu EPS.',
       icon: CheckCircle,
-      link: '#' // Placeholder - Users need to check their specific EPS
-  },
-  {
-        name: 'Secretarías de Salud Departamentales/Municipales',
-        description: 'Pueden ofrecer información sobre servicios de salud mental públicos o de bajo costo en tu área.',
-        icon: MapPin,
-        link: '#' // Placeholder - Varies by location
+      link: '#',
+      cta: 'Consulta tu EPS (Requiere acceso propio)'
     },
     {
-        name: 'Directorios Online Especializados',
-        description: 'Existen plataformas online que conectan pacientes con psicólogos en Colombia (investiga opciones como Doctoralia, Terapify, etc.).',
-        icon: Search,
-        link: '#' // Placeholder - Users should search for specific directories
+      name: 'Directorios Online Especializados',
+      description: 'Plataformas como Doctoralia, Terapify, etc., conectan pacientes y psicólogos.',
+      icon: Search,
+      link: '#',
+      cta: 'Buscar Directorios Online'
     },
     {
-        name: 'Universidades con Facultades de Psicología',
-        description: 'Algunas universidades ofrecen servicios de atención psicológica a la comunidad a través de sus centros de práctica.',
+      name: 'Secretarías de Salud Locales',
+      description: 'Infórmate sobre servicios públicos o de bajo costo en tu municipio/departamento.',
+      icon: MapPin,
+      link: '#',
+      cta: 'Consultar Secretaría Local (Varía)'
+    },
+    {
+        name: 'Universidades (Centros de Práctica)',
+        description: 'Algunas facultades de psicología ofrecen atención comunitaria.',
         icon: Globe,
-        link: '#' // Placeholder - Varies by university
+        link: '#',
+        cta: 'Investigar Universidades Locales'
     },
-     {
-        name: 'Líneas de Atención Telefónica',
-        description: 'Líneas como la 106 pueden ofrecer orientación inicial y referir a servicios profesionales si es necesario.',
+    {
+        name: 'Líneas de Atención (Orientación)',
+        description: 'Líneas como la 106 pueden orientar y referir a servicios.',
         icon: Phone,
-        link: '#' // Placeholder - Mentioned elsewhere but relevant
+        link: '#',
+        cta: 'Llamar a Líneas de Orientación'
     }
   ];
 
@@ -74,91 +80,106 @@ const ProfesionalesPage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <h1 className="text-3xl md:text-4xl font-bold mb-8 text-blue-600">Encontrar Ayuda Profesional en Colombia</h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-4 text-blue-600">Encontrar Ayuda Profesional para la Ansiedad</h1>
           
-          <p className={`mb-8 p-4 rounded-md ${theme === 'dark' ? 'bg-gray-800' : 'bg-blue-50'} text-base`}>
-            Buscar ayuda profesional es un paso valiente y fundamental hacia el bienestar mental. En Colombia, existen diversos recursos y profesionales capacitados para apoyarte. Esta guía te ofrece información general para iniciar tu búsqueda.
+          <p className={`mb-10 ${theme === 'dark' ? 'text-gray-300' : 'text-neutral-600'} text-lg max-w-3xl`}>
+            Buscar apoyo profesional es un paso importante. Aquí encontrarás recursos y consejos para encontrar psicólogos, psiquiatras u otros profesionales de salud mental en Colombia enfocados en ansiedad.
           </p>
 
-          {/* Tipos de Profesionales */}
-          <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
-            <h2 className="text-2xl font-semibold mb-4">Tipos de Profesionales de Salud Mental</h2>
-            <p className="mb-6">
-              Existen diferentes tipos de profesionales que pueden ayudarte, cada uno con su formación y enfoque:
+          {/* Dónde Buscar - Rediseñado con Tarjetas */}
+          <div className={`rounded-lg p-6 md:p-8 mb-10 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+            <h2 className="text-2xl font-semibold mb-6 flex items-center">
+              <Search className="w-6 h-6 mr-3 text-blue-500"/>
+              Recursos para Encontrar Profesionales
+            </h2>
+            <p className={`mb-8 ${theme === 'dark' ? 'text-gray-300' : 'text-neutral-600'}`}>
+              Utiliza estas herramientas y directorios para iniciar tu búsqueda. Recuerda filtrar por **ubicación (ciudad/departamento)** y **especialidad (ansiedad)** siempre que sea posible:
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {professionalCategories.map((category, index) => (
-                <div key={index} className={`flex items-start p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                  <category.icon className="w-8 h-8 mr-4 text-blue-500 flex-shrink-0 mt-1" />
-              <div>
-                    <h3 className="text-lg font-medium mb-1">{category.name}</h3>
-                    <p className="text-sm">{category.description}</p>
-              </div>
-            </div>
-              ))}
-            </div>
-             <p className="text-sm italic mt-4">Es importante verificar que el profesional esté debidamente registrado y habilitado para ejercer en Colombia.</p>
-                          </div>
-                          
-          {/* Dónde Buscar */}
-          <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
-            <h2 className="text-2xl font-semibold mb-4">Recursos para Encontrar Profesionales</h2>
-            <p className="mb-6">
-              Aquí te presentamos algunas opciones para buscar profesionales de salud mental en Colombia:
-            </p>
-            <div className="space-y-4">
               {searchResources.map((resource, index) => (
-                <div key={index} className={`flex items-start p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                  <resource.icon className="w-6 h-6 mr-4 text-blue-500 flex-shrink-0 mt-1" />
-                        <div>
-                    <h3 className="text-lg font-medium mb-1">
-                      {resource.link && resource.link !== '#' ? (
-                        <a href={resource.link} target="_blank" rel="noopener noreferrer" className="hover:underline hover:text-blue-400">
-                          {resource.name}
-                        </a>
-                      ) : (
-                        resource.name
-                      )}
-                    </h3>
-                    <p className="text-sm">{resource.description}</p>
+                <motion.div 
+                  key={index}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                  className={`flex flex-col justify-between p-5 rounded-lg ${theme === 'dark' ? 'bg-gray-700/50 hover:bg-gray-700' : 'bg-gray-100 hover:bg-gray-200/70'} transition-all border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`}
+                  >
+                  <div>
+                    <div className="flex items-center mb-3">
+                        <resource.icon className="w-5 h-5 mr-3 text-blue-500 flex-shrink-0" />
+                        <h3 className="text-lg font-medium">{resource.name}</h3>
+                    </div>
+                    <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-gray-300' : 'text-neutral-600'}`}>{resource.description}</p>
                   </div>
-                </div>
+                  <div>
+                    {resource.link && resource.link !== '#' ? (
+                      <a 
+                        href={resource.link} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="inline-flex items-center text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        {resource.cta}
+                        <ExternalLink className="w-3 h-3 ml-1.5"/>
+                      </a>
+                    ) : (
+                       <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-neutral-500'} flex items-center`}>
+                        {resource.cta}
+                        {/* Podríamos añadir un icono de info si es un placeholder */}
+                      </span>
+                    )}
+                  </div>
+                </motion.div>
               ))}
             </div>
           </div>
           
+          {/* Tipos de Profesionales - Estilo más compacto */}
+          <div className={`rounded-lg p-6 md:p-8 mb-10 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+            <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                <Users className="w-6 h-6 mr-3 text-blue-500"/>
+                Tipos de Profesionales
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+              {professionalCategories.map((category, index) => (
+                <div key={index} className="flex items-start">
+                  <div>
+                    <h3 className="text-md font-medium mb-0.5">{category.name}</h3>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-neutral-600'}`}>{category.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className={`text-sm italic mt-5 ${theme === 'dark' ? 'text-gray-400' : 'text-neutral-500'}`}>Verifica siempre que el profesional esté registrado y habilitado en Colombia.</p>
+          </div>
+          
           {/* Consideraciones al Elegir */}
-          <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
-            <h2 className="text-2xl font-semibold mb-4">Consejos para Elegir un Profesional</h2>
-            <p className="mb-4">
-                Elegir al profesional adecuado es una decisión personal. Aquí algunos puntos a considerar:
-            </p>
+          <div className={`rounded-lg p-6 md:p-8 mb-10 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'}`}>
+            <h2 className="text-2xl font-semibold mb-6">Consejos para Elegir</h2>
             <ul className="space-y-3 list-disc pl-5">
               {tipsForChoosing.map((tip, index) => (
-                <li key={index}>{tip}</li>
+                <li key={index} className={`${theme === 'dark' ? 'text-gray-300' : 'text-neutral-700'}`}>{tip}</li>
               ))}
             </ul>
           </div>
           
           {/* Aviso Importante */}
-          <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-yellow-900' : 'bg-yellow-100'} border-l-4 ${theme === 'dark' ? 'border-yellow-500' : 'border-yellow-400'} text-${theme === 'dark' ? 'yellow-200' : 'yellow-800'}`}>
+          <div className={`rounded-lg p-6 mb-8 ${theme === 'dark' ? 'bg-yellow-900/70' : 'bg-yellow-50'} border-l-4 ${theme === 'dark' ? 'border-yellow-500' : 'border-yellow-400'} text-${theme === 'dark' ? 'yellow-200' : 'yellow-800'}`}>
             <h2 className="text-xl font-semibold mb-3 flex items-center">
               <Phone className="w-5 h-5 mr-2"/>
               En Caso de Crisis
             </h2>
             <p>
               Si tú o alguien que conoces está experimentando una crisis de salud mental o tiene pensamientos de hacerse daño, busca ayuda inmediata. Llama a la línea de emergencia nacional <strong>123</strong> o a la línea de salud mental <strong>106</strong>.
-                </p>
+            </p>
             <div className="mt-4">
-                <Link 
-                    href="/recursos/crisis" 
-                    className={`inline-flex items-center px-3 py-1 rounded-md text-sm ${theme === 'dark' ? 'bg-yellow-700 hover:bg-yellow-600' : 'bg-yellow-500 hover:bg-yellow-600'} text-white transition-colors duration-200`}
-                    >
-                    Información sobre Manejo de Crisis
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                </Link>
+              <Link
+                href="/recursos/crisis"
+                className={`inline-flex items-center px-3 py-1 rounded-md text-sm ${theme === 'dark' ? 'bg-yellow-700 hover:bg-yellow-600' : 'bg-yellow-500 hover:bg-yellow-600'} text-white transition-colors duration-200`}
+              >
+                Información sobre Manejo de Crisis
+                <ArrowRight className="w-4 h-4 ml-1.5"/>
+              </Link>
             </div>
           </div>
           
