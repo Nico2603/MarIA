@@ -61,3 +61,6 @@ $RECYCLE.BIN/
 *.njsproj
 *.sln
 *.sw?
+
+# Cursor rules
+.cursor/rules/

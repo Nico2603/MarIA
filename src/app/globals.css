@@ -22,8 +22,8 @@ body,
 
 /* Estilos para modo oscuro si se usa toggle manual */
 .dark body {
-  background-color: #1a202c; /* O el color de fondo oscuro que prefieras */
-  color: #cbd5e0; /* O el color de texto oscuro que prefieras */
+  background-color: var(--neutral-900, #111827);
+  color: var(--neutral-200, #e5e7eb);
 }
 
 :root {
@@ -49,24 +49,59 @@ body,
   --secondary-800: #065f46;
   --secondary-900: #064e3b;
   
-  --neutral-50: #f9fafb;
-  --neutral-100: #f3f4f6;
-  --neutral-200: #e5e7eb;
-  --neutral-300: #d1d5db;
-  --neutral-400: #9ca3af;
-  --neutral-500: #6b7280;
-  --neutral-600: #4b5563;
-  --neutral-700: #374151;
-  --neutral-800: #1f2937;
-  --neutral-900: #111827;
+  --accent-100: #fef3c7;
+  --accent-300: #fcd34d;
+  --accent-400: #fbbf24;
+  --accent-600: #d97706;
+  --accent-900: #78350f;
+  
+  --pink-100: #fce7f3;
+  --pink-300: #f9a8d4;
+  --pink-500: #ec4899;
+  --pink-600: #db2777;
+  
+  --neutral-50: #f8fafc;
+  --neutral-100: #f1f5f9;
+  --neutral-200: #e2e8f0;
+  --neutral-300: #cbd5e1;
+  --neutral-400: #94a3b8;
+  --neutral-500: #64748b;
+  --neutral-600: #475569;
+  --neutral-700: #334155;
+  --neutral-800: #1e293b;
+  --neutral-900: #0f172a;
+  
+  --radius: 0.75rem;
+  --border: var(--neutral-200);
+  .dark { --border: var(--neutral-700); }
+
+  /* Variables semánticas básicas (usadas por componentes UI como Card) */
+  --background: var(--neutral-50);
+  --foreground: var(--neutral-800);
+  --card: var(--neutral-50); /* Fondo de tarjeta claro */
+  --card-foreground: var(--neutral-800);
+  --popover: var(--neutral-50);
+  --popover-foreground: var(--neutral-800);
+  --primary: var(--primary-600);
+  --primary-foreground: var(--neutral-50);
+  --secondary: var(--secondary-600);
+  --secondary-foreground: var(--neutral-50);
+  --muted: var(--neutral-200);
+  --muted-foreground: var(--neutral-500);
+  --accent: var(--accent-400);
+  --accent-foreground: var(--neutral-800);
+  --destructive: #ef4444; /* Rojo para destructivo */
+  --destructive-foreground: var(--neutral-50);
+  --input: var(--neutral-300);
+  --ring: var(--primary-500);
 }
 
 body {
-  /* Estilos base para modo claro */
-  color: var(--neutral-800);
-  background-color: var(--neutral-50); /* Fondo claro base */
+  /* Usar variables semánticas directamente */
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
   min-height: 100vh;
-  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11'; /* Mejoras tipográficas */
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -78,6 +113,11 @@ body {
   
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  }
+
+  * {
+     /* Aplicar borde usando la variable CSS (si es necesario por los componentes) */
+     /* border-color: hsl(var(--border)); */
   }
 }
 
@@ -99,11 +139,23 @@ body {
   }
   
   .btn-outline {
-    @apply bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-50 focus:ring-primary-500;
+    @apply bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-50 focus:ring-primary-500 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-700;
   }
   
   .shadow-soft {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  }
+  
+  .dark .shadow-soft {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  }
+  
+  .shadow-soft-lg {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  }
+  
+  .dark .shadow-soft-lg {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
   }
   
   .chat-bubble {
@@ -200,6 +252,62 @@ body {
       padding-right: 0;
     }
   }
+  
+  /* Clases personalizadas SIN @apply - Prueba con HSL directos */
+  .gradient-text {
+    /* Valores HSL aproximados de tus variables --primary y --secondary (modo claro) */
+    background-image: linear-gradient(to right, hsl(207, 100%, 40%), hsl(168, 76%, 33%));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .glass-effect {
+    /* Usar directamente propiedades CSS con variables y opacidad */
+    background-color: hsla(var(--background) / 0.60); /* hsla para opacidad */
+    backdrop-filter: blur(12px); /* Ajustar blur si es necesario */
+    border: 1px solid hsla(var(--border) / 0.30);
+    box-shadow: theme('boxShadow.lg'); /* Usar sombra de Tailwind */
+  }
+
+  .button-shine {
+    /* Valores HSL aproximados (modo claro) */
+    background: linear-gradient(90deg, hsl(207, 100%, 40%), hsl(168, 76%, 33%), hsl(207, 100%, 40%));
+    background-size: 200% 100%;
+    animation: background-shine 3s linear infinite;
+    color: hsl(210, 17%, 98%); /* Color foreground directo (modo claro) */
+    transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px hsla(var(--primary) / 0.4);
+    }
+  }
+
+  .animated-gradient-bg {
+    background: linear-gradient(-45deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--accent)), hsl(var(--pink-500)), hsl(var(--primary)));
+    background-size: 400% 400%;
+    animation: gradientMove 15s ease infinite;
+  }
+
+  .card-hover {
+     /* Ajustar transición y efecto hover */
+     @apply transition-all duration-300 ease-in-out hover:scale-[1.04] hover:shadow-xl dark:hover:shadow-primary/20;
+  }
+
+  /* NUEVO: Fondo de Olas Animadas */
+  .animated-waves-bg {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%230ea5e9' fill-opacity='0.15' d='M0,192L48,176C96,160,192,128,288,133.3C384,139,480,181,576,186.7C672,192,768,160,864,144C960,128,1056,128,1152,144C1248,160,1344,192,1392,208L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3Cpath fill='%2310b981' fill-opacity='0.1' d='M0,224L48,208C96,192,192,160,288,170.7C384,181,480,235,576,250.7C672,267,768,245,864,213.3C960,181,1056,139,1152,133.3C1248,128,1344,160,1392,176L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: repeat-x;
+    background-position: 0 bottom;
+    background-size: auto 150px; /* Ajustar altura de las olas */
+    animation: wave-animation 25s linear infinite;
+  }
+  
+  .dark .animated-waves-bg {
+     /* Versión oscura con colores diferentes si se desea, o ajustar opacidad */
+     /* Ejemplo: Cambiar fill='%23...' en la URL del SVG */
+     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%23075985' fill-opacity='0.2' d='M0,192L48,176C96,160,192,128,288,133.3C384,139,480,181,576,186.7C672,192,768,160,864,144C960,128,1056,128,1152,144C1248,160,1344,192,1392,208L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3Cpath fill='%23065f46' fill-opacity='0.15' d='M0,224L48,208C96,192,192,160,288,170.7C384,181,480,235,576,250.7C672,267,768,245,864,213.3C960,181,1056,139,1152,133.3C1248,128,1344,160,1392,176L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E");
+  }
 }
 
 @layer utilities {
@@ -217,10 +325,11 @@ body {
   }
 
   .dark .dark\:animate-gradient {
-    /* Dark mode gradient - Más llamativo y contrastante */
-    background: linear-gradient(-45deg, var(--primary-500), var(--secondary-500), var(--neutral-900), var(--primary-700), var(--secondary-600)); /* Ajustado con negro y tonos más intensos */
+    /* Dark mode gradient - Ajustado para ser más azul/verde claro y menos gris */
+    /* Quitar neutral-900, usar tonos 500/600 de primary/secondary */
+    background: linear-gradient(-45deg, hsl(var(--primary-500)), hsl(var(--secondary-500)), hsl(var(--primary-600)), hsl(var(--secondary-600)), hsl(var(--primary-500))); 
     background-size: 400% 400%;
-    animation: gradient-animation 15s ease infinite;
+    animation: gradient-animation 15s ease infinite; /* Reusar animación existente */
   }
 
   /* Efecto de sombra sutil para texto */
@@ -230,5 +339,75 @@ body {
 
   .dark .dark\:text-shadow-subtle {
     text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.4); /* Sombra ligeramente más oscura para modo oscuro */
+  }
+
+  /* Añadir animación float y pulse-soft si se quieren usar */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  .animate-pulse-soft {
+    animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Asegurar que las animaciones estén disponibles como utilidades */
+  .animate-accordion-down {
+    animation: accordion-down 0.2s ease-out;
+  }
+  .animate-accordion-up {
+    animation: accordion-up 0.2s ease-out;
+  }
+  .animate-fade-in-up {
+    animation: fade-in-up 0.5s ease-out;
+  }
+  .animate-fade-in {
+    animation: fade-in 0.5s ease-out;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; } to { opacity: 1; }
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); }
+}
+@keyframes gradientMove {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes background-shine {
+  from { background-position: 0% center; }
+  to { background-position: -200% center; }
+}
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+@keyframes pulse-soft {
+  0% { opacity: 0.5; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0.5; transform: scale(0.95); }
+}
+@keyframes accordion-down {
+  from { height: 0; } to { height: var(--radix-accordion-content-height); }
+}
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); } to { height: 0; }
+}
+@keyframes audio-wave {
+  0%, 100% {
+    height: 3px;
+  }
+  50% {
+    height: 15px;
+  }
+}
+@keyframes wave-animation {
+  0% {
+    background-position: 0 bottom;
+  }
+  100% {
+     background-position: 1440px bottom; /* Mover una longitud de onda */
   }
 } 
