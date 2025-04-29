@@ -22,17 +22,14 @@ export function useTheme() {
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>('light');
 
-  // Inicializar el tema desde localStorage al montar el componente
+  // Inicializar el tema a 'light' y aplicar la clase correspondiente al montar
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as Theme;
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.classList.toggle('dark', savedTheme === 'dark');
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setTheme('dark');
-      document.documentElement.classList.add('dark');
-    }
-  }, []);
+    // Forzar el tema 'light' inicialmente
+    document.documentElement.classList.remove('dark'); 
+    // Limpiar cualquier posible tema guardado previamente si existe,
+    // para asegurar que el default 'light' prevalezca en la primera carga.
+    localStorage.removeItem('theme'); 
+  }, []); // Ejecutar solo una vez al montar
 
   // Función para alternar entre temas
   const toggleTheme = () => {

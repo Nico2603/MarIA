@@ -104,6 +104,13 @@ const VoiceChatContainer: React.FC = () => {
   // << NUEVO: Ref para el textarea para comprobar el foco >>
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   
+  // << NUEVO: Efecto para hacer scroll automático en el chat >>
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [messages, isThinking]); // Se activa cuando cambian los mensajes o el estado de "pensando"
+  
   // Función para limpiar errores
   const clearError = () => setAppError({ type: null, message: null });
   
@@ -747,12 +754,12 @@ const VoiceChatContainer: React.FC = () => {
         return; 
       }
 
-      // << MOVER preventDefault() aquí >>
-      // Si la tecla es Espacio y NO estamos en el textarea, SIEMPRE prevenir scroll
+      // << MOVIDO: Prevenir scroll SIEMPRE si no estamos en el textarea >>
       event.preventDefault(); 
 
       // Ahora, comprobar si podemos iniciar la escucha
-      if (!isListening && !isProcessing && !isSpeaking) {
+      // << MODIFICADO: Añadir chequeo de !isThinking >>
+      if (!isListening && !isProcessing && !isSpeaking && conversationActive && !isThinking) {
         console.log("Push-to-Talk (Espacio) presionado - Iniciando escucha...");
         setIsPushToTalkActive(true); // Marcar que fue iniciado por PTT
         handleStartListening();
@@ -899,7 +906,10 @@ const VoiceChatContainer: React.FC = () => {
               className="w-full md:w-1/3 flex flex-col h-full bg-neutral-100 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-700"
             >
               {/* << MODIFICADO: Añadir ref al contenedor scrollable >> */}
-              <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div 
+                ref={chatContainerRef}
+                className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 scroll-smooth bg-white dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 relative"
+              >
                 {messages.length === 0 ? (
                     <motion.div 
                     initial={{ opacity: 0, y: 20 }}
@@ -944,19 +954,19 @@ const VoiceChatContainer: React.FC = () => {
                         handleSendTextMessage(e as unknown as FormEvent);
                         }
                     }}
-                    disabled={isListening || isProcessing || isSpeaking || isSessionClosed} // << Añadido isSessionClosed
+                    disabled={isListening || isProcessing || isSpeaking || isSessionClosed || isThinking} // << Added isThinking
                     />
                     {/* Botón Micrófono */}
                     <button 
                     type="button"
                     onClick={isListening ? handleStopListening : handleStartListening} 
-                    disabled={isProcessing || isSpeaking || isSessionClosed} // << Añadido isSessionClosed
+                    disabled={isProcessing || isSpeaking || isSessionClosed || isThinking} // << Added isThinking
                     className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 ${ 
                         isListening 
                         ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-400' 
                         : 'bg-primary-600 hover:bg-primary-700 text-white focus:ring-primary-500'
                     } ${(isPushToTalkActive) ? 'ring-4 ring-offset-0 ring-green-400' : '' } 
-                        ${(isProcessing || isSpeaking || isSessionClosed) ? 'opacity-50 cursor-not-allowed' : ''}`} // << Añadido isSessionClosed
+                        ${(isProcessing || isSpeaking || isSessionClosed || isThinking) ? 'opacity-50 cursor-not-allowed' : ''}`} // << Added isThinking
                     aria-label={isListening ? "Detener micrófono" : "Activar micrófono"}
                     >
                     <Mic className="h-5 w-5" />
@@ -964,7 +974,7 @@ const VoiceChatContainer: React.FC = () => {
                     {/* Botón Enviar */}
                     <button
                     type="submit"
-                    disabled={!textInput.trim() || isListening || isProcessing || isSpeaking || isSessionClosed} // << Añadido isSessionClosed
+                    disabled={!textInput.trim() || isListening || isProcessing || isSpeaking || isSessionClosed || isThinking} // << Added isThinking
                     className="w-10 h-10 rounded-full flex items-center justify-center bg-primary-600 text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
                     aria-label="Enviar mensaje"
                     >
