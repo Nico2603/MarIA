@@ -1,0 +1,50 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+  generator client {
+    provider = "prisma-client-js"
+  }
+
+// Modelo para los Usuarios autenticados
+model User {
+  id            String    @id @default(uuid()) // ID único del usuario (UUID)
+  email         String    @unique // Email único del usuario (probablemente de Google)
+  createdAt     DateTime  @default(now()) // Fecha de creación del usuario
+  updatedAt     DateTime  @updatedAt // Fecha de última actualización
+  profile       Profile? // Relación uno a uno con el perfil
+  sessions      Session[] // Relación uno a muchos con las sesiones
+}
+
+// Modelo para los Perfiles de Usuario
+model Profile {
+  id           String  @id @default(uuid()) // ID único del perfil
+  userId       String  @unique // Clave foránea que referencia al User
+  username     String? // Nombre de usuario (opcional, puede elegirlo)
+  avatarUrl    String? // URL de la foto de perfil (opcional)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade) // Relación inversa con User
+}
+
+// Modelo para las Sesiones de Conversación
+model Session {
+  id          String    @id @default(uuid()) // ID único de la sesión
+  userId      String // Clave foránea que referencia al User
+  createdAt   DateTime  @default(now()) // Inicio de la sesión
+  endedAt     DateTime? // Fin de la sesión (puede ser null si está activa)
+  summary     String?   // Resumen generado por la IA al final de la sesión
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade) // Relación con User
+  messages    Message[] // Relación uno a muchos con los mensajes
+}
+
+// Modelo para los Mensajes dentro de una Sesión
+model Message {
+  id          String   @id @default(uuid()) // ID único del mensaje
+  sessionId   String // Clave foránea que referencia a la Session
+  sender      String   // Quién envió el mensaje ('user' o 'ai')
+  content     String   // Contenido del mensaje
+  timestamp   DateTime @default(now()) // Fecha y hora del mensaje
+  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade) // Relación con Session
+} 
