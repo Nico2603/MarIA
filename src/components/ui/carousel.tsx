@@ -13,13 +13,13 @@ import { Button } from "@/components/ui/button"
 type CarouselApi = UseEmblaCarouselType[1]
 type UseCarouselParameters = Parameters<typeof useEmblaCarousel>
 type CarouselOptions = UseCarouselParameters[0]
-type CarouselPlugin = UseCarouselParameters[1]
+type CarouselPluginsInput = UseCarouselParameters[1]
 
 type AutoplayOptions = Parameters<typeof Autoplay>[0]
 
 type CarouselProps = {
   opts?: CarouselOptions
-  plugins?: CarouselPlugin[]
+  plugins?: CarouselPluginsInput
   autoplayOptions?: AutoplayOptions
   orientation?: "horizontal" | "vertical"
   setApi?: (api: CarouselApi) => void
