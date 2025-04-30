@@ -63,7 +63,7 @@ const Carousel = React.forwardRef<
     },
     ref
   ) => {
-    const finalPlugins = [...plugins];
+    const finalPlugins = plugins ? [...plugins] : [];
     if (autoplayOptions) {
       finalPlugins.push(Autoplay(autoplayOptions));
     }
