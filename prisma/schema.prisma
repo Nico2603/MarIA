@@ -3,48 +3,104 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-  generator client {
-    provider = "prisma-client-js"
-  }
-
-// Modelo para los Usuarios autenticados
-model User {
-  id            String    @id @default(uuid()) // ID único del usuario (UUID)
-  email         String    @unique // Email único del usuario (probablemente de Google)
-  createdAt     DateTime  @default(now()) // Fecha de creación del usuario
-  updatedAt     DateTime  @updatedAt // Fecha de última actualización
-  profile       Profile? // Relación uno a uno con el perfil
-  sessions      Session[] // Relación uno a muchos con las sesiones
+generator client {
+  provider        = "prisma-client-js"
+  // output          = "../node_modules/.prisma/client" // Opcional: especificar output explícitamente
+  // previewFeatures = ["referentialIntegrity"] // Añadir si usas versiones antiguas o necesitas esta feature
 }
 
-// Modelo para los Perfiles de Usuario
+// --- Modelos Requeridos por NextAuth Prisma Adapter --- 
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+// Modelo Session LIMPIO para NextAuth adapter
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // QUITAR CAMPOS ESPECIFICOS DE CHAT: createdAt, endedAt, summary, messages
+}
+
+// Modelo User existente, verificar campos requeridos por adapter y añadir relación a ChatSession
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique // Hacer email opcional si el adapter lo maneja así
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]     // <<< Relación a Session de NextAuth
+  chatSessions  ChatSession[] // <<< NUEVA Relación a ChatSession de nuestra app
+  
+  // Campos específicos de tu aplicación (mantener)
+  createdAt     DateTime  @default(now()) // Ya existía
+  updatedAt     DateTime  @updatedAt     // Ya existía
+  profile       Profile?              // Ya existía
+
+  // Mantener índices si existían o añadir si son necesarios
+  @@index([email]) // Ejemplo si se busca frecuentemente por email
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// --- Modelos Específicos de tu Aplicación (Mantener y Modificar) ---
+
+// NUEVO Modelo para Sesiones de Chat
+model ChatSession {
+  id        String    @id @default(cuid())
+  userId    String
+  createdAt DateTime  @default(now())
+  endedAt   DateTime?
+  summary   String?   @db.Text // Usar Text para resúmenes largos
+  messages  Message[] // Relación a los mensajes de esta sesión
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId]) // Índice para buscar sesiones por usuario
+}
+
 model Profile {
-  id           String  @id @default(uuid()) // ID único del perfil
-  userId       String  @unique // Clave foránea que referencia al User
-  username     String? // Nombre de usuario (opcional, puede elegirlo)
-  avatarUrl    String? // URL de la foto de perfil (opcional)
+  id           String  @id @default(uuid()) 
+  userId       String  @unique 
+  username     String? 
+  avatarUrl    String? 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade) // Relación inversa con User
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// Modelo para las Sesiones de Conversación
-model Session {
-  id          String    @id @default(uuid()) // ID único de la sesión
-  userId      String // Clave foránea que referencia al User
-  createdAt   DateTime  @default(now()) // Inicio de la sesión
-  endedAt     DateTime? // Fin de la sesión (puede ser null si está activa)
-  summary     String?   // Resumen generado por la IA al final de la sesión
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade) // Relación con User
-  messages    Message[] // Relación uno a muchos con los mensajes
-}
-
-// Modelo para los Mensajes dentro de una Sesión
+// Modelo Message MODIFICADO para relacionarse con ChatSession
 model Message {
-  id          String   @id @default(uuid()) // ID único del mensaje
-  sessionId   String // Clave foránea que referencia a la Session
-  sender      String   // Quién envió el mensaje ('user' o 'ai')
-  content     String   // Contenido del mensaje
-  timestamp   DateTime @default(now()) // Fecha y hora del mensaje
-  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade) // Relación con Session
+  id            String      @id @default(uuid()) 
+  chatSessionId String      // <<< CAMBIADO de sessionId
+  sender        String      // 'user' o 'ai'
+  content       String      @db.Text 
+  timestamp     DateTime    @default(now())
+  chatSession   ChatSession @relation(fields: [chatSessionId], references: [id], onDelete: Cascade) // <<< CAMBIADO a ChatSession
+
+  @@index([chatSessionId]) // Índice para buscar mensajes por sesión
 } 

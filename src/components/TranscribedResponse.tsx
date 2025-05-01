@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Video } from 'lucide-react';
+import Image from 'next/image';
 
 interface TranscribedResponseProps {
   text: string;
@@ -9,6 +10,7 @@ interface TranscribedResponseProps {
   timestamp?: string;
   tags?: string[];
   suggestedVideo?: { title: string; url: string };
+  avatarUrl?: string;
 }
 
 const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
@@ -17,7 +19,8 @@ const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
   isHighlighted = false,
   timestamp,
   tags = [],
-  suggestedVideo
+  suggestedVideo,
+  avatarUrl,
 }) => {
   // Renderizar las etiquetas con colores según categoría
   const renderTags = () => {
@@ -125,9 +128,19 @@ const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
         isUser ? 'order-2 ml-3' : 'order-1 mr-3'
       }`}>
         {isUser ? (
-          <div className="w-full h-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-            T
-          </div>
+          avatarUrl ? (
+            <Image 
+              src={avatarUrl}
+              alt="Avatar del usuario"
+              width={32}
+              height={32}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+              T
+            </div>
+          )
         ) : (
           <div className="w-full h-full bg-primary-100 flex items-center justify-center text-primary-600">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

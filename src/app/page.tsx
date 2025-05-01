@@ -1,5 +1,10 @@
+'use client'; // << AÑADIDO: Necesario para hooks como useSession y useRouter
+
 import React from 'react';
 import Link from 'next/link'; // Importar Link para el botón
+import { useSession, signIn } from 'next-auth/react'; // << AÑADIDO
+import { useRouter } from 'next/navigation'; // << AÑADIDO
+import { toast } from 'sonner'; // << AÑADIDO (Asegúrate que esté instalado y configurado)
 import { BrainCircuit, MessageSquareHeart, Sparkles } from 'lucide-react'; // Iconos para características
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Asume que has copiado Avatar a tu UI
 import {
@@ -90,6 +95,29 @@ const faqItems = [
 
 // Componente principal de la Landing Page
 export default function LandingPage() {
+  const { data: session, status } = useSession(); // << AÑADIDO
+  const router = useRouter(); // << AÑADIDO
+
+  // << AÑADIDO: Manejador de clic para el enlace/botón del chat >>
+  const handleChatLinkClick = (event: React.MouseEvent<HTMLElement>) => {
+    event.preventDefault(); // Prevenir navegación por defecto del Link (si se usa <a>)
+
+    if (status === 'authenticated') {
+      router.push('/chat'); // Navegar a la página del chat
+    } else if (status === 'unauthenticated') {
+      toast.info('Debes iniciar sesión para hablar con María.', {
+        action: {
+          label: 'Iniciar Sesión',
+          onClick: () => signIn('google'),
+        },
+      });
+      // Opcional: iniciar sesión directamente: signIn('google');
+    } else { // status === 'loading'
+       toast.loading('Verificando sesión...');
+       // No hacer nada mientras carga, el botón debería estar deshabilitado visualmente
+    }
+  };
+
   return (
     // Envolver con TooltipProvider
     <TooltipProvider>
@@ -111,12 +139,16 @@ export default function LandingPage() {
               María te escucha, te comprende y te guía en tu camino hacia una mejor salud mental, utilizando inteligencia artificial avanzada para ofrecerte apoyo personalizado y empático.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/chat" 
-                className="button-shine inline-flex items-center justify-center whitespace-nowrap rounded-md text-lg font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-11 px-8 shadow-soft hover:shadow-soft-lg transform hover:-translate-y-1"
+              {/* << MODIFICADO: Usar onClick en lugar de href directo >> */}
+              <button
+                onClick={handleChatLinkClick} 
+                disabled={status === 'loading'} // Deshabilitar mientras carga sesión
+                className={`button-shine inline-flex items-center justify-center whitespace-nowrap rounded-md text-lg font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 h-11 px-8 shadow-soft hover:shadow-soft-lg transform hover:-translate-y-1 ${
+                  status === 'loading' ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               >
-                Hablar con María
-              </Link>
+                {status === 'loading' ? 'Cargando...' : 'Hablar con María'}
+              </button>
               <Link 
                 href="#features"
                 // Ajustar fondo oscuro del botón
@@ -311,13 +343,17 @@ export default function LandingPage() {
             <p className="text-lg md:text-xl mb-10 max-w-2xl mx-auto text-white/90 dark:text-neutral-200/90">
               Da el primer paso hacia una mente más tranquila y resiliente. María está aquí para acompañarte en cada paso, ofreciéndote un espacio seguro y de apoyo.
             </p>
-            <Link
-              href="/chat" 
+            {/* << MODIFICADO: Usar onClick en lugar de href directo >> */}
+            <button
+              onClick={handleChatLinkClick} 
+              disabled={status === 'loading'} // Deshabilitar mientras carga sesión
               // Aplicar button-shine, quitar clases de color conflictivas
-              className="button-shine inline-flex items-center justify-center whitespace-nowrap rounded-md text-lg font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-700 disabled:pointer-events-none disabled:opacity-50 h-11 px-10 shadow-md transform hover:scale-105"
+              className={`button-shine inline-flex items-center justify-center whitespace-nowrap rounded-md text-lg font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-700 h-11 px-10 shadow-md transform hover:scale-105 ${
+                status === 'loading' ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
-              Comenzar Ahora
-            </Link>
+              {status === 'loading' ? 'Cargando...' : 'Comenzar Ahora'}
+            </button>
           </div>
         </section>
       </div>

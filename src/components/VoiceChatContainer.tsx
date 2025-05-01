@@ -11,8 +11,9 @@ import {
     Track 
 } from 'livekit-client';
 import TranscribedResponse from './TranscribedResponse';
-import { Send, AlertCircle, Mic, ChevronsLeft, ChevronsRight, MessageSquare } from 'lucide-react';
+import { Send, AlertCircle, Mic, ChevronsLeft, ChevronsRight, MessageSquare, Loader2 } from 'lucide-react';
 import ThinkingIndicator from './ThinkingIndicator';
+import { useSession } from 'next-auth/react';
 
 // Definir constante para la longitud del historial (debe coincidir con backend)
 const HISTORY_LENGTH = 12;
@@ -61,7 +62,24 @@ const ErrorDisplay: React.FC<{ error: AppError; onClose: () => void }> = ({ erro
   );
 };
 
-const VoiceChatContainer: React.FC = () => {
+// Interfaz Profile (asegúrate que exista o defínela)
+interface Profile {
+  username: string | null;
+  avatarUrl: string | null;
+  // ...otras props si las necesitas
+}
+
+// << NUEVO: Interfaz para metadata de paginación del historial >>
+interface HistoryPagination {
+    totalItems: number;
+    totalPages: number;
+    currentPage: number;
+    pageSize: number;
+}
+
+// << CORREGIDO: Definición del componente como función estándar >>
+function VoiceChatContainer() {
+  const { data: session, status: authStatus } = useSession(); // << NUEVO: Obtener sesión y estado de autenticación
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false); // Para llamadas a OpenAI
   const [isSpeaking, setIsSpeaking] = useState(false); // << NUEVO: Para audio de OpenAI TTS
@@ -89,6 +107,10 @@ const VoiceChatContainer: React.FC = () => {
   const [isThinking, setIsThinking] = useState(false);
   // << NUEVO: Estado para almacenar temporalmente el mensaje de la IA >>
   const [pendingAiMessage, setPendingAiMessage] = useState<Message | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null); // << NUEVO: Estado para ID de sesión activa en BD
+  const [initialContext, setInitialContext] = useState<string | null>(null); // << NUEVO: Estado para resumen previo
+  const [userProfile, setUserProfile] = useState<Profile | null>(null); // << NUEVO: Estado para perfil de usuario
+  const [totalPreviousSessions, setTotalPreviousSessions] = useState<number | null>(null); // << NUEVO: Contador total sesiones
   
   const roomRef = useRef<Room | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null); // << NUEVO: Ref para MediaRecorder
@@ -113,6 +135,11 @@ const VoiceChatContainer: React.FC = () => {
   
   // Función para limpiar errores
   const clearError = () => setAppError({ type: null, message: null });
+
+  // << NUEVO: Función para alternar visibilidad del chat >>
+  const toggleChatVisibility = () => {
+      setIsChatVisible(prev => !prev);
+  };
   
   // <<< INICIO: Funciones Manejadoras de Pistas de Audio >>>
   const handleTrackSubscribed = (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
@@ -265,7 +292,7 @@ const VoiceChatContainer: React.FC = () => {
             console.log("Llamando a disconnect() desde cleanup del useEffect...");
             roomRef.current.disconnect(); // Dejar que el evento 'Disconnected' maneje la limpieza final de la ref
         } else {
-             console.log("Cleanup: No se llama a disconnect() (estado no 'connected').");
+             console.log("Cleanup de useEffect de LiveKit: Sala no existe (ref ya es null).");
         }
       } else {
         console.log("Cleanup de useEffect de LiveKit: Sala no existe (ref ya es null).");
@@ -278,66 +305,129 @@ const VoiceChatContainer: React.FC = () => {
           audioRef.current = null;
       }
     };
-  }, [getLiveKitToken, connectionState, liveKitToken]);
+  }, [getLiveKitToken, connectionState, liveKitToken, conversationActive]); // Added conversationActive dependency
 
-  // << MODIFICADO: useEffect para saludo inicial (depende de conversationActive) >>
-  useEffect(() => {
-    // Prevenir ejecución si ya hay mensajes o la conversación YA está activa
-    // O si ya estamos listos para empezar (evitar re-ejecución innecesaria)
-    if (messages.length > 0 || conversationActive || isReadyToStart) {
-        // console.log('Skipping greeting prep:', { messages: messages.length, conversationActive, isReadyToStart });
-        return;
+  // --- Funciones de Base de Datos (API Calls) ---
+  const saveMessage = useCallback(async (message: Message) => {
+    if (!activeSessionId) {
+      console.warn("Intento de guardar mensaje sin sesión activa (API).");
+      // Consider removing setAppError here, as it might be too noisy if it happens frequently
+      // during initial setup before activeSessionId is set.
+      // setAppError({ type: null, message: "Error interno: No hay sesión activa para guardar mensaje." });
+      return; // Exit early if no active session
     }
-    
-    console.log("Ejecutando useEffect para preparar saludo inicial...");
-    const prepareInitialGreeting = async () => {
-        const initialGreetingText = "Hola, soy María. Estoy aquí para escucharte y ofrecerte apoyo. ¿Cómo te sientes hoy?";
-        const msgId = `greeting-${Date.now()}`;
-        setGreetingMessageId(msgId); 
-        const newMessage: Message = {
-            id: msgId,
-            text: initialGreetingText,
-            isUser: false,
-            timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
-        };
-        setMessages([newMessage]);
-        console.log("Generando audio para saludo inicial (sin reproducir)...");
-        try {
-            const ttsResponse = await fetch('/api/tts', {
+
+    fetch('/api/messages', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: initialGreetingText })
-            });
-            if (ttsResponse.ok) {
-                const { audioId } = await ttsResponse.json();
-                if (audioId) {
-                    console.log("Audio de saludo preparado, ID:", audioId);
-                    setInitialAudioUrl(`/api/audio/${audioId}`);
-                    setGreetingMessageId(msgId);
-                    setIsReadyToStart(true); 
+      body: JSON.stringify({
+        sessionId: activeSessionId,
+        sender: message.isUser ? 'user' : 'ai',
+        content: message.text,
+      }),
+    })
+    .then(async (res) => {
+        if (!res.ok) {
+          const errorData = await res.json().catch(()=>({}));
+          console.error(`Error API guardando mensaje (${res.status}):`, errorData.error || res.statusText);
+          setAppError({ type: null, message: "No se pudo guardar el mensaje. Tu progreso podría no registrarse." });
                 } else {
-                    throw new Error("ID de audio no recibido para saludo.");
-                }
-            } else {
-                const errorData = await ttsResponse.json().catch(() => ({}));
-                throw new Error(errorData.error || `Error del servidor TTS para saludo: ${ttsResponse.status}`);
-            }
-        } catch (ttsError) {
-            console.error("Error generando TTS inicial:", ttsError);
-            setAppError({ type: 'tts', message: ttsError instanceof Error ? ttsError.message : 'Error generando TTS inicial.' });
-            setInitialAudioUrl(null);
-            setIsReadyToStart(false); 
+            console.log(`Mensaje (${message.isUser ? 'user' : 'ai'}) guardado en sesión ${activeSessionId}.`);
         }
-    };
-    prepareInitialGreeting();
+    })
+    .catch(err => {
+        console.error("Error de red al guardar mensaje:", err);
+        setAppError({ type: null, message: "Error de conexión al guardar mensaje." });
+    });
 
-  }, [conversationActive, isReadyToStart]); // << MODIFICADO: Depende de conversationActive e isReadyToStart
+  }, [activeSessionId]);
+
+
+  const endSession = useCallback(async () => {
+    if (!activeSessionId) {
+      console.warn("Intento de finalizar sesión sin ID activo (API).");
+      return;
+    }
+    if (isSessionClosed) {
+      console.log("La sesión ya está marcada como cerrada localmente.");
+      return;
+    }
+
+    const sessionToEndId = activeSessionId;
+    console.log(`Finalizando sesión ${sessionToEndId} vía API...`);
+
+    // Mark as closed locally immediately for UI responsiveness
+    setIsSessionClosed(true); 
+    // Optionally reset other states like isListening, isProcessing etc. here if needed
+    setIsListening(false);
+    setIsProcessing(false);
+    setIsSpeaking(false);
+    setCurrentSpeakingId(null);
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
+    }
+     if (audioRef.current) {
+         audioRef.current.pause();
+         audioRef.current = null;
+     }
+    
+    // Reset session-specific states
+    setActiveSessionId(null);
+    setSessionStartTime(null);
+    setIsFirstInteraction(true); // Reset for next session
+    setPendingAiMessage(null); 
+    
+    // Make API call to mark session ended and trigger summary
+    fetch(`/api/sessions/${sessionToEndId}`, {
+      method: 'PUT',
+    })
+    .then(async (res) => {
+      if (!res.ok) {
+        const errorData = await res.json().catch(()=>({}));
+        console.error(`Error API finalizando sesión ${sessionToEndId} (${res.status}):`, errorData.error || res.statusText);
+        // Don't unset isSessionClosed here, keep UI closed
+        setAppError({ type: null, message: "Error al finalizar y guardar la sesión en el servidor." });
+            } else {
+        console.log(`Sesión ${sessionToEndId} marcada como finalizada en BD.`);
+        // Now trigger summary generation
+        console.log(`Solicitando resumen para sesión ${sessionToEndId}...`);
+        fetch('/api/summarize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: sessionToEndId }),
+        })
+        .then(async (summaryRes) => {
+            if (!summaryRes.ok) {
+              const errorData = await summaryRes.json().catch(()=>({}));
+              console.error(`Error en la API de resumen (${summaryRes.status}):`, errorData.error || summaryRes.statusText);
+              // Handle summary error - maybe log it, no need for user-facing error unless critical
+            } else {
+              const data = await summaryRes.json();
+              console.log(`Resumen solicitado exitosamente para ${sessionToEndId}. Resumen: ${data.summary?.substring(0,50)}...`);
+              // Update initialContext for potential next session *immediately*?
+              // Maybe better to fetch it on next load/start. Let's rely on initial fetch for now.
+              // setInitialContext(data.summary);
+            }
+        })
+        .catch(err => {
+            console.error("Error de red al solicitar resumen:", err);
+             // Handle network error for summary
+        });
+      }
+    })
+    .catch(err => {
+        console.error("Error de red al finalizar sesión:", err);
+        // Don't unset isSessionClosed here
+        setAppError({ type: null, message: "Error de conexión al finalizar la sesión." });
+    });
+
+  }, [activeSessionId, isSessionClosed]); // Dependencies for endSession
 
   // --- Procesamiento con OpenAI y Reproducción de Audio (TTS - OpenAI API) ---
   
   // Función para reproducir audio desde URL
   // << MODIFICADO: Acepta flag opcional para cierre >>
-  const playAudio = (url: string, messageId: string, isClosingAudio = false) => {
+  const playAudio = useCallback((url: string, messageId: string, isClosingAudio = false) => {
     if (audioRef.current) {
       audioRef.current.pause(); // Detener audio anterior si existe
       audioRef.current.onended = null; // Limpiar listeners anteriores
@@ -354,17 +444,16 @@ const VoiceChatContainer: React.FC = () => {
     audio.onended = () => {
       console.log("Audio terminado:", messageId);
       setIsSpeaking(false);
-      // Si el mensaje que acaba de terminar era el pendiente, limpiarlo
-      // (esto es una doble seguridad, normalmente ya debería estar limpio)
-      if (pendingAiMessage && pendingAiMessage.id === messageId) {
-        setPendingAiMessage(null);
-      }
       setCurrentSpeakingId(null);
       audioRef.current = null; // Limpiar ref
-      // Si era el audio de cierre, marcar la sesión como cerrada AHORA
+      
+      // If it was the closing audio, trigger the session end logic NOW
       if (isClosingAudio) {
-        console.log("Audio de cierre finalizado. Marcando sesión como cerrada.");
-        setIsSessionClosed(true);
+        console.log("Audio de cierre finalizado. Finalizando sesión...");
+        endSession(); // Call endSession after closing audio finishes
+      } else {
+         // If not closing audio, maybe enable listening again? Depends on flow.
+         // For now, do nothing extra. User can click mic again.
       }
     };
     audio.onerror = (e) => {
@@ -373,10 +462,10 @@ const VoiceChatContainer: React.FC = () => {
       setIsSpeaking(false);
       setCurrentSpeakingId(null);
       audioRef.current = null; // Limpiar ref
-      // Si falla la reproducción del audio de cierre, cerramos igualmente
+      // If closing audio playback fails, still force end the session
       if (isClosingAudio) {
-          console.warn("Error al reproducir audio de cierre. Forzando cierre de sesión.");
-          setIsSessionClosed(true);
+          console.warn("Error al reproducir audio de cierre. Forzando finalización de sesión.");
+          endSession(); // Call endSession even if closing audio fails to play
       }
     };
     audio.play().catch(e => { // Manejar error de autoplay
@@ -388,32 +477,52 @@ const VoiceChatContainer: React.FC = () => {
         setIsSpeaking(false);
         setCurrentSpeakingId(null);
         audioRef.current = null;
-        // Si falla el play() del audio de cierre, cerramos igualmente
+        // If play() fails for closing audio, still force end the session
         if (isClosingAudio) {
-            console.warn("Error al iniciar reproducción de audio de cierre. Forzando cierre de sesión.");
-            setIsSessionClosed(true);
+            console.warn("Error al iniciar reproducción de audio de cierre. Forzando finalización de sesión.");
+            endSession(); // Call endSession if play() fails for closing audio
         }
     });
-  };
+  }, [endSession]); // Added endSession dependency
+
 
   // Función para enviar mensaje a la API de OpenAI y luego a la API TTS
-  const getOpenAIResponse = async (userMessage: string) => {
-    // << MODIFICADO: Usar setIsThinking en lugar de setIsProcessing aquí >>
-    setIsThinking(true);
-    setIsProcessing(false); // Asegurarnos que isProcessing (para STT) esté desactivado
+  const getOpenAIResponse = useCallback(async (userMessage: string) => {
+    if (!activeSessionId) {
+        console.error("Intento de llamar a OpenAI sin sesión activa.");
+        setAppError({ type: 'openai', message: "Error: No se puede enviar mensaje sin sesión activa." });
+        setIsThinking(false);
+        return;
+    }
+    
+    setIsThinking(true); // Indicate processing starts
+    setIsProcessing(false); // Ensure transcription processing state is off
     clearError(); 
     
-    // Determinar si debemos introducir el flujo en esta llamada
     const shouldIntroduceFlow = isFirstInteraction;
+    // Use initialContext only on the very first interaction of the session
+    const contextToSend = isFirstInteraction ? initialContext : null; 
     
     try {
-      // Preparar el cuerpo de la solicitud
-      const requestBody: any = {
+      // Prepare history, limiting length
+      const historyToSend = messages
+          .map(msg => ({ role: msg.isUser ? 'user' : 'assistant' as const, content: msg.text }))
+          .slice(-HISTORY_LENGTH); // Ensure history has correct format and length
+
+      const requestBody = {
         message: userMessage,
-        history: messages.map(msg => ({ role: msg.isUser ? 'user' : 'assistant', content: msg.text })).slice(-HISTORY_LENGTH), // Enviar historial reciente
-        sessionStartTime: sessionStartTime,
-        introduceFlow: shouldIntroduceFlow // Añadir el flag
+        history: historyToSend,
+        sessionStartTime: sessionStartTime, // Send timestamp if available
+        introduceFlow: shouldIntroduceFlow, // <<< CORREGIDO: Usar asignación completa
+        initialContext: contextToSend, // Send previous summary if first interaction
+        userProfile: userProfile ? { // Send profile if available
+            username: userProfile.username,
+            avatarUrl: userProfile.avatarUrl 
+        } : null,
+        sessionId: activeSessionId // Send current session ID
       };
+
+      console.log("Enviando a /api/openai:", { message: userMessage, historyCount: historyToSend.length, introduceFlow: shouldIntroduceFlow, hasContext: !!contextToSend, hasProfile: !!userProfile, sessionId: activeSessionId });
 
       const response = await fetch('/api/openai', {
         method: 'POST',
@@ -426,37 +535,39 @@ const VoiceChatContainer: React.FC = () => {
         throw new Error(errorData.error || `Error del servidor OpenAI: ${response.status}`);
       }
       
+      // Mark that the first interaction has happened
       if (shouldIntroduceFlow) {
         setIsFirstInteraction(false);
-        console.log("Flag isFirstInteraction establecido en false.");
+        console.log("Flag isFirstInteraction establecido en false después de la primera llamada a OpenAI.");
       }
 
-      // << MODIFICADO: Extraer texto y video sugerido >>
       const data = await response.json();
       const aiText = data.response;
-      const suggestedVideoData = data.suggestedVideo; // Puede ser null o {title, url}
+      const suggestedVideoData = data.suggestedVideo; // Get potential video suggestion
       
-      if (!aiText) throw new Error("Respuesta vacía de OpenAI.");
+      if (!aiText) throw new Error("Respuesta vacía recibida de OpenAI.");
 
-      // << MODIFICADO: Crear el mensaje incluyendo suggestedVideo >>
+      // Create the AI message object
       const incomingAiMessage: Message = {
-        id: Date.now().toString(),
+        id: `ai-${Date.now()}`, // Use a more distinct ID format
         text: aiText,
         isUser: false,
         timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
-        suggestedVideo: suggestedVideoData || undefined, // Asignar si existe, sino undefined
+        suggestedVideo: suggestedVideoData || undefined, // Add video if present
       };
       
-      // << MODIFICADO: Guardar en estado pendiente >>
-      setPendingAiMessage(incomingAiMessage);
+      // Add AI message text to chat immediately for better perceived responsiveness
+      setMessages(prev => [...prev, incomingAiMessage]);
+      saveMessage(incomingAiMessage); // Save AI message to DB
       
+      // Check if this is a closing message BEFORE generating TTS
       const lowerAiText = aiText.toLowerCase();
       const isClosingMessage = CLOSING_PHRASES.some(phrase => lowerAiText.includes(phrase.toLowerCase()));
+      console.log(`Mensaje de IA recibido. ¿Es de cierre? ${isClosingMessage}`);
 
-      // Intentar obtener y reproducir TTS (incluso para mensaje de cierre)
+      // --- TTS Generation ---
       try {
-        // << No marcar como hablando aquí aún >>
-        // setCurrentSpeakingId(newMessage.id); 
+        console.log("Solicitando TTS para la respuesta de IA...");
         const ttsResponse = await fetch('/api/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -467,135 +578,164 @@ const VoiceChatContainer: React.FC = () => {
           const { audioId } = await ttsResponse.json();
           if (audioId) {
              const audioUrlToPlay = `/api/audio/${audioId}`; 
-             // << SINCRONIZACIÓN: Ahora que el audio está listo... >>
-             // 1. Añadir el mensaje pendiente al chat
-             setMessages(prevMessages => [...prevMessages, incomingAiMessage]);
-             // 2. Iniciar la reproducción del audio (y activar isSpeaking)
+             console.log(`TTS generado (${audioId}), reproduciendo audio...`);
+             // Play the audio. The playAudio function's onended callback
+             // will handle session closing if isClosingMessage is true.
              playAudio(audioUrlToPlay, incomingAiMessage.id, isClosingMessage); 
-             // 3. Desactivar el indicador de "pensando"
-             setIsThinking(false);
-             // 4. Limpiar el mensaje pendiente
-             setPendingAiMessage(null);
+             setIsThinking(false); // Stop thinking indicator once audio starts playing
           } else {
-             // Si no hay audioId, mostrar el mensaje igualmente y parar de pensar
-             setMessages(prevMessages => [...prevMessages, incomingAiMessage]);
-             setIsThinking(false); // << DESACTIVAR THINKING si no hay audioId >>
-             setPendingAiMessage(null);
+             // TTS API succeeded but didn't return an audioId
              throw new Error("ID de audio no recibido del endpoint TTS.");
           }
         } else {
-          // Si falla TTS, mostrar el mensaje igualmente y parar de pensar
-          setMessages(prevMessages => [...prevMessages, incomingAiMessage]);
-          setIsThinking(false); // << DESACTIVAR THINKING si falla TTS >>
-          setPendingAiMessage(null);
+          // TTS API request failed
           const errorData = await ttsResponse.json().catch(() => ({}));
           throw new Error(errorData.error || `Error del servidor TTS: ${ttsResponse.status}`);
         }
       } catch (ttsError) {
-          // Si hay error en TTS, mostrar el mensaje pendiente y parar de pensar
-          if (pendingAiMessage) { // Solo si aún existe el mensaje pendiente
-             setMessages(prevMessages => [...prevMessages, pendingAiMessage]);
-             setPendingAiMessage(null);
-          }
-          setIsThinking(false); // << DESACTIVAR THINKING en catch de TTS >>
-          console.error("Error al obtener o reproducir audio TTS:", ttsError);
+          // Catch errors during TTS fetch or processing
+          setIsThinking(false); // Stop thinking indicator on TTS error
+          console.error("Error al obtener o procesar audio TTS:", ttsError);
           setAppError({ type: 'tts', message: ttsError instanceof Error ? ttsError.message : 'Error desconocido en TTS.' });
+          // Don't try to play audio if TTS failed
           setIsSpeaking(false); 
           setCurrentSpeakingId(null);
-          // Si falla el TTS del mensaje de cierre, cerramos igualmente
+          // If it was a closing message and TTS failed, end the session immediately
           if (isClosingMessage) {
-            console.warn("Fallo TTS para mensaje de cierre. Forzando cierre.");
-            setIsSessionClosed(true);
+            console.warn("Fallo TTS para mensaje de cierre. Forzando finalización de sesión.");
+            endSession(); 
           }
       }
+      // --- End TTS Generation ---
 
     } catch (error) {
-      // Si hay error general, asegurarse de limpiar el estado pendiente y thinking
-      setPendingAiMessage(null);
-      setIsThinking(false); // << DESACTIVAR THINKING en catch general de OpenAI >>
+      // Catch errors from the OpenAI API call itself
+      setIsThinking(false); // Stop thinking indicator on OpenAI error
       console.error("Error al obtener respuesta de OpenAI:", error);
       setAppError({ type: 'openai', message: error instanceof Error ? error.message : 'Error desconocido al contactar OpenAI.' });
+      // Ensure speaking state is reset if an error occurred before TTS
       setIsSpeaking(false); 
       setCurrentSpeakingId(null);
     } 
-  };
-  
-  // --- Controladores de Interacción del Avatar --- (Modificados para llamar a /api/stt)
+  }, [activeSessionId, isFirstInteraction, initialContext, messages, sessionStartTime, userProfile, saveMessage, playAudio, endSession]); // Added dependencies
+
+
+  // --- Controladores de Interacción del Usuario (Micrófono, Texto) ---
+
+  // Called when STT processing is complete
+  const handleTranscriptionResult = useCallback((finalTranscript: string) => {
+      console.log(`Procesando transcripción final: "${finalTranscript}"`);
+      if (finalTranscript.trim() && conversationActive && activeSessionId) {
+        const newMessage: Message = {
+          id: `user-${Date.now()}`, // Use a more distinct ID format
+          text: finalTranscript.trim(), // Trim whitespace
+          isUser: true,
+          timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
+        };
+        setMessages(prev => [...prev, newMessage]); // Add user message to chat
+        saveMessage(newMessage); // Save user message to DB
+        getOpenAIResponse(finalTranscript.trim()); // Send transcript to OpenAI
+      } else {
+          console.log("Transcripción descartada (vacía, no activa, o sin sesión ID).");
+      }
+      // Reset push-to-talk state if it was active
+      if (isPushToTalkActive) { 
+          setIsPushToTalkActive(false); 
+      }
+  }, [conversationActive, activeSessionId, isPushToTalkActive, saveMessage, getOpenAIResponse]); // Added dependencies
+
 
   const handleStartListening = useCallback(async () => {
-    // << Añadir comprobación para no iniciar si ya está escuchando >>
-    if (isListening || isProcessing || isSpeaking) return;
+    if (isListening || isProcessing || isSpeaking || isSessionClosed || !conversationActive) return; // Prevent starting if busy, closed, or not active
     
     clearError();
+    // Stop any currently playing AI audio
     if (audioRef.current) { 
+      console.log("Deteniendo audio de IA para permitir escucha...");
       audioRef.current.pause();
       audioRef.current = null;
       setIsSpeaking(false); 
       setCurrentSpeakingId(null);
     }
     
+    // Ensure previous MediaRecorder is stopped and stream closed (safety check)
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        console.warn("MediaRecorder ya estaba grabando? Deteniendo...");
         mediaRecorderRef.current.stop();
     }
     if (audioStreamRef.current) {
+        console.warn("Stream de audio previo existía? Deteniendo pistas...");
         audioStreamRef.current.getTracks().forEach(track => track.stop());
         audioStreamRef.current = null;
     }
 
     console.log("Iniciando grabación de audio (MediaRecorder)...");
-    setIsListening(true); // Marcar como escuchando
-    audioChunksRef.current = []; 
+    setIsListening(true); // Set listening state
+    audioChunksRef.current = []; // Reset audio chunks buffer
 
     try {
+        // Request microphone access
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        audioStreamRef.current = stream; 
+        audioStreamRef.current = stream; // Store stream reference
 
+        // Attempt to use preferred mimeType, fall back if necessary
         const options = { mimeType: 'audio/webm;codecs=opus' }; 
         let recorder;
         try {
             recorder = new MediaRecorder(stream, options);
+            console.log(`Usando mimeType: ${recorder.mimeType}`);
         } catch (e) {
-            console.warn("MimeType audio/webm no soportado, usando default:", e);
+            console.warn("MimeType 'audio/webm;codecs=opus' no soportado, usando default:", e);
             try {
-                 recorder = new MediaRecorder(stream); 
+                 recorder = new MediaRecorder(stream); // Fallback to default
+                 console.log(`Usando mimeType por defecto: ${recorder.mimeType}`);
             } catch (e2) {
-                 console.error("MediaRecorder no soportado:", e2);
+                 console.error("MediaRecorder no soportado en este navegador:", e2);
                  throw new Error("Tu navegador no soporta la grabación de audio necesaria.");
             }
         }
-        mediaRecorderRef.current = recorder;
+        mediaRecorderRef.current = recorder; // Store recorder reference
 
+        // Event handler for when audio data is available
         recorder.ondataavailable = (event) => {
             if (event.data.size > 0) {
                 audioChunksRef.current.push(event.data);
             }
         };
 
+        // Event handler for when recording stops
         recorder.onstop = async () => {
-            // << SOLO cambiar isListening a false aquí si NO fue iniciado por PTT >>
-            // if (!isPushToTalkActive) {
-            //     setIsListening(false);
-            // }
-            // << MEJOR: Siempre poner isListening a false al parar >>
-            setIsListening(false); 
-            setIsPushToTalkActive(false); // Resetear PTT siempre al parar
+            setIsListening(false); // Update listening state
+            setIsPushToTalkActive(false); // Ensure push-to-talk visual cue is off
             
-            console.log("Grabación detenida, enviando audio al backend STT...");
+            console.log("Grabación detenida. Procesando chunks...");
             
             if (audioChunksRef.current.length === 0) {
-                console.warn("No se grabó audio.");
-                 // No necesitamos hacer nada más, ya no está escuchando
-                return;
+                console.warn("No se grabaron datos de audio.");
+                 // Stop processing indicator if it was somehow turned on
+                setIsProcessing(false); 
+                // Clean up stream tracks if they weren't closed automatically
+                if (audioStreamRef.current) {
+                    audioStreamRef.current.getTracks().forEach(track => track.stop());
+                    audioStreamRef.current = null;
+                 }
+                return; // Don't send empty audio
             }
             
+            // Combine recorded chunks into a single Blob
             const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
-            audioChunksRef.current = [];
-            setIsProcessing(true); // Indicar STT
+            audioChunksRef.current = []; // Clear the buffer
 
+            // Indicate that STT processing is starting
+            setIsProcessing(true); 
+            console.log(`Enviando ${audioBlob.size} bytes a /api/stt...`);
+
+            // Prepare form data for STT API
             const formData = new FormData();
-            formData.append('audio', audioBlob, 'audio.webm'); 
+            formData.append('audio', audioBlob, 'user_audio.webm'); // Use a filename
+            
             try {
-                console.log(`Enviando ${audioBlob.size} bytes a /api/stt...`);
+                // Call the STT API endpoint
                 const response = await fetch('/api/stt', {
                     method: 'POST',
                     body: formData, 
@@ -605,258 +745,393 @@ const VoiceChatContainer: React.FC = () => {
                     const data = await response.json();
                     if (data.transcription) {
                         console.log("Transcripción recibida del backend:", data.transcription);
+                        // Process the successful transcription
                         handleTranscriptionResult(data.transcription);
                     } else {
-                         console.warn("Backend STT no devolvió transcripción.");
-                         setAppError({ type: 'stt', message: 'No se pudo obtener la transcripción del backend.' });
+                         // Handle case where API succeeded but returned no transcription
+                         console.warn("Backend STT respondió OK pero sin transcripción.");
+                         setAppError({ type: 'stt', message: 'No se pudo obtener la transcripción.' });
                     }
                 } else {
-                    const errorData = await response.json().catch(() => ({}));
+                    // Handle STT API errors (e.g., 4xx, 5xx)
+                    const errorData = await response.json().catch(() => ({})); // Try to parse error details
                     console.error("Error del backend STT:", response.status, errorData);
                     setAppError({ type: 'stt', message: `Error del servidor STT: ${errorData.error || response.statusText}` });
                 }
             } catch (fetchError: any) {
+                // Handle network errors during STT API call
                 console.error("Error de red llamando a /api/stt:", fetchError);
                 setAppError({ type: 'stt', message: `Error de conexión STT: ${fetchError.message || 'Error desconocido'}` });
             } finally {
+                // Ensure processing indicator is turned off regardless of success/failure
                 setIsProcessing(false); 
-                // setIsListening(false); // <<-- Ya se hizo al inicio del onstop
-            }
-            
+                 // Clean up the audio stream tracks after processing is done
             if (audioStreamRef.current) {
                 audioStreamRef.current.getTracks().forEach(track => track.stop());
                 audioStreamRef.current = null;
             }
-        };
+                 console.log("Procesamiento STT finalizado (éxito o error).");
+            }
+        }; // End of onstop handler
 
+        // Start recording
         recorder.start();
         console.log("MediaRecorder iniciado, estado:", recorder.state);
+        
     } catch (error: any) {
+        // Catch errors during getUserMedia or MediaRecorder initialization
         console.error("Error al iniciar MediaRecorder:", error);
         setAppError({ type: 'stt', message: `Error al acceder al micrófono: ${error.message}` });
+        // Reset states if setup failed
         setIsListening(false);
-        setIsPushToTalkActive(false); // Resetear PTT en error
+        setIsPushToTalkActive(false);
+        // Clean up stream if it was partially obtained
         if (audioStreamRef.current) {
             audioStreamRef.current.getTracks().forEach(track => track.stop());
             audioStreamRef.current = null;
         }
     }
-  }, [isListening, isProcessing, isSpeaking]); // << Añadir dependencias
+  }, [isListening, isProcessing, isSpeaking, isSessionClosed, conversationActive, handleTranscriptionResult]); // Added dependencies
   
+  // Function to manually stop listening (e.g., user clicks mic button again)
   const handleStopListening = useCallback(() => {
-    // << Añadir comprobación para no parar si no está escuchando >>
-    if (!isListening || !mediaRecorderRef.current || mediaRecorderRef.current.state !== 'recording') return;
+    if (!isListening || !mediaRecorderRef.current || mediaRecorderRef.current.state !== 'recording') {
+        console.log("Intento de detener escucha cuando no se está grabando.");
+        return;
+    }
     
-    console.log("Deteniendo MediaRecorder (handleStopListening)...");
-    mediaRecorderRef.current.stop(); // Esto disparará el evento onstop
-    // No cambiamos isListening aquí, se hace en onstop
-  }, [isListening]); // << Añadir dependencia
+    console.log("Deteniendo MediaRecorder manualmente (handleStopListening)...");
+    mediaRecorderRef.current.stop(); // Trigger the onstop event handler
+    // No need to set isListening(false) here, onstop will handle it.
+  }, [isListening]); // Dependency
 
-  // << Función para manejar resultado transcripción (sin cambios internos) >>
-  const handleTranscriptionResult = (finalTranscript: string) => {
-      console.log(`Procesando transcripción: "${finalTranscript}"`);
-        const newMessage: Message = {
-          id: Date.now().toString(),
-        text: finalTranscript,
-          isUser: true,
-          timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
-        };
-        setMessages(prevMessages => [...prevMessages, newMessage]);
-      getOpenAIResponse(finalTranscript);
-  };
 
-  // Función para enviar mensajes de texto (Sin cambios)
-  const handleSendTextMessage = (event: FormEvent) => {
-    event.preventDefault();
+  // Handler for sending text messages via the input field
+  const handleSendTextMessage = useCallback((event: FormEvent) => {
+    event.preventDefault(); // Prevent default form submission
     
-    // << Añadir activación de isThinking aquí >>
-    if (textInput.trim()) {
-      setIsThinking(true);
+    const trimmedInput = textInput.trim();
+    
+    // Check if input is valid and conversation is in a state to accept messages
+    if (trimmedInput && conversationActive && !isProcessing && !isSpeaking && !isListening && !isSessionClosed && activeSessionId) {
+      // Stop any playing audio immediately
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
         setIsSpeaking(false);
         setCurrentSpeakingId(null);
       }
+      
+      // Create the user message object
       const newMessage: Message = {
-        id: Date.now().toString(),
-        text: textInput.trim(),
+        id: `user-${Date.now()}`,
+        text: trimmedInput,
         isUser: true,
         timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
       };
-      setMessages(prevMessages => [...prevMessages, newMessage]);
-      getOpenAIResponse(textInput.trim());
+      
+      // Add message to UI, save to DB, and send to OpenAI
+      setMessages(prev => [...prev, newMessage]);
+      saveMessage(newMessage);
+      getOpenAIResponse(trimmedInput);
+      
+      // Clear the input field
       setTextInput('');
+    } else {
+        console.log("Envío de mensaje de texto ignorado. Condiciones no cumplidas:", { trimmedInput, conversationActive, isProcessing, isSpeaking, isListening, isSessionClosed, activeSessionId });
     }
-  };
+  }, [textInput, conversationActive, isProcessing, isSpeaking, isListening, isSessionClosed, activeSessionId, saveMessage, getOpenAIResponse]); // Added dependencies
 
-  // << NUEVO: Handler para el botón "Comenzar" >>
-  const handleStartConversation = () => {
-      if (initialAudioUrl && greetingMessageId) {
-          console.log("Comenzando conversación y reproduciendo saludo...");
-          setConversationActive(true); 
-          // << NUEVO: Registrar hora de inicio >>
-          setSessionStartTime(Date.now()); 
-          playAudio(initialAudioUrl, greetingMessageId); 
+
+  // Function to start a new conversation session
+  const handleStartConversation = useCallback(async () => {
+    // Ensure user is authenticated
+    if (!session?.user?.id || authStatus !== 'authenticated') {
+      setAppError({ type: null, message: "Debes iniciar sesión para comenzar." });
+      return;
+    }
+    // Prevent starting if already active or TTS isn't ready
+    if (conversationActive || !isReadyToStart) {
+        console.warn("Intento de iniciar conversación cuando ya está activa o no está lista.");
+        return;
+    }
+
+    clearError();
+    setIsSessionClosed(false); // Ensure session is marked as open
+    setIsFirstInteraction(true); // Reset interaction flag for the new session
+    setTextInput(''); // Clear any previous text input
+    // Clear previous messages *except* potentially the greeting if we want to keep it?
+    // Let's clear all messages for a fresh start. The greeting useEffect will run again if needed,
+    // but typically we play the audio immediately, so clearing is fine.
+     if (messages.length > 0 && messages[0].id.startsWith('greeting-')) {
+         // Keep the greeting text if it's the only message
+         setMessages([messages[0]]);
       } else {
-          console.warn("Intento de iniciar conversación sin audio de saludo listo.");
-          // Opcionalmente, iniciar sin audio o mostrar un error diferente
+         setMessages([]); // Clear messages for a new session
+     }
+    
+    try {
+      console.log("Llamando a API para crear nueva sesión de chat...");
+      const response = await fetch('/api/sessions', {
+        method: 'POST',
+        // No body needed, user is identified by session cookie
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Error ${response.status} al crear sesión en API`);
+      }
+
+      const data = await response.json();
+      if (!data.id) {
+        throw new Error("La API de sesiones no devolvió un ID válido.");
+      }
+
+      setActiveSessionId(data.id); // Store the new session ID
+      console.log(`Nueva sesión de API creada con ID: ${data.id}`);
+
+      // Now that session ID is set, mark conversation as active and play greeting
           setConversationActive(true); 
-          // << NUEVO: Registrar hora de inicio también aquí si se permite empezar sin saludo >>
-          setSessionStartTime(Date.now());
-      }
-  };
+      setSessionStartTime(Date.now()); // Record start time
 
-  // << NUEVO: useEffect para controlar la fuente del video >>
-  useEffect(() => {
-    if (videoRef.current) {
-      const newSrc = isSpeaking ? '/videos/voz.mp4' : '/videos/mute.mp4';
-      if (videoRef.current.currentSrc !== newSrc) {
-         console.log(`Cambiando video a: ${newSrc}`);
-         videoRef.current.src = newSrc;
-         
-         // Función para intentar la reproducción
-         const playVideo = () => {
-            // Intentar reproducir SOLO si aún estamos en el estado correcto (isSpeaking o !isSpeaking)
-            const shouldBeSpeaking = isSpeaking;
-            const currentVideoIsSpeakingVideo = videoRef.current?.currentSrc.includes('voz.mp4');
-            if (shouldBeSpeaking === currentVideoIsSpeakingVideo) {
-               videoRef.current?.play().catch(error => {
-                  console.warn("Error al intentar reproducir el nuevo video tras loadeddata:", error);
-                  // Esto puede pasar si el usuario no ha interactuado aún o por políticas del navegador
-               });
-            } else {
-               console.log("Estado de isSpeaking cambió antes de que loadeddata se disparara, no se reproduce.");
-            }
-         };
- 
-         // Limpiar listener anterior para evitar duplicados
-         const currentVideoRef = videoRef.current;
-         currentVideoRef.removeEventListener('loadeddata', playVideo);
-         
-         // Añadir listener para reproducir cuando esté listo
-         currentVideoRef.addEventListener('loadeddata', playVideo);
-         
-         // Iniciar la carga del nuevo video
-         videoRef.current.load(); 
+      if (initialAudioUrl && greetingMessageId) {
+        console.log("Comenzando conversación y reproduciendo saludo inicial...");
+        // Play the pre-generated greeting audio. Don't mark as closing audio.
+        playAudio(initialAudioUrl, greetingMessageId, false); 
+      } else {
+        // This case should ideally not happen if isReadyToStart is true, but handle it.
+        console.warn("Intento de iniciar conversación, pero falta URL o ID de audio de saludo.");
+        // Conversation is active, but no audio will play initially. User needs to speak/type.
       }
+
+      // Fetch latest summary and profile again in case they changed?
+      // Or rely on the initial fetch? Let's rely on initial fetch for now.
+      // Consider refetching if profile updates were possible without page reload.
+
+    } catch (error) {
+      console.error("Error en handleStartConversation:", error);
+      const message = error instanceof Error ? error.message : "No se pudo iniciar la nueva sesión. Inténtalo de nuevo.";
+      setAppError({ type: null, message });
+      // Reset state if session creation failed
+      setActiveSessionId(null);
+      setConversationActive(false); 
+      setSessionStartTime(null);
     }
-  }, [isSpeaking]);
+  }, [session, authStatus, conversationActive, isReadyToStart, initialAudioUrl, greetingMessageId, playAudio, messages]); // Added messages to dependency array
 
-  // << NUEVO: useEffect para manejar Push-to-Talk (Espacio) >>
+  // --- useEffects for Initialization, Push-to-Talk, Timeout, and Video ---
+
+  // << MOVED AND REFINED: useEffect for initial greeting preparation & data fetching >>
+  useEffect(() => {
+    // Only prepare greeting if user is authenticated, not already prepared, and conversation hasn't started
+    if (authStatus !== 'authenticated' || isReadyToStart || conversationActive || messages.length > 0) {
+        return;
+    }
+    
+    console.log("Ejecutando useEffect para preparar saludo inicial...");
+    const prepareInitialGreeting = async () => {
+        const initialGreetingText = "Hola, soy María. Estoy aquí para escucharte y ofrecerte apoyo. ¿Cómo te sientes hoy?";
+        const msgId = `greeting-${Date.now()}`;
+        setGreetingMessageId(msgId); // Save ID to associate with audio later
+        
+        // Set the initial message in state *without* saving it yet
+        const initialMessage: Message = {
+            id: msgId,
+            text: initialGreetingText,
+            isUser: false,
+            timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
+        };
+        setMessages([initialMessage]); // Display greeting text immediately
+        
+        console.log("Generando audio para saludo inicial (sin reproducir)...");
+        try {
+            const ttsResponse = await fetch('/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: initialGreetingText })
+            });
+            if (ttsResponse.ok) {
+                const ttsData = await ttsResponse.json();
+                if (ttsData.audioId) {
+                    setInitialAudioUrl(`/api/audio/${ttsData.audioId}`); // Store URL for later playback
+                    setIsReadyToStart(true); // Mark as ready to start conversation
+                    console.log("Audio de saludo preparado y listo.");
+            } else {
+                    throw new Error("ID de audio no recibido del TTS.");
+                }
+            } else {
+                const errorData = await ttsResponse.json().catch(() => ({}));
+                throw new Error(errorData.error || `Error del servidor TTS para saludo: ${ttsResponse.status}`);
+            }
+        } catch (ttsError) {
+            console.error("Error generando TTS inicial:", ttsError);
+            setAppError({ type: 'tts', message: ttsError instanceof Error ? ttsError.message : 'Error generando TTS inicial.' });
+            setInitialAudioUrl(null);
+            setIsReadyToStart(false); // Cannot start if TTS failed
+            // Keep the text message displayed even if audio fails
+        }
+    };
+    
+    // Fetch profile and latest summary when authenticated
+    const fetchInitialData = async () => {
+        // << NUEVO: Reiniciar contador >>
+        setTotalPreviousSessions(null);
+        try {
+            console.log("Fetching initial data (profile, summary, and session count)...");
+            // << MODIFICADO: Añadir llamada a historial para obtener contador >>
+            const [profileRes, summaryRes, historyRes] = await Promise.all([
+                fetch('/api/profile'),
+                fetch('/api/sessions/latest-summary'),
+                fetch('/api/chat-sessions/history?page=1&pageSize=1') // Pedimos solo 1 para obtener metadata
+            ]);
+
+            if (profileRes.ok) {
+                const profileData = await profileRes.json();
+                setUserProfile(profileData);
+                 console.log("Perfil de usuario cargado:", profileData.username);
+            } else {
+                 console.warn(`Error al cargar el perfil: ${profileRes.status}`);
+                 setUserProfile(null); // Ensure profile is null if fetch fails
+            }
+
+            if (summaryRes.ok) {
+                const summaryData = await summaryRes.json();
+                setInitialContext(summaryData.summary);
+                console.log(`Resumen de sesión anterior cargado: ${summaryData.summary ? summaryData.summary.substring(0, 50) + '...' : 'Ninguno'}`);
+            } else {
+                 console.warn(`Error al cargar resumen anterior: ${summaryRes.status}`);
+                 setInitialContext(null); // Ensure context is null if fetch fails
+            }
+
+            // << NUEVO: Procesar respuesta del historial para obtener contador >>
+            if (historyRes.ok) {
+                const historyData: { data: any[]; pagination: HistoryPagination } = await historyRes.json();
+                setTotalPreviousSessions(historyData.pagination.totalItems);
+                 console.log(`Total de sesiones previas cargado: ${historyData.pagination.totalItems}`);
+            } else {
+                 console.warn(`Error al cargar contador de sesiones: ${historyRes.status}`);
+                 setTotalPreviousSessions(0); // Asumir 0 si hay error? O null? Mejor null y manejarlo en UI
+            }
+
+
+            // Now that we have profile/context (or tried to get them), prepare the greeting
+            prepareInitialGreeting();
+
+        } catch (error) {
+            console.error("Error de red al obtener datos iniciales (perfil/resumen/contador):", error);
+            setAppError({ type: null, message: "Error de red al cargar datos iniciales." });
+             // << NUEVO: Establecer contador a 0 en caso de error de red >>
+             setTotalPreviousSessions(0);
+            // Still try to prepare greeting even if profile/summary/count fails
+            prepareInitialGreeting();
+        }
+    };
+
+    fetchInitialData();
+
+  }, [authStatus, conversationActive, isReadyToStart, messages.length]); // << MODIFICADO: Quitado messages.length como dependencia innecesaria aquí >>
+
+  // Effect for handling Push-to-Talk (Spacebar)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Salir si la tecla no es Espacio
-      if (event.code !== 'Space') return;
-      
-      // Si el foco está en el textarea, permitir el comportamiento normal (escribir espacio)
-      if (document.activeElement === textAreaRef.current) {
+      // Ignore if modifier keys are pressed or if input field has focus
+      if (event.repeat || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || textAreaRef.current === document.activeElement) {
         return; 
       }
-
-      // << MOVIDO: Prevenir scroll SIEMPRE si no estamos en el textarea >>
+      // Start listening only if Space is pressed, not already listening/processing/speaking, and conversation is active
+      if (event.code === 'Space' && !isListening && !isProcessing && !isSpeaking && conversationActive && !isSessionClosed) {
       event.preventDefault(); 
-
-      // Ahora, comprobar si podemos iniciar la escucha
-      // << MODIFICADO: Añadir chequeo de !isThinking >>
-      if (!isListening && !isProcessing && !isSpeaking && conversationActive && !isThinking) {
-        console.log("Push-to-Talk (Espacio) presionado - Iniciando escucha...");
-        setIsPushToTalkActive(true); // Marcar que fue iniciado por PTT
-        handleStartListening();
+        setIsPushToTalkActive(true); // Set visual indicator state
+        handleStartListening(); // Start the listening process
       }
     };
 
     const handleKeyUp = (event: KeyboardEvent) => {
-      // Salir si la tecla no es Espacio
-      if (event.code !== 'Space') return;
-       
-      // Si el foco está en el textarea, no hacer nada especial aquí
-      if (document.activeElement === textAreaRef.current) {
-        return; 
-      }
-      
-      // << MOVER preventDefault() aquí >>
-      // Si la tecla es Espacio y NO estamos en el textarea, prevenir acción (puede no ser necesario aquí, pero es seguro)
+       // Stop listening only if Space is released and we were listening via push-to-talk
+      if (event.code === 'Space' && isListening && isPushToTalkActive) {
       event.preventDefault();
-
-      // Comprobar si la escucha fue iniciada por PTT para detenerla
-      if (isPushToTalkActive) {
-         console.log("Push-to-Talk (Espacio) liberado - Deteniendo escucha...");
-         handleStopListening();
+        handleStopListening(); // Stop the listening process
+        // isPushToTalkActive will be reset in the MediaRecorder's onstop handler
       }
     };
 
-    // Añadir listeners
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
 
-    // Limpiar listeners al desmontar
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
-      if (isPushToTalkActive && mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-          console.log("Cleanup PTT: Deteniendo grabación por desmontaje");
-          mediaRecorderRef.current.stop();
+    };
+  }, [isListening, isProcessing, isSpeaking, isPushToTalkActive, conversationActive, isSessionClosed, handleStartListening, handleStopListening]); // Dependencies
+
+  // Effect for the 20-minute session timeout
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null;
+    
+    // Set timeout only if conversation is active, has a start time, and is not already closed
+    if (conversationActive && sessionStartTime && !isSessionClosed) {
+      const SESSION_DURATION_MS = 20 * 60 * 1000; // 20 minutes
+      const elapsedTime = Date.now() - sessionStartTime;
+      const remainingTime = SESSION_DURATION_MS - elapsedTime;
+
+      if (remainingTime > 0) {
+        console.log(`Estableciendo timeout de sesión para ${Math.round(remainingTime / 1000)}s restantes.`);
+        timeoutId = setTimeout(() => {
+          console.log("Tiempo máximo de sesión (20 min) alcanzado. Finalizando...");
+          setAppError({ type: null, message: "La sesión ha finalizado por inactividad (20 min)." });
+          endSession(); // Trigger the session end process
+        }, remainingTime);
+      } else {
+        // If remaining time is zero or negative, end the session immediately
+        console.log("Tiempo máximo de sesión ya había expirado al montar/actualizar. Finalizando...");
+        // Check again if it's *already* closed to prevent double-ending
+        if (!isSessionClosed) { 
+             setAppError({ type: null, message: "La sesión ha finalizado por inactividad (20 min)." });
+             endSession();
+        }
+      }
+    } else {
+        // Log why timeout is not being set
+         if (!conversationActive) console.log("Timeout no establecido: Conversación inactiva.");
+         if (!sessionStartTime) console.log("Timeout no establecido: Hora de inicio desconocida.");
+         if (isSessionClosed) console.log("Timeout no establecido: Sesión ya cerrada.");
+    }
+
+    // Cleanup function to clear the timeout if component unmounts or dependencies change
+    return () => {
+      if (timeoutId) {
+        console.log("Limpiando timeout de sesión activo.");
+        clearTimeout(timeoutId);
       }
     };
-  }, [isListening, isProcessing, isSpeaking, isPushToTalkActive, handleStartListening, handleStopListening]); // Dependencias clave
+  }, [conversationActive, sessionStartTime, isSessionClosed, endSession]); // Dependencies for timeout
 
-  // << MODIFICADO: useEffect para scroll automático DENTRO del contenedor de chat >>
-  useEffect(() => {
-    if (chatContainerRef.current) {
-      const { scrollHeight, clientHeight, scrollTop } = chatContainerRef.current;
-      // Solo hacer scroll si el usuario está cerca del fondo (ej. a 100px)
-      if (scrollHeight - scrollTop <= clientHeight + 150) { 
-        chatContainerRef.current.scrollTo({ top: scrollHeight, behavior: 'smooth' });
-      }
-    }
-  }, [messages, pendingAiMessage]); // Se activa con nuevos mensajes o mensaje pendiente
 
-  // << NUEVO: Función para alternar visibilidad del chat >>
-  const toggleChatVisibility = () => {
-    setIsChatVisible(prev => !prev);
-  };
-
-  // << NUEVO: Handler para el botón "Nueva Sesión" >>
-  const handleNewSession = () => {
-    console.log("Iniciando nueva sesión...");
-    // Reiniciar todos los estados relevantes
-    setMessages([]);
-    setTextInput('');
-    setIsListening(false);
-    setIsProcessing(false);
-    setIsSpeaking(false);
-    setCurrentSpeakingId(null);
-    setAppError({ type: null, message: null });
-    setSessionStartTime(null); // Reiniciar tiempo de sesión
-    setIsFirstInteraction(true); // Permitir introducción de flujo de nuevo
-    setIsSessionClosed(false); // Marcar sesión como activa de nuevo
-    setConversationActive(false); // Mostrar overlay de "Comenzar" de nuevo
-    setIsReadyToStart(false); // Requerir preparación de saludo de nuevo
-    setInitialAudioUrl(null); // Limpiar saludo anterior
-    setGreetingMessageId(null);
-    // Podríamos llamar a prepareInitialGreeting aquí si queremos que se regenere
-    // o dejar que el useEffect lo haga al cambiar el estado. Mejor dejar al useEffect.
-    // También desconectar/reconectar LiveKit si fuera necesario, aunque
-    // podría ser suficiente con la lógica existente si solo reiniciamos UI.
-  };
+  // --- Effect for Video Source ---
+   useEffect(() => {
+        if (videoRef.current) {
+            // Change video source based on whether the AI is speaking
+            videoRef.current.src = isSpeaking ? '/videos/maria-speaking.mp4' : '/videos/maria-idle.mp4';
+            videoRef.current.load(); // Load the new source
+            videoRef.current.play().catch(e => console.error("Error playing video:", e)); // Attempt to play
+        }
+    }, [isSpeaking]); // Dependency on isSpeaking state
 
   // --- Renderizado ---
   return (
     <div className="relative flex flex-1 h-[calc(100vh-64px)] bg-neutral-100 dark:bg-neutral-900 overflow-hidden">
 
-      {/* << NUEVO: Botón para ocultar/mostrar chat >> */}
+      {/* Botón para Ocultar/Mostrar Chat */}
       <button 
-        onClick={toggleChatVisibility}
+        onClick={toggleChatVisibility} // <<< USAR FUNCION DEFINIDA
         className="absolute top-1/2 -translate-y-1/2 z-30 p-2 bg-neutral-200 dark:bg-neutral-700 rounded-full shadow-md hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-all duration-300 ease-in-out"
-        // Posicionar el botón justo en el borde entre paneles
-        style={{ left: isChatVisible ? 'calc(33.3333% - 20px)' : '10px' }} // Ajusta 33.33% y 20px según necesites
+        style={{ left: isChatVisible ? 'calc(33.3333% - 20px)' : '10px' }}
         aria-label={isChatVisible ? "Ocultar chat" : "Mostrar chat"}
       >
         {isChatVisible ? <ChevronsLeft className="h-5 w-5 text-neutral-700 dark:text-neutral-200" /> : <ChevronsRight className="h-5 w-5 text-neutral-700 dark:text-neutral-200" />}
       </button>
 
-      {/* Overlay y Botón Comenzar (sin cambios) */}
+      {/* Overlay para Iniciar Conversación */}
       <AnimatePresence>
           {!conversationActive && (
               <motion.div
@@ -869,32 +1144,51 @@ const VoiceChatContainer: React.FC = () => {
               >
                   <motion.button
                       initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: isReadyToStart ? 1 : 0.5, scale: 1 }}
+                      animate={{ opacity: isReadyToStart && authStatus === 'authenticated' ? 1 : 0.5, scale: 1 }}
                       transition={{ delay: 0.2 }}
                       onClick={handleStartConversation}
-                      disabled={!isReadyToStart} // Deshabilitar hasta que el audio esté listo
-                      className="px-6 py-3 bg-primary-600 text-white rounded-lg text-lg font-semibold shadow-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-black/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={!isReadyToStart || authStatus !== 'authenticated'} // Disable if not ready OR not authenticated
+                      className={`px-6 py-3 text-white rounded-lg text-lg font-semibold shadow-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-black/30 transition-opacity ${
+                        isReadyToStart && authStatus === 'authenticated'
+                          ? 'bg-primary-600 hover:bg-primary-700 cursor-pointer'
+                          : 'bg-neutral-500 cursor-not-allowed opacity-60' 
+                      }`}
                   >
-                      {isReadyToStart ? 'Comenzar conversación' : 'Preparando saludo...'}
+                      {authStatus === 'loading' ? 'Verificando sesión...' :
+                       authStatus !== 'authenticated' ? 'Inicia sesión para hablar' :
+                       !isReadyToStart ? 'Preparando IA...' : 
+                       'Comenzar conversación'}
                   </motion.button>
               </motion.div>
           )}
       </AnimatePresence>
 
-      {/* Error Banner */}
+      {/* Display de Errores (Flotante) */}
+      {/* <ErrorDisplay error={appError} onClose={clearError} /> */}
+      
+      {/* Display de Errores (Banner Superior) */}
       {appError.message && (
-        <div className="fixed top-16 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md p-4 bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg shadow-lg flex items-center justify-between">
+        <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-[64px] left-1/2 transform -translate-x-1/2 z-50 w-full max-w-lg p-3 bg-red-100 dark:bg-red-900/90 border-b border-red-300 dark:border-red-700 shadow-md flex items-center justify-between"
+        >
           <div className="flex items-center">
-            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-300 mr-2" />
-            <span className="text-sm text-red-700 dark:text-red-200">{appError.message}</span>
+            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-300 mr-2 flex-shrink-0" />
+            <span className="text-sm text-red-800 dark:text-red-200">{appError.message}</span>
           </div>
-          <button onClick={clearError} className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-200">
-             &times;
+          <button 
+            onClick={clearError} 
+            className="ml-3 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-200 p-1 rounded-full focus:outline-none focus:ring-1 focus:ring-red-500"
+            aria-label="Cerrar error"
+            >
+             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
-        </div>
+        </motion.div>
       )}
 
-      {/* << MODIFICADO: Panel Izquierdo: Chat Area con Animación >> */}
+      {/* Panel de Chat (Izquierda) */}
       <AnimatePresence>
         {isChatVisible && (
             <motion.div 
@@ -905,99 +1199,160 @@ const VoiceChatContainer: React.FC = () => {
               transition={{ duration: 0.3, ease: "easeInOut" }}
               className="w-full md:w-1/3 flex flex-col h-full bg-neutral-100 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-700"
             >
-              {/* << MODIFICADO: Añadir ref al contenedor scrollable >> */}
+              {/* Área de Mensajes */}
               <div 
-                ref={chatContainerRef}
+                ref={chatContainerRef} // Referencia para scroll
                 className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 scroll-smooth bg-white dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 relative"
               >
-                {messages.length === 0 ? (
+                {/* Placeholder si no hay mensajes */}
+                {messages.length === 0 && !isThinking ? (
                     <motion.div 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
                     className="flex flex-col items-center justify-center h-full text-center text-neutral-500 dark:text-neutral-400"
                     >
-                    <svg className="w-16 h-16 mb-4 text-neutral-400 dark:text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
-                    <h2 className="text-xl font-medium text-neutral-700 dark:text-neutral-200 mb-2">Hola, soy tu asistente de IA.</h2>
-                    <p>Haz clic en el micrófono o <span className="font-semibold">mantén [Espacio]</span> para hablar.</p> 
+                    <MessageSquare className="w-12 h-12 mb-4 text-neutral-400 dark:text-neutral-500" />
+                    <h2 className="text-lg font-medium text-neutral-700 dark:text-neutral-200 mb-2">
+                        {authStatus === 'authenticated' ? 'Esperando para comenzar...' : 'Inicia sesión para empezar.'}
+                    </h2>
+                    {/* NUEVO: Mostrar contadores de sesión cuando está autenticado */}
+                    {(authStatus as string) === 'authenticated' && (
+                      <div className="mb-4">
+                        {totalPreviousSessions !== null ? (
+                          <>
+                            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-1">
+                              Has completado {totalPreviousSessions} {totalPreviousSessions === 1 ? 'sesión previa' : 'sesiones previas'}.
+                            </p>
+                            <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+                              Estás por iniciar tu sesión número {totalPreviousSessions + 1}.
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-sm flex items-center justify-center">
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Cargando historial...
+                          </p>
+                        )}
+                        {initialContext && (
+                          <p className="mt-3 text-xs italic text-neutral-500 dark:text-neutral-500 max-w-md mx-auto">
+                            Contexto anterior: "{initialContext.substring(0, 80)}{initialContext.length > 80 ? '...' : ''}"
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    <p className="text-sm">
+                        {(authStatus as string) === 'authenticated' 
+                          ? 'Cuando estés listo, pulsa "Comenzar conversación".' 
+                          : 'Usa el menú superior para acceder.'}
+                    </p> 
                     </motion.div>
                 ) : (
+                    // Mapeo de mensajes
                     messages.map((msg) => (
                     <TranscribedResponse
                         key={msg.id}
                         text={msg.text}
                         isUser={msg.isUser}
                         timestamp={msg.timestamp}
-                        isHighlighted={currentSpeakingId === msg.id}
-                        suggestedVideo={msg.suggestedVideo}
+                        isHighlighted={currentSpeakingId === msg.id} // Resaltar si la IA está hablando este mensaje
+                        suggestedVideo={msg.suggestedVideo} // Pasar datos del video sugerido
+                        // Usar avatar del perfil si está disponible, si no el de Google, si no el default
+                        avatarUrl={msg.isUser ? (userProfile?.avatarUrl || session?.user?.image || '/default-avatar.png') : undefined} 
                     />
                     ))
                 )}
-                {/* << NUEVO: Mostrar indicador de pensando >> */}
+                 {/* Indicador de "Pensando..." */}
                 {isThinking && <ThinkingIndicator />} 
+                 {/* Referencia invisible para scroll (opcional si scroll-smooth funciona bien) */}
+                <div ref={chatEndRef} />
               </div>
 
-              {/* << CORREGIDO: Input Area VUELVE AQUÍ DENTRO >> */}
+              {/* Área de Input (Texto y Micrófono) */}
               <div className="p-4 bg-white dark:bg-neutral-800 border-t border-neutral-200 dark:border-neutral-700">
-                 {/* Formulario de input */}
                  <form onSubmit={handleSendTextMessage} className="flex items-center space-x-3">
+                    {/* Input de Texto */}
                     <textarea
-                    ref={textAreaRef} 
+                    ref={textAreaRef} // Referencia para comprobar foco (push-to-talk)
                     value={textInput}
                     onChange={(e) => setTextInput(e.target.value)}
-                    placeholder={isSessionClosed ? "Sesión finalizada." : "Escribe tu mensaje aquí..."}
+                    placeholder={
+                        !conversationActive ? "Inicia una conversación..." :
+                        isSessionClosed ? "Sesión finalizada." : 
+                        isListening ? "Escuchando..." :
+                        isProcessing ? "Procesando..." :
+                        isSpeaking ? "Hablando..." :
+                        isThinking ? "Pensando..." :
+                        "Escribe o pulsa [Espacio]..."
+                    }
                     rows={1}
-                    className="flex-1 resize-none p-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 bg-neutral-50 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="flex-1 resize-none p-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 bg-neutral-50 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 disabled:opacity-60 disabled:cursor-not-allowed text-sm"
                     onKeyDown={(e) => {
+                        // Enviar con Enter (sin Shift)
                         if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
                         handleSendTextMessage(e as unknown as FormEvent);
                         }
                     }}
-                    disabled={isListening || isProcessing || isSpeaking || isSessionClosed || isThinking} // << Added isThinking
+                    // Deshabilitar si se está escuchando, procesando, hablando, pensando, o la sesión está cerrada/inactiva
+                    disabled={!conversationActive || isListening || isProcessing || isSpeaking || isSessionClosed || isThinking}
                     />
-                    {/* Botón Micrófono */}
+                    {/* Botón de Micrófono */}
                     <button 
                     type="button"
                     onClick={isListening ? handleStopListening : handleStartListening} 
-                    disabled={isProcessing || isSpeaking || isSessionClosed || isThinking} // << Added isThinking
-                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 ${ 
-                        isListening 
+                    // Deshabilitar si procesando, hablando, sesión cerrada/inactiva o pensando
+                    disabled={!conversationActive || isProcessing || isSpeaking || isSessionClosed || isThinking}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 ${ 
+                        isListening // Estilo si escuchando (Rojo)
                         ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-400' 
-                        : 'bg-primary-600 hover:bg-primary-700 text-white focus:ring-primary-500'
-                    } ${(isPushToTalkActive) ? 'ring-4 ring-offset-0 ring-green-400' : '' } 
-                        ${(isProcessing || isSpeaking || isSessionClosed || isThinking) ? 'opacity-50 cursor-not-allowed' : ''}`} // << Added isThinking
+                        : 'bg-primary-600 hover:bg-primary-700 text-white focus:ring-primary-500' // Estilo normal
+                    } ${
+                        // Anillo verde si Push-to-Talk activo
+                        (isPushToTalkActive) ? 'ring-4 ring-offset-0 ring-green-400 scale-110' : '' 
+                    } ${
+                        // Opacidad si deshabilitado
+                        (!conversationActive || isProcessing || isSpeaking || isSessionClosed || isThinking) ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                     aria-label={isListening ? "Detener micrófono" : "Activar micrófono"}
                     >
-                    <Mic className="h-5 w-5" />
+                     {/* Icono Micrófono o Loader si está procesando STT */}
+                     {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mic className="h-5 w-5" />}
                     </button>
-                    {/* Botón Enviar */}
+                    {/* Botón Enviar Texto */}
                     <button
                     type="submit"
-                    disabled={!textInput.trim() || isListening || isProcessing || isSpeaking || isSessionClosed || isThinking} // << Added isThinking
+                     // Deshabilitar si input vacío, escuchando, procesando, hablando, sesión cerrada/inactiva o pensando
+                    disabled={!textInput.trim() || !conversationActive || isListening || isProcessing || isSpeaking || isSessionClosed || isThinking}
                     className="w-10 h-10 rounded-full flex items-center justify-center bg-primary-600 text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
                     aria-label="Enviar mensaje"
                     >
-                    {(isProcessing || (isSpeaking && !audioRef.current)) ? ( 
-                        <div className="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div>
-                    ) : (
+                    {/* Icono Enviar */}
                         <Send className="h-5 w-5" />
-                    )}
                     </button>
                  </form>
-                  {/* << MODIFICADO: Mostrar botón "Nueva Sesión" o texto PTT >> */}
+                  {/* Botón para Iniciar Nueva Sesión o Mensaje Push-to-Talk */}
                   {isSessionClosed ? (
+                    // Mostrar botón "Iniciar Nueva Sesión" si la sesión está cerrada
                     <div className="text-center mt-3">
                       <button 
-                        onClick={handleNewSession}
-                        className="px-4 py-2 bg-secondary-600 text-white rounded-lg text-sm font-semibold shadow hover:bg-secondary-700 focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 transition-colors"
+                        onClick={handleStartConversation}
+                         // Deshabilitar si el saludo TTS aún no está listo o no autenticado
+                        disabled={!isReadyToStart || authStatus !== 'authenticated'}
+                        className={`px-4 py-2 text-white rounded-lg text-sm font-semibold shadow focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 transition-colors ${
+                             !isReadyToStart || authStatus !== 'authenticated' 
+                               ? 'bg-neutral-500 cursor-not-allowed opacity-60' 
+                               : 'bg-secondary-600 hover:bg-secondary-700 cursor-pointer'
+                        }`}
                       >
-                        Iniciar Nueva Sesión
+                        {authStatus !== 'authenticated' ? 'Inicia sesión primero' : 
+                         !isReadyToStart ? 'Preparando IA...' : 
+                         'Iniciar Nueva Sesión'}
                       </button>
                     </div>
                   ) : (
-                     <p className={`text-xs mt-2 text-center text-neutral-500 dark:text-neutral-400`}>
-                          Mantén pulsada la tecla [Espacio] para hablar.
+                     // Mostrar mensaje "Mantén [Espacio]" si la sesión está activa
+                     <p className={`text-xs mt-2 text-center text-neutral-500 dark:text-neutral-400 ${!conversationActive ? 'opacity-50' : ''}`}>
+                          {conversationActive ? 'Mantén pulsada la tecla [Espacio] para hablar.' : 'Inicia la conversación para activar el micrófono.'}
                       </p>
                   )}
               </div>
@@ -1005,63 +1360,154 @@ const VoiceChatContainer: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* << MODIFICADO: Panel Derecho: Video Avatar >> */}
-      <div className={`relative flex flex-col items-center justify-center flex-1 h-full bg-white dark:bg-neutral-800 transition-all duration-300 ease-in-out p-6 ${isChatVisible ? 'md:w-2/3' : 'w-full'}`}>
-        {/* << CORREGIDO: Cambiado bg-black a bg-white dark:bg-neutral-800 >> */}
-        {/* Contenedor para el marco del video */}
-        <div className="relative w-full h-full rounded-lg overflow-hidden shadow-lg">
-          {/* Video */}
+      {/* Panel de Video (Derecha) */}
+      <div className={`relative flex flex-col items-center justify-center flex-1 h-full bg-white dark:bg-neutral-800 transition-all duration-300 ease-in-out p-4 md:p-6 ${isChatVisible ? 'md:w-2/3' : 'w-full'}`}>
+        {/* Contenedor del video con sombra y bordes redondeados */}
+        <div className="relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-black"> 
           <video
-            ref={videoRef}
-            key={isSpeaking ? 'speaking' : 'muted'} 
-            autoPlay
-            loop
-            muted 
-            playsInline 
-            className="w-full h-full object-cover" 
+            ref={videoRef} // Referencia al elemento video
+            key={isSpeaking ? 'speaking' : 'idle'} // Cambiar key fuerza recarga de video si fuentes son diferentes
+            autoPlay // Reproducir automáticamente
+            loop // Repetir video
+            muted // Silenciado (requerido para autoplay en muchos navegadores)
+            playsInline // Para reproducción inline en iOS
+            className="w-full h-full object-cover" // Estilo para cubrir contenedor
+            // src={isSpeaking ? '/videos/maria-speaking.mp4' : '/videos/maria-idle.mp4'} // Fuente inicial (ahora manejado por useEffect)
           >
             Tu navegador no soporta el elemento de video. 
           </video>
+          {/* Indicador de estado (Opcional, superpuesto sobre el video) */}
+           <div className="absolute bottom-4 left-4 flex items-center space-x-2 bg-black/50 text-white px-3 py-1 rounded-full text-xs">
+             {isListening ? <><Mic className="h-3 w-3 text-red-400 animate-pulse" /><span>Escuchando...</span></> :
+              isProcessing ? <><Loader2 className="h-3 w-3 animate-spin" /><span>Procesando...</span></> :
+              isSpeaking ? <><svg className="h-3 w-3 text-blue-400" fill="currentColor" viewBox="0 0 16 16"><path d="M11.536 14.01A8.47 8.47 0 0 0 14.026 8a8.47 8.47 0 0 0-2.49-6.01l-1.088.92A6.479 6.479 0 0 1 12.025 8a6.48 6.48 0 0 1-1.578 4.09zM10.036 12.01A6.48 6.48 0 0 0 12.025 8a6.48 6.48 0 0 0-1.99-4.01l-1.088.92A4.486 4.486 0 0 1 10.025 8a4.486 4.486 0 0 1-1.088 3.09zM8 13a5 5 0 0 0 5-5V3a5 5 0 0 0-10 0v5a5 5 0 0 0 5 5m-3.5-5a3.5 3.5 0 1 1 7 0V3a3.5 3.5 0 1 1-7 0z"/></svg><span>Hablando...</span></> :
+              isThinking ? <><Loader2 className="h-3 w-3 animate-spin" /><span>Pensando...</span></> :
+              isSessionClosed ? <><svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg><span>Finalizada</span></> :
+              conversationActive ? <><svg className="h-3 w-3 text-green-400" fill="currentColor" viewBox="0 0 16 16"><circle cx="8" cy="8" r="8"/></svg><span>Activa</span></> : 
+              <><svg className="h-3 w-3 text-gray-400" fill="currentColor" viewBox="0 0 16 16"><circle cx="8" cy="8" r="8"/></svg><span>Inactiva</span></>
+             }
+           </div>
         </div>
       </div>
 
-      {/* << CORREGIDO: Renderizado Condicional SOLO para controles inferiores >> */}
-      {/* Solo se muestra cuando el chat NO está visible */}
-      {!isChatVisible && (
-          <div className={`absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/70 via-black/50 to-transparent pb-4 pt-12`}>
-             {/* Contenedor interno para centrar */}
-             <div className={`mx-auto px-4 max-w-md`}>
+      {/* Controles de Micrófono Flotantes (cuando el chat está oculto) */}
+      {!isChatVisible && conversationActive && !isSessionClosed && (
+          <div className={`absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/70 via-black/50 to-transparent pb-4 pt-12 pointer-events-none`}>
+             <div className={`mx-auto px-4 max-w-md pointer-events-auto`}> {/* Enable pointer events here */}
                 <div className={`p-4 rounded-t-lg bg-transparent flex justify-center`}> 
-                    {/* Botón Micrófono (Centrado) */}
+                    {/* Botón de Micrófono Flotante */}
                     <button 
                     type="button"
                     onClick={isListening ? handleStopListening : handleStartListening} 
-                    disabled={isProcessing || isSpeaking} 
-                    className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 ${ 
-                        isListening 
+                    // Deshabilitar si procesando o hablando (sesión cerrada/inactiva ya cubierto por el condicional padre)
+                    disabled={isProcessing || isSpeaking || isThinking} 
+                    className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-neutral-900 shadow-lg ${ 
+                        isListening // Estilo si escuchando (Rojo + grande)
                         ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-400 scale-110' 
-                        : 'bg-primary-600 hover:bg-primary-700 text-white focus:ring-primary-500'
-                    } ${(isPushToTalkActive) ? 'ring-4 ring-offset-0 ring-green-400' : '' }
-                        ${(isProcessing || isSpeaking) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        : 'bg-primary-600 hover:bg-primary-700 text-white focus:ring-primary-500' // Estilo normal
+                    } ${
+                        // Anillo verde si Push-to-Talk activo
+                        (isPushToTalkActive) ? 'ring-4 ring-offset-0 ring-green-400 scale-110' : '' 
+                    } ${
+                        // Opacidad si deshabilitado
+                        (isProcessing || isSpeaking || isThinking) ? 'opacity-60 cursor-not-allowed' : ''
+                    }`}
                     aria-label={isListening ? "Detener micrófono" : "Activar micrófono"}
                     >
-                    <Mic className="h-6 w-6" />
+                    {/* Icono Micrófono o Loader */}
+                    {isProcessing ? <Loader2 className="h-6 w-6 animate-spin" /> : <Mic className="h-6 w-6" />}
                     </button>
                  </div>
-                 <p className={`text-xs mt-2 text-center text-neutral-300`}>
-                        Mantén pulsada la tecla [Espacio] para hablar.
+                 {/* Mensaje Push-to-Talk Flotante */}
+                 <p className={`text-xs mt-1 text-center text-neutral-200 drop-shadow-sm pointer-events-none`}>
+                        Mantén [Espacio] para hablar.
                     </p>
              </div>
           </div>
       )}
 
-      {/* Display de Error - NUEVO */}
-      <AnimatePresence>
+      {/* Error Display using the component (Optional alternative placement) */}
+      {/* <AnimatePresence>
          <ErrorDisplay error={appError} onClose={clearError} />
+      </AnimatePresence> */}
+
+      <AnimatePresence>
+        {(!conversationActive && authStatus === 'authenticated') && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm p-8 rounded-lg text-center"
+          >
+            <h1 className="text-3xl font-bold mb-4 text-purple-300">Bienvenido, {userProfile?.username || 'usuario'}</h1>
+            {totalPreviousSessions !== null ? (
+              <>
+                <p className="text-lg mb-2 text-gray-300">Has completado {totalPreviousSessions} {totalPreviousSessions === 1 ? 'sesión previa' : 'sesiones previas'}.</p>
+                <p className="text-xl font-semibold mb-6 text-gray-100">Listo para tu sesión número {totalPreviousSessions + 1}.</p>
+              </>
+            ) : (
+               <p className="text-lg mb-6 text-gray-300 flex items-center justify-center"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cargando datos de sesión...</p>
+            )}
+             {initialContext && (
+               <p className="mb-6 text-sm italic text-gray-400">Retomando desde: "{initialContext.substring(0, 80)}{initialContext.length > 80 ? '...' : ''}"</p>
+             )}
+             {/* << CORREGIDO: Mover botón dentro del motion.div y ajustar lógica condicional >> */}
+             <motion.button 
+                initial={{ opacity: 0 }} // Animación simple para el botón en sí
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className={`px-6 py-3 text-white rounded-lg text-lg font-semibold shadow-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-black/30 transition-opacity ${
+                  isReadyToStart
+                    ? 'bg-primary-600 hover:bg-primary-700 cursor-pointer'
+                    : 'bg-neutral-500 cursor-not-allowed opacity-60' 
+                }`}
+                onClick={handleStartConversation}
+                disabled={!isReadyToStart} // La condición authStatus === 'authenticated' ya está cubierta por el div padre
+              >
+                {/* Lógica simplificada ya que solo se muestra si authStatus === 'authenticated' */}
+                {!isReadyToStart ? 'Preparando IA...' : 'Comenzar conversación'}
+              </motion.button>
+          </motion.div>
+        )}
+        {/* << NUEVO/MODIFICADO: Añadir explícitamente casos para loading y unauthenticated >> */}
+        {authStatus === 'loading' && (
+             <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm"
+              >
+                <Loader2 className="h-12 w-12 animate-spin text-purple-400 mb-4" />
+                <p className="text-xl text-gray-300">Cargando tu sesión...</p>
+             </motion.div>
+        )}
+        {authStatus === 'unauthenticated' && (
+             <motion.div 
+               initial={{ opacity: 0 }}
+               animate={{ opacity: 1 }}
+               exit={{ opacity: 0 }}
+               className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm p-8 rounded-lg text-center"
+              >
+                <AlertCircle className="h-12 w-12 text-red-400 mb-4"/>
+                <h2 className="text-2xl font-semibold mb-3 text-red-300">Acceso Requerido</h2>
+                <p className="text-lg text-gray-300 mb-6">Por favor, inicia sesión para poder conversar con María.</p>
+                 {/* Añadir botón de login */}
+                 <motion.button 
+                    initial={{ opacity: 0 }} 
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    onClick={() => import('next-auth/react').then(mod => mod.signIn('google'))} 
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-full text-white text-lg font-semibold shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-blue-400"
+                 >
+                    Iniciar Sesión con Google
+                </motion.button>
+             </motion.div>
+         )}
       </AnimatePresence>
 
     </div>
   );
-};
+}
 
 export default VoiceChatContainer;
+

@@ -115,16 +115,17 @@ const HISTORY_LENGTH = 12; // 6 intercambios user/assistant. Ajustable.
 // Esquema de validación con Zod (Aplica Sugerencia 3)
 const requestBodySchema = z.object({
   message: z.string().trim().min(1, { message: "El mensaje no puede estar vacío." }),
-  history: z.array(z.object({ // Estructura básica del historial
+  history: z.array(z.object({ 
     role: z.enum(["user", "assistant", "system"]),
     content: z.string(),
-    // Podrías añadir aquí el 'elapsedMinutesReported' si lo envías desde el cliente
   })).optional().default([]),
   sessionStartTime: z.number().positive().optional(),
-  // Flag para controlar la introducción del flujo desde el backend (Aplica Sugerencia 1 robusta)
   introduceFlow: z.boolean().optional().default(false),
-  // Podrías añadir un clientRequestId aquí para trazabilidad E2E
-  // clientRequestId: z.string().uuid().optional(),
+  initialContext: z.string().nullable().optional(),
+  userProfile: z.object({
+      username: z.string().nullable().optional(),
+      avatarUrl: z.string().url().nullable().optional(),
+  }).nullable().optional(),
 });
 
 // --- Lista de Keywords para detectar cierre ---
@@ -155,7 +156,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Cuerpo de la solicitud inválido o mal formado.', requestId }, { status: 400 });
     }
 
-    const { message, history, sessionStartTime, introduceFlow } = parsedBody.data;
+    const { message, history, sessionStartTime, introduceFlow, initialContext, userProfile } = parsedBody.data;
     // const providedRequestId = parsedBody.data.requestId; // Usar si el cliente envía un ID
     // if (providedRequestId) requestId = providedRequestId; // Sobrescribir si el cliente envía uno
 
@@ -216,36 +217,36 @@ export async function POST(request: Request) {
     // -------------------------------------------------------------
 
     // Prepara los mensajes para la API usando tipos específicos
-    const baseMessages: ChatCompletionMessageParam[] = [
-      {
-        role: "system",
-        content: systemPromptContent
-      },
-      ...recentHistory, // Historial reciente truncado
-    ];
+    const messagesForOpenAI: ChatCompletionMessageParam[] = [];
 
-    // Array final de mensajes a enviar
-    let finalMessages: ChatCompletionMessageParam[] = [...baseMessages];
-
-    // --- Lógica para Introducción del Flujo (Controlado por Backend) ---
-    if (introduceFlow) {
-      console.log(`[${requestId}] Flag introduceFlow=true detectado. Añadiendo instrucción especial.`);
-      // Insertar instrucción *antes* del mensaje real del usuario
-      finalMessages.push({
-        role: "user",
-        // Esta es una instrucción para el modelo, no parte de la conversación visible directa
-        content: `Instrucción Especial para María (Ignorar en la respuesta directa al usuario): Este es el primer turno significativo. Debes introducir brevemente el enfoque de nuestra conversación: primero, quiero entender mejor cómo te sientes y qué está pasando; luego, exploraremos juntos algunas técnicas prácticas para manejar la ansiedad; y finalmente, haremos un pequeño resumen para que te lleves herramientas útiles. Pregunta al usuario si está de acuerdo con este camino. DESPUÉS de hacer eso, responde al mensaje real del usuario que viene a continuación.`
-      });
+    // 1. System Prompt (Personalizado con nombre si existe)
+    let finalSystemPrompt = systemPromptContent;
+    if (userProfile?.username) {
+        finalSystemPrompt = `[Instrucción Adicional: El nombre del usuario es ${userProfile.username}. Dirígete a él/ella por su nombre cuando sea natural y apropiado.]\n\n${systemPromptContent}`;
+        console.log(`[${requestId}] Personalizando prompt con nombre de usuario: ${userProfile.username}`);
     }
-    // -------------------------------------------------------------------
+    messagesForOpenAI.push({ role: "system", content: finalSystemPrompt });
 
-    // Añadir el mensaje real del usuario al final
-    finalMessages.push({ role: "user", content: userMessageForAI });
-
-    // Añadir mensaje de sistema si se detectó intención de cierre
-    if (wantsToClose) {
-      finalMessages.push({ role: 'system', content: 'USER_WANTS_TO_CLOSE' });
+    // 2. Contexto de la Sesión Anterior (si existe y es la primera interacción real)
+    //    Lo añadimos como un mensaje previo del sistema para separarlo del historial actual
+    if (introduceFlow && initialContext) { // introduceFlow indica primera interacción real tras saludo
+        messagesForOpenAI.push({
+            role: "system", 
+            content: `[Contexto de Sesión Anterior] La última vez hablamos sobre esto (resumen): "${initialContext}". Por favor, tenlo en cuenta para dar continuidad.`
+        });
+        console.log(`[${requestId}] Añadiendo contexto inicial al historial de OpenAI.`);
     }
+
+    // 3. Historial de la Conversación Actual (truncado)
+    //    Asegúrate que el historial que llega SÍ incluye el saludo inicial si aplica.
+    const conversationHistory = history.slice(-HISTORY_LENGTH);
+    messagesForOpenAI.push(...conversationHistory.map(msg => ({
+        role: msg.role as 'user' | 'assistant', // Asegurar el tipo
+        content: msg.content,
+    })));
+
+    // 4. Mensaje Actual del Usuario (con contexto de tiempo si aplica)
+    messagesForOpenAI.push({ role: "user", content: userMessageForAI });
 
     // --- Llamada a la API de OpenAI ---
     // Nota sobre Parámetros:
@@ -255,10 +256,10 @@ export async function POST(request: Request) {
     // - Para respuestas comunes, cachear (Redis/Vercel KV) ahorra costes.
     // Nota sobre Reintentos (Aplica Sugerencia 3.3):
     // - Implementar retry/backoff (ej. con async-retry) para errores transitorios (5xx).
-    console.log(`[${requestId}] Enviando ${finalMessages.length} mensajes a OpenAI (${process.env.OPENAI_MODEL || 'gpt-4.1-mini-2025-04-14'})...`);
+    console.log(`[${requestId}] Enviando ${messagesForOpenAI.length} mensajes a OpenAI. Último user: ${userMessageForAI.substring(0, 50)}...`);
     const completion = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || "gpt-4.1-mini-2025-04-14",
-      messages: finalMessages, // Usar el array final de mensajes
+      messages: messagesForOpenAI,
       temperature: 0.6, // Reducido para respuestas más consistentes
       max_tokens: 400,
       // Nota sobre Stop Sequences (Sugerencia 4):
