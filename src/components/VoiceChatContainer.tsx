@@ -128,9 +128,15 @@ function VoiceChatContainer() {
   
   // << NUEVO: Efecto para hacer scroll automático en el chat >>
   useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
+    // Usar setTimeout para asegurar que el DOM se actualice antes de calcular scrollHeight
+    const timer = setTimeout(() => {
+      if (chatContainerRef.current) { // Verificar nulidad aquí también
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      }
+    }, 0); // Retraso 0 para ejecutar después del render actual
+    
+    // Limpiar el timeout si el componente se desmonta o las dependencias cambian
+    return () => clearTimeout(timer);
   }, [messages, isThinking]); // Se activa cuando cambian los mensajes o el estado de "pensando"
   
   // Función para limpiar errores
@@ -440,6 +446,8 @@ function VoiceChatContainer() {
     audioRef.current = audio;
     setCurrentSpeakingId(messageId);
     setIsSpeaking(true);
+    // << NUEVO: Quitar thinking justo antes de reproducir >>
+    setIsThinking(false);
     // NO establecer setIsThinking(false) aquí todavía
 
     // << MODIFICADO: Lógica onended para manejar cierre Y thinking >>
@@ -447,7 +455,7 @@ function VoiceChatContainer() {
       console.log("Audio terminado:", messageId);
       setIsSpeaking(false);
       setCurrentSpeakingId(null);
-      setIsThinking(false); // << MOVIDO: Solo quitar thinking cuando termina >>
+      // setIsThinking(false); // << ELIMINADO: Ya no se controla aquí >>
       audioRef.current = null; // Limpiar ref
       
       // If it was the closing audio, trigger the session end logic NOW
@@ -464,7 +472,7 @@ function VoiceChatContainer() {
       setAppError({ type: 'tts', message: 'Error al reproducir el archivo de audio.' });
       setIsSpeaking(false);
       setCurrentSpeakingId(null);
-      setIsThinking(false); // << AÑADIDO: Quitar thinking también en error >>
+      // setIsThinking(false); // << ELIMINADO: Ya no se controla aquí >>
       audioRef.current = null; // Limpiar ref
       // If closing audio playback fails, still force end the session
       if (isClosingAudio) {
@@ -480,7 +488,7 @@ function VoiceChatContainer() {
         setAppError({ type: 'tts', message: playErrorMessage });
         setIsSpeaking(false);
         setCurrentSpeakingId(null);
-        setIsThinking(false); // << AÑADIDO: Quitar thinking si falla play() >>
+        // setIsThinking(false); // << ELIMINADO: Ya no se controla aquí >>
         audioRef.current = null;
         // If play() fails for closing audio, still force end the session
         if (isClosingAudio) {
@@ -590,15 +598,15 @@ function VoiceChatContainer() {
              const audioUrlToPlay = `/api/audio/${audioId}`; 
              console.log(`TTS generado (${audioId}), añadiendo mensaje y reproduciendo audio...`);
              
-             // << MOVIDO: Añadir mensaje a UI y guardar ANTES de reproducir >>
-             if (pendingAiMessage) {
-                setMessages(prev => [...prev, pendingAiMessage]);
-                saveMessage(pendingAiMessage);
-                setPendingAiMessage(null); // Limpiar pendiente
-             } else {
-                // Esto no debería pasar si la lógica es correcta, pero por si acaso
-                console.warn("Se intentó añadir mensaje de IA pero pendingAiMessage estaba vacío.");
-             }
+             // << MOVIDO Y CORREGIDO: Añadir mensaje a UI y guardar ANTES de reproducir >>
+             // Usar directamente incomingAiMessage, ya que pendingAiMessage puede ser null aquí según los logs.
+             setMessages(prev => [...prev, incomingAiMessage]); // Usar incomingAiMessage
+             saveMessage(incomingAiMessage);                   // Usar incomingAiMessage
+             // Limpiar el estado pendiente ahora que se ha usado.
+             setPendingAiMessage(null);
+
+             // << NUEVO: Quitar thinking DESPUÉS de añadir mensaje y ANTES de reproducir >>
+             setIsThinking(false); 
 
              // Play the audio. playAudio ahora manejará setIsThinking(false)
              playAudio(audioUrlToPlay, incomingAiMessage.id, isClosingMessage); 
@@ -610,11 +618,13 @@ function VoiceChatContainer() {
         } else {
           // TTS API request failed
           const errorData = await ttsResponse.json().catch(() => ({}));
+          // << NUEVO: Quitar thinking aquí también si TTS falla ANTES de intentar reproducir >>
+          setIsThinking(false); 
           throw new Error(errorData.error || `Error del servidor TTS: ${ttsResponse.status}`);
         }
       } catch (ttsError) {
           // Catch errors during TTS fetch or processing
-          setIsThinking(false); // Stop thinking indicator on TTS error
+          //setIsThinking(false); // Se mueve arriba para quitarlo antes
           console.error("Error al obtener o procesar audio TTS:", ttsError);
           setAppError({ type: 'tts', message: ttsError instanceof Error ? ttsError.message : 'Error desconocido en TTS.' });
           // Don't try to play audio if TTS failed
