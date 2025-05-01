@@ -305,7 +305,7 @@ function VoiceChatContainer() {
           audioRef.current = null;
       }
     };
-  }, [getLiveKitToken, connectionState, liveKitToken, conversationActive]); // Added conversationActive dependency
+  }, [getLiveKitToken, connectionState, liveKitToken]); // << MODIFICADO: Eliminar conversationActive de las dependencias >>
 
   // --- Funciones de Base de Datos (API Calls) ---
   const saveMessage = useCallback(async (message: Message) => {
@@ -1110,8 +1110,8 @@ function VoiceChatContainer() {
   // --- Effect for Video Source ---
    useEffect(() => {
         if (videoRef.current) {
-            // Change video source based on whether the AI is speaking
-            videoRef.current.src = isSpeaking ? '/videos/maria-speaking.mp4' : '/videos/maria-idle.mp4';
+            // << MODIFICADO: Usar nombres de archivo existentes >>
+            videoRef.current.src = isSpeaking ? '/videos/voz.mp4' : '/videos/mute.mp4';
             videoRef.current.load(); // Load the new source
             videoRef.current.play().catch(e => console.error("Error playing video:", e)); // Attempt to play
         }
@@ -1130,38 +1130,6 @@ function VoiceChatContainer() {
       >
         {isChatVisible ? <ChevronsLeft className="h-5 w-5 text-neutral-700 dark:text-neutral-200" /> : <ChevronsRight className="h-5 w-5 text-neutral-700 dark:text-neutral-200" />}
       </button>
-
-      {/* Overlay para Iniciar Conversación */}
-      <AnimatePresence>
-          {!conversationActive && (
-              <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="absolute inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm"
-                  aria-hidden="true"
-              >
-                  <motion.button
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: isReadyToStart && authStatus === 'authenticated' ? 1 : 0.5, scale: 1 }}
-                      transition={{ delay: 0.2 }}
-                      onClick={handleStartConversation}
-                      disabled={!isReadyToStart || authStatus !== 'authenticated'} // Disable if not ready OR not authenticated
-                      className={`px-6 py-3 text-white rounded-lg text-lg font-semibold shadow-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-black/30 transition-opacity ${
-                        isReadyToStart && authStatus === 'authenticated'
-                          ? 'bg-primary-600 hover:bg-primary-700 cursor-pointer'
-                          : 'bg-neutral-500 cursor-not-allowed opacity-60' 
-                      }`}
-                  >
-                      {authStatus === 'loading' ? 'Verificando sesión...' :
-                       authStatus !== 'authenticated' ? 'Inicia sesión para hablar' :
-                       !isReadyToStart ? 'Preparando IA...' : 
-                       'Comenzar conversación'}
-                  </motion.button>
-              </motion.div>
-          )}
-      </AnimatePresence>
 
       {/* Display de Errores (Flotante) */}
       {/* <ErrorDisplay error={appError} onClose={clearError} /> */}
