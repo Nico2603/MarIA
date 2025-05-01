@@ -106,7 +106,7 @@ function VoiceChatContainer() {
   // << NUEVO: Estado para indicar María está "pensando" (OpenAI + TTS) >>
   const [isThinking, setIsThinking] = useState(false);
   // << NUEVO: Estado para almacenar temporalmente el mensaje de la IA >>
-  const [pendingAiMessage, setPendingAiMessage] = useState<Message | null>(null);
+  const [pendingAiMessage, setPendingAiMessage] = useState<Message | null>(null); // << USAR ESTE ESTADO >>
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null); // << NUEVO: Estado para ID de sesión activa en BD
   const [initialContext, setInitialContext] = useState<string | null>(null); // << NUEVO: Estado para resumen previo
   const [userProfile, setUserProfile] = useState<Profile | null>(null); // << NUEVO: Estado para perfil de usuario
@@ -321,7 +321,8 @@ function VoiceChatContainer() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        sessionId: activeSessionId,
+        // << CORREGIDO: Enviar chatSessionId en lugar de sessionId >>
+        chatSessionId: activeSessionId,
         sender: message.isUser ? 'user' : 'ai',
         content: message.text,
       }),
@@ -439,12 +440,14 @@ function VoiceChatContainer() {
     audioRef.current = audio;
     setCurrentSpeakingId(messageId);
     setIsSpeaking(true);
+    // NO establecer setIsThinking(false) aquí todavía
 
-    // << MODIFICADO: Lógica onended para manejar cierre >>
+    // << MODIFICADO: Lógica onended para manejar cierre Y thinking >>
     audio.onended = () => {
       console.log("Audio terminado:", messageId);
       setIsSpeaking(false);
       setCurrentSpeakingId(null);
+      setIsThinking(false); // << MOVIDO: Solo quitar thinking cuando termina >>
       audioRef.current = null; // Limpiar ref
       
       // If it was the closing audio, trigger the session end logic NOW
@@ -461,6 +464,7 @@ function VoiceChatContainer() {
       setAppError({ type: 'tts', message: 'Error al reproducir el archivo de audio.' });
       setIsSpeaking(false);
       setCurrentSpeakingId(null);
+      setIsThinking(false); // << AÑADIDO: Quitar thinking también en error >>
       audioRef.current = null; // Limpiar ref
       // If closing audio playback fails, still force end the session
       if (isClosingAudio) {
@@ -476,6 +480,7 @@ function VoiceChatContainer() {
         setAppError({ type: 'tts', message: playErrorMessage });
         setIsSpeaking(false);
         setCurrentSpeakingId(null);
+        setIsThinking(false); // << AÑADIDO: Quitar thinking si falla play() >>
         audioRef.current = null;
         // If play() fails for closing audio, still force end the session
         if (isClosingAudio) {
@@ -483,7 +488,7 @@ function VoiceChatContainer() {
             endSession(); // Call endSession if play() fails for closing audio
         }
     });
-  }, [endSession]); // Added endSession dependency
+  }, [endSession]); // Mantener endSession dependency
 
 
   // Función para enviar mensaje a la API de OpenAI y luego a la API TTS
@@ -498,6 +503,7 @@ function VoiceChatContainer() {
     setIsThinking(true); // Indicate processing starts
     setIsProcessing(false); // Ensure transcription processing state is off
     clearError(); 
+    setPendingAiMessage(null); // << LIMPIAR mensaje pendiente >>
     
     const shouldIntroduceFlow = isFirstInteraction;
     // Use initialContext only on the very first interaction of the session
@@ -545,7 +551,10 @@ function VoiceChatContainer() {
       const aiText = data.response;
       const suggestedVideoData = data.suggestedVideo; // Get potential video suggestion
       
-      if (!aiText) throw new Error("Respuesta vacía recibida de OpenAI.");
+      if (!aiText) {
+        setIsThinking(false); // << AÑADIDO: Asegurar quitar thinking si no hay texto >>
+        throw new Error("Respuesta vacía recibida de OpenAI.");
+      }
 
       // Create the AI message object
       const incomingAiMessage: Message = {
@@ -557,8 +566,9 @@ function VoiceChatContainer() {
       };
       
       // Add AI message text to chat immediately for better perceived responsiveness
-      setMessages(prev => [...prev, incomingAiMessage]);
-      saveMessage(incomingAiMessage); // Save AI message to DB
+      // setMessages(prev => [...prev, incomingAiMessage]);
+      // saveMessage(incomingAiMessage); // Save AI message to DB
+      setPendingAiMessage(incomingAiMessage); // << GUARDAR en estado pendiente >>
       
       // Check if this is a closing message BEFORE generating TTS
       const lowerAiText = aiText.toLowerCase();
@@ -578,11 +588,21 @@ function VoiceChatContainer() {
           const { audioId } = await ttsResponse.json();
           if (audioId) {
              const audioUrlToPlay = `/api/audio/${audioId}`; 
-             console.log(`TTS generado (${audioId}), reproduciendo audio...`);
-             // Play the audio. The playAudio function's onended callback
-             // will handle session closing if isClosingMessage is true.
+             console.log(`TTS generado (${audioId}), añadiendo mensaje y reproduciendo audio...`);
+             
+             // << MOVIDO: Añadir mensaje a UI y guardar ANTES de reproducir >>
+             if (pendingAiMessage) {
+                setMessages(prev => [...prev, pendingAiMessage]);
+                saveMessage(pendingAiMessage);
+                setPendingAiMessage(null); // Limpiar pendiente
+             } else {
+                // Esto no debería pasar si la lógica es correcta, pero por si acaso
+                console.warn("Se intentó añadir mensaje de IA pero pendingAiMessage estaba vacío.");
+             }
+
+             // Play the audio. playAudio ahora manejará setIsThinking(false)
              playAudio(audioUrlToPlay, incomingAiMessage.id, isClosingMessage); 
-             setIsThinking(false); // Stop thinking indicator once audio starts playing
+             // setIsThinking(false); // << ELIMINADO de aquí >>
           } else {
              // TTS API succeeded but didn't return an audioId
              throw new Error("ID de audio no recibido del endpoint TTS.");
@@ -617,7 +637,7 @@ function VoiceChatContainer() {
       setIsSpeaking(false); 
       setCurrentSpeakingId(null);
     } 
-  }, [activeSessionId, isFirstInteraction, initialContext, messages, sessionStartTime, userProfile, saveMessage, playAudio, endSession]); // Added dependencies
+  }, [activeSessionId, isFirstInteraction, initialContext, messages, sessionStartTime, userProfile, saveMessage, playAudio, endSession, pendingAiMessage]); // << AÑADIDO pendingAiMessage >>
 
 
   // --- Controladores de Interacción del Usuario (Micrófono, Texto) ---

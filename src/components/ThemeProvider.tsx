@@ -20,15 +20,25 @@ export function useTheme() {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('light');
+  // Inicializar con 'light' como fallback, pero useEffect lo sobrescribirá
+  const [theme, setTheme] = useState<Theme>('light'); 
 
-  // Inicializar el tema a 'light' y aplicar la clase correspondiente al montar
+  // << MODIFICADO: useEffect para inicializar el tema correctamente >>
   useEffect(() => {
-    // Forzar el tema 'light' inicialmente
-    document.documentElement.classList.remove('dark'); 
-    // Limpiar cualquier posible tema guardado previamente si existe,
-    // para asegurar que el default 'light' prevalezca en la primera carga.
-    localStorage.removeItem('theme'); 
+    const storedTheme = localStorage.getItem('theme') as Theme | null;
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    let initialTheme: Theme;
+    if (storedTheme) {
+      initialTheme = storedTheme;
+    } else {
+      initialTheme = prefersDark ? 'dark' : 'light';
+    }
+    
+    setTheme(initialTheme);
+    document.documentElement.classList.toggle('dark', initialTheme === 'dark');
+    // No eliminar localStorage aquí, queremos que persista
+    
   }, []); // Ejecutar solo una vez al montar
 
   // Función para alternar entre temas
