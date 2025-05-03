@@ -1,10 +1,10 @@
 'use client'; // << AÑADIDO: Necesario para hooks como useSession y useRouter
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link'; // Importar Link para el botón
 import { useSession, signIn } from 'next-auth/react'; // << AÑADIDO
 import { useRouter } from 'next/navigation'; // << AÑADIDO
-import { toast } from 'sonner'; // << AÑADIDO (Asegúrate que esté instalado y configurado)
+import { toast } from 'sonner'; // Mantener toast para loading/errores, no para el aviso
 import { BrainCircuit, MessageSquareHeart, Sparkles } from 'lucide-react'; // Iconos para características
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Asume que has copiado Avatar a tu UI
 import {
@@ -97,6 +97,7 @@ const faqItems = [
 export default function LandingPage() {
   const { data: session, status } = useSession(); // << AÑADIDO
   const router = useRouter(); // << AÑADIDO
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false); // << NUEVO: Estado para mostrar el aviso
 
   // << AÑADIDO: Manejador de clic para el enlace/botón del chat >>
   const handleChatLinkClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -105,13 +106,8 @@ export default function LandingPage() {
     if (status === 'authenticated') {
       router.push('/chat'); // Navegar a la página del chat
     } else if (status === 'unauthenticated') {
-      toast.info('Debes iniciar sesión para hablar con María.', {
-        action: {
-          label: 'Iniciar Sesión',
-          onClick: () => signIn('google'),
-        },
-      });
-      // Opcional: iniciar sesión directamente: signIn('google');
+      // << MODIFICADO: Mostrar el prompt en lugar del toast >>
+      setShowLoginPrompt(true);
     } else { // status === 'loading'
        toast.loading('Verificando sesión...');
        // No hacer nada mientras carga, el botón debería estar deshabilitado visualmente
@@ -159,6 +155,39 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        {/* << NUEVO: Prompt Visual para Iniciar Sesión >> */} 
+        {showLoginPrompt && (
+         <div 
+           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn" 
+           onClick={() => setShowLoginPrompt(false)} // Cerrar al hacer clic fuera
+         >
+           <div 
+             className="bg-white dark:bg-neutral-800 p-8 rounded-xl shadow-2xl max-w-md mx-4 text-center transform transition-all duration-300 ease-out scale-100" 
+             onClick={(e) => e.stopPropagation()} // Evitar que el clic dentro cierre el modal
+           >
+             <h3 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">Inicio de Sesión Requerido</h3>
+             <p className="text-neutral-600 dark:text-neutral-300 mb-6">
+               Para comenzar tu conversación con María, por favor inicia sesión con tu cuenta de Google.
+             </p>
+             <button 
+               onClick={() => {
+                   signIn('google');
+                   setShowLoginPrompt(false); // Cerrar al iniciar sesión
+               }}
+               className="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-lg font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 h-11 px-8 shadow-soft hover:shadow-soft-lg transform hover:-translate-y-1 bg-primary-600 hover:bg-primary-700 text-white"
+             >
+                Iniciar Sesión con Google
+             </button>
+             <button 
+               onClick={() => setShowLoginPrompt(false)}
+               className="mt-4 text-sm text-neutral-500 dark:text-neutral-400 hover:underline"
+             >
+               Cancelar
+             </button>
+           </div>
+         </div>
+       )}
 
         {/* Sección de Características - Aplicar glass-effect, card-hover y animaciones */}
         <section id="features" className="relative py-20 md:py-28 bg-white dark:bg-neutral-800 overflow-hidden">

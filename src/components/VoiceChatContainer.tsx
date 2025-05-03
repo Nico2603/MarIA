@@ -1151,19 +1151,6 @@ function VoiceChatContainer() {
   return (
     <div className="relative flex flex-1 h-[calc(100vh-64px)] bg-neutral-100 dark:bg-neutral-900 overflow-hidden">
 
-      {/* Botón para Ocultar/Mostrar Chat */}
-      <button 
-        onClick={toggleChatVisibility} // <<< USAR FUNCION DEFINIDA
-        className="absolute top-1/2 -translate-y-1/2 z-30 p-2 bg-neutral-200 dark:bg-neutral-700 rounded-full shadow-md hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-all duration-300 ease-in-out"
-        style={{ left: isChatVisible ? 'calc(33.3333% - 20px)' : '10px' }}
-        aria-label={isChatVisible ? "Ocultar chat" : "Mostrar chat"}
-      >
-        {isChatVisible ? <ChevronsLeft className="h-5 w-5 text-neutral-700 dark:text-neutral-200" /> : <ChevronsRight className="h-5 w-5 text-neutral-700 dark:text-neutral-200" />}
-      </button>
-
-      {/* Display de Errores (Flotante) */}
-      {/* <ErrorDisplay error={appError} onClose={clearError} /> */}
-      
       {/* Display de Errores (Banner Superior) */}
       {appError.message && (
         <motion.div 
@@ -1189,14 +1176,27 @@ function VoiceChatContainer() {
       {/* Panel de Chat (Izquierda) */}
       <AnimatePresence>
         {isChatVisible && (
-            <motion.div 
-              key="chat-panel" 
+            <motion.div
+              key="chat-panel"
               initial={{ x: '-100%', opacity: 0 }}
               animate={{ x: '0%', opacity: 1 }}
               exit={{ x: '-100%', opacity: 0 }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="w-full md:w-1/3 flex flex-col h-full bg-neutral-100 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-700"
+              // << MODIFICADO: Añadir relative para posicionar botón dentro >>
+              className="relative w-full md:w-1/3 flex flex-col h-full bg-neutral-100 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-700"
             >
+              {/* << MOVIDO: Botón dentro del panel >> */}
+              {/* Se muestra solo si la conversación está activa */}
+              {conversationActive && (
+                <button
+                  onClick={toggleChatVisibility}
+                  className="absolute top-1/2 -right-5 transform -translate-y-1/2 z-20 p-2 bg-neutral-200 dark:bg-neutral-700 rounded-full shadow-md hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
+                  aria-label={isChatVisible ? "Ocultar chat" : "Mostrar chat"}
+                >
+                  <ChevronsLeft className="h-5 w-5 text-neutral-700 dark:text-neutral-200" />
+                </button>
+              )}
+
               {/* Área de Mensajes */}
               <div 
                 ref={chatContainerRef} // Referencia para scroll
@@ -1239,10 +1239,10 @@ function VoiceChatContainer() {
                       </div>
                     )}
                     <p className="text-sm">
-                        {(authStatus as string) === 'authenticated' 
-                          ? 'Cuando estés listo, pulsa "Comenzar conversación".' 
-                          : 'Usa el menú superior para acceder.'}
-                    </p> 
+                        {(authStatus as string) === 'authenticated'
+                          ? 'Cuando estés listo, pulsa "Comenzar tu sesión".'
+                           : 'Usa el menú superior para acceder.'}
+                    </p>
                     </motion.div>
                 ) : (
                     // Mapeo de mensajes
@@ -1429,79 +1429,73 @@ function VoiceChatContainer() {
          <ErrorDisplay error={appError} onClose={clearError} />
       </AnimatePresence> */}
 
-      <AnimatePresence>
-        {(!conversationActive && authStatus === 'authenticated') && (
+      {/* Overlay/Blur Inicial (cubriendo video y chat si no está activo) */}
+      {!conversationActive && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/50 backdrop-blur-md text-white">
+          {/* Mensaje de Bienvenida */} 
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm p-8 rounded-lg text-center"
+            transition={{ duration: 0.5 }}
+            className="text-center p-8"
           >
-            <h1 className="text-3xl font-bold mb-4 text-purple-300">Bienvenido, {userProfile?.username || 'usuario'}</h1>
-            {totalPreviousSessions !== null ? (
-              <>
-                <p className="text-lg mb-2 text-gray-300">Has completado {totalPreviousSessions} {totalPreviousSessions === 1 ? 'sesión previa' : 'sesiones previas'}.</p>
-                <p className="text-xl font-semibold mb-6 text-gray-100">Listo para tu sesión número {totalPreviousSessions + 1}.</p>
-              </>
-            ) : (
-               <p className="text-lg mb-6 text-gray-300 flex items-center justify-center"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cargando datos de sesión...</p>
-            )}
-             {initialContext && (
-               <p className="mb-6 text-sm italic text-gray-400">Retomando desde: "{initialContext.substring(0, 80)}{initialContext.length > 80 ? '...' : ''}"</p>
-             )}
-             {/* << CORREGIDO: Mover botón dentro del motion.div y ajustar lógica condicional >> */}
-             <motion.button 
-                initial={{ opacity: 0 }} // Animación simple para el botón en sí
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className={`px-6 py-3 text-white rounded-lg text-lg font-semibold shadow-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-black/30 transition-opacity ${
-                  isReadyToStart
-                    ? 'bg-primary-600 hover:bg-primary-700 cursor-pointer'
-                    : 'bg-neutral-500 cursor-not-allowed opacity-60' 
-                }`}
-                onClick={handleStartConversation}
-                disabled={!isReadyToStart} // La condición authStatus === 'authenticated' ya está cubierta por el div padre
-              >
-                {/* Lógica simplificada ya que solo se muestra si authStatus === 'authenticated' */}
-                {!isReadyToStart ? 'Preparando IA...' : 'Comenzar conversación'}
-              </motion.button>
-          </motion.div>
-        )}
-        {/* << NUEVO/MODIFICADO: Añadir explícitamente casos para loading y unauthenticated >> */}
-        {authStatus === 'loading' && (
-             <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm"
-              >
-                <Loader2 className="h-12 w-12 animate-spin text-purple-400 mb-4" />
-                <p className="text-xl text-gray-300">Cargando tu sesión...</p>
-             </motion.div>
-        )}
-        {authStatus === 'unauthenticated' && (
-             <motion.div 
-               initial={{ opacity: 0 }}
-               animate={{ opacity: 1 }}
-               exit={{ opacity: 0 }}
-               className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm p-8 rounded-lg text-center"
-              >
-                <AlertCircle className="h-12 w-12 text-red-400 mb-4"/>
-                <h2 className="text-2xl font-semibold mb-3 text-red-300">Acceso Requerido</h2>
-                <p className="text-lg text-gray-300 mb-6">Por favor, inicia sesión para poder conversar con María.</p>
-                 {/* Añadir botón de login */}
-                 <motion.button 
-                    initial={{ opacity: 0 }} 
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                    onClick={() => import('next-auth/react').then(mod => mod.signIn('google'))} 
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-full text-white text-lg font-semibold shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-blue-400"
+            {/* Bienvenida Condicional */} 
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Bienvenido
+              {/* Mostrar nombre con animación si está cargado y autenticado */}
+              {authStatus === 'authenticated' && userProfile?.username && (
+                 <motion.span 
+                   initial={{ opacity: 0, x: -10 }}
+                   animate={{ opacity: 1, x: 0 }}
+                   transition={{ delay: 0.3, duration: 0.5 }}
+                   className="ml-2"
                  >
-                    Iniciar Sesión con Google
-                </motion.button>
-             </motion.div>
-         )}
-      </AnimatePresence>
+                   , {userProfile.username}
+                 </motion.span>
+               )}
+            </h2> {/* << CORREGIDO: Cerrar la etiqueta h2 aquí >> */}
+            
+            {/* Mostrar estado de carga si no está listo el saludo TTS o auth está cargando */}
+            {(authStatus === 'loading' || !isReadyToStart) && authStatus !== 'unauthenticated' && (
+              <div className="mt-4 text-center">
+                <Loader2 className="h-8 w-8 mb-4 mx-auto animate-spin text-primary-400" />
+                <p className="text-neutral-300">{authStatus === 'loading' ? 'Cargando datos de sesión...' : 'Preparando IA...'}</p>
+              </div>
+            )}
+            
+            {/* Botón para iniciar (solo si autenticado y listo) */} 
+            {authStatus === 'authenticated' && (
+               <button
+                 onClick={handleStartConversation}
+                 disabled={!isReadyToStart || isSessionClosed} // Deshabilitar si no está listo o la sesión anterior acaba de cerrar
+                 className="button-glow mt-8 inline-flex items-center justify-center whitespace-nowrap rounded-md text-lg font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 h-11 px-8 shadow-soft hover:shadow-soft-lg transform hover:-translate-y-1 bg-primary-600 hover:bg-primary-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+               >
+                 {isReadyToStart ? 'Comenzar tu sesión' : <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Preparando...</>}
+                </button>
+            )}
+             {/* Mensaje si no está autenticado */}
+             {authStatus === 'unauthenticated' && (
+                <div className="mt-6 text-center">
+                    <AlertCircle className="h-8 w-8 mb-4 mx-auto text-yellow-400" />
+                    <p className="text-neutral-300">Debes iniciar sesión para comenzar.</p>
+                 </div>
+             )}
+          </motion.div>
+        </div>
+      )}
+
+      {/* << MOVIDO: Botón ocultar/mostrar fuera del panel de chat, pero bajo el overlay >> */}
+      {/* Se muestra solo si la conversación está activa y el chat NO está visible */}
+      {conversationActive && !isChatVisible && (
+        <button
+          onClick={toggleChatVisibility}
+          // << MODIFICADO: Posicionamiento a la izquierda, z-index 5 para estar sobre video pero bajo overlay (z-10) >>
+          className="absolute top-1/2 left-4 transform -translate-y-1/2 z-5 p-2 bg-neutral-200 dark:bg-neutral-700 rounded-full shadow-md hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
+          aria-label="Mostrar chat"
+        >
+          <ChevronsRight className="h-5 w-5 text-neutral-700 dark:text-neutral-200" />
+        </button>
+      )}
 
     </div>
   );
