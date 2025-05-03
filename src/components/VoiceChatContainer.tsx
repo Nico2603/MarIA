@@ -401,7 +401,7 @@ function VoiceChatContainer() {
         fetch('/api/summarize', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId: sessionToEndId }),
+          body: JSON.stringify({ chatSessionId: sessionToEndId }),
         })
         .then(async (summaryRes) => {
             if (!summaryRes.ok) {
