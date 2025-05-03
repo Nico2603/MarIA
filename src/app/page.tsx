@@ -1,6 +1,6 @@
 'use client'; // << AÑADIDO: Necesario para hooks como useSession y useRouter
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react'; // << MODIFICADO: Añadir useEffect, useRef
 import Link from 'next/link'; // Importar Link para el botón
 import { useSession, signIn } from 'next-auth/react'; // << AÑADIDO
 import { useRouter } from 'next/navigation'; // << AÑADIDO
@@ -27,6 +27,11 @@ import {
   TooltipProvider, 
   TooltipTrigger 
 } from "@/components/ui/tooltip"; // Importar Tooltip
+import { gsap } from 'gsap'; // << AÑADIDO: Importar GSAP
+import { ScrollTrigger } from 'gsap/ScrollTrigger'; // << AÑADIDO: Importar ScrollTrigger
+
+// << AÑADIDO: Registrar plugin >>
+gsap.registerPlugin(ScrollTrigger);
 
 // Datos de ejemplo para testimonios
 const testimonials = [
@@ -99,6 +104,209 @@ export default function LandingPage() {
   const router = useRouter(); // << AÑADIDO
   const [showLoginPrompt, setShowLoginPrompt] = useState(false); // << NUEVO: Estado para mostrar el aviso
 
+  // << AÑADIDO: Refs para animaciones >>
+  const heroRef = useRef<HTMLDivElement>(null);
+  const featuresGridRef = useRef<HTMLDivElement>(null); // << AÑADIDO: Ref para el grid de features
+  const featuresTitleRef = useRef<HTMLHeadingElement>(null); // << AÑADIDO: Ref para título Features
+  const featuresRef = useRef<(HTMLDivElement | null)[]>([]);
+  const buttonsRef = useRef<(HTMLButtonElement | HTMLAnchorElement | null)[]>([]);
+  const faqRef = useRef<HTMLDivElement>(null);
+  const faqTitleRef = useRef<HTMLHeadingElement>(null); // << AÑADIDO: Ref para título FAQ
+  const testimonialsRef = useRef<HTMLDivElement>(null);
+  const testimonialsTitleRef = useRef<HTMLHeadingElement>(null); // << AÑADIDO: Ref para título Testimonials
+  const ctaRef = useRef<HTMLDivElement>(null);
+  const ctaTitleRef = useRef<HTMLHeadingElement>(null); // << AÑADIDO: Ref para título CTA
+  const ctaButtonRef = useRef<HTMLButtonElement>(null); // << AÑADIDO: Ref para botón CTA
+
+  // << AÑADIDO: Efecto para animaciones GSAP >>
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      // -- Animación Hero --
+      if (heroRef.current) {
+        gsap.from(heroRef.current, { 
+          opacity: 0, 
+          y: 20, 
+          duration: 0.8, 
+          ease: "power3.out" 
+        });
+      }
+
+      // -- Animación Botones Hero (Hover) --
+      buttonsRef.current.forEach(btn => {
+        if (btn) {
+          const hoverEffect = gsap.to(btn, { 
+            y: -5, 
+            boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)", // Equivalente a shadow-soft-lg
+            duration: 0.3, 
+            paused: true, 
+            ease: "power1.inOut" 
+          });
+          btn.addEventListener('mouseenter', () => hoverEffect.play());
+          btn.addEventListener('mouseleave', () => hoverEffect.reverse());
+          
+          // Cleanup listener on unmount
+          return () => {
+             if (btn) { // Check if btn still exists
+               btn.removeEventListener('mouseenter', () => hoverEffect.play());
+               btn.removeEventListener('mouseleave', () => hoverEffect.reverse());
+             }
+          };
+        }
+      });
+
+      // -- Animación Features (Stagger) --
+      const featureElements = featuresRef.current.filter(el => el !== null);
+      if (featureElements.length > 0) {
+        // << NUEVO: Establecer estado inicial explícitamente >>
+        gsap.set(featureElements, { opacity: 0, y: 30 });
+
+        // << MODIFICADO: Usar gsap.to en lugar de gsap.from >>
+        gsap.to(featureElements, {
+          opacity: 1, // Animar hacia opacidad 1
+          y: 0,       // Animar hacia posición y=0
+          duration: 0.6,
+          stagger: 0.15, // Animar uno tras otro
+          ease: "power3.out",
+          scrollTrigger: { // Animar al hacer scroll
+            trigger: featuresGridRef.current, // << MODIFICADO: Usar ref del grid
+            start: "top 80%", // Empezar cuando el 80% superior del trigger entre en la vista
+            toggleActions: "play none none none", // Solo ejecutar una vez
+          }
+        });
+      }
+      
+      // -- Animación Título Features --
+      if (featuresTitleRef.current) {
+         gsap.from(featuresTitleRef.current, { 
+           opacity: 0, 
+           y: 20, 
+           duration: 0.6, 
+           ease: "power3.out",
+           scrollTrigger: { 
+             trigger: featuresTitleRef.current,
+             start: "top 90%", 
+             toggleActions: "play none none none" 
+           }
+         });
+      }
+
+      // -- Animación Sección FAQ --
+      if (faqRef.current) {
+         gsap.from(faqRef.current, { 
+           opacity: 0, 
+           y: 30, 
+           duration: 0.8, 
+           ease: "power3.out",
+           scrollTrigger: { 
+             trigger: faqRef.current,
+             start: "top 85%", 
+             toggleActions: "play none none none" 
+           }
+         });
+      }
+      // -- Animación Título FAQ --
+      if (faqTitleRef.current) {
+         gsap.from(faqTitleRef.current, { 
+           opacity: 0, 
+           y: 20, 
+           duration: 0.6, 
+           delay: 0.2, // Pequeño retraso respecto a la sección
+           ease: "power3.out",
+           scrollTrigger: { 
+             trigger: faqTitleRef.current,
+             start: "top 90%", 
+             toggleActions: "play none none none" 
+           }
+         });
+      }
+
+      // -- Animación Sección Testimonios --
+      if (testimonialsRef.current) {
+         gsap.from(testimonialsRef.current, { 
+           opacity: 0, 
+           y: 30, 
+           duration: 0.8, 
+           ease: "power3.out",
+           scrollTrigger: { 
+             trigger: testimonialsRef.current,
+             start: "top 85%", 
+             toggleActions: "play none none none" 
+           }
+         });
+      }
+       // -- Animación Título Testimonios --
+      if (testimonialsTitleRef.current) {
+         gsap.from(testimonialsTitleRef.current, { 
+           opacity: 0, 
+           y: 20, 
+           duration: 0.6, 
+           delay: 0.2, // Pequeño retraso
+           ease: "power3.out",
+           scrollTrigger: { 
+             trigger: testimonialsTitleRef.current,
+             start: "top 90%", 
+             toggleActions: "play none none none" 
+           }
+         });
+      }
+
+      // -- Animación Sección CTA --
+      if (ctaRef.current) {
+         gsap.from(ctaRef.current, { 
+           opacity: 0, 
+           y: 30, 
+           duration: 0.8, 
+           ease: "power3.out",
+           scrollTrigger: { 
+             trigger: ctaRef.current,
+             start: "top 85%", 
+             toggleActions: "play none none none" 
+           }
+         });
+      }
+      // -- Animación Título CTA --
+       if (ctaTitleRef.current) {
+         gsap.from(ctaTitleRef.current, { 
+           opacity: 0, 
+           y: 20, 
+           duration: 0.6, 
+           delay: 0.2, // Pequeño retraso
+           ease: "power3.out",
+           scrollTrigger: { 
+             trigger: ctaTitleRef.current,
+             start: "top 90%", 
+             toggleActions: "play none none none" 
+           }
+         });
+      }
+       // -- Animación Botón CTA (Hover) --
+      if (ctaButtonRef.current) {
+        const btn = ctaButtonRef.current;
+        const hoverEffect = gsap.to(btn, { 
+          scale: 1.05, 
+          duration: 0.3, 
+          paused: true, 
+          ease: "power1.inOut" 
+        });
+        btn.addEventListener('mouseenter', () => hoverEffect.play());
+        btn.addEventListener('mouseleave', () => hoverEffect.reverse());
+        
+        // Cleanup listener on unmount
+        return () => {
+           if (btn) {
+             btn.removeEventListener('mouseenter', () => hoverEffect.play());
+             btn.removeEventListener('mouseleave', () => hoverEffect.reverse());
+           }
+        };
+      }
+
+    }); // Fin de gsap.context
+
+    // Cleanup
+    return () => ctx.revert();
+
+  }, []); // Ejecutar solo una vez al montar
+
   // << AÑADIDO: Manejador de clic para el enlace/botón del chat >>
   const handleChatLinkClick = (event: React.MouseEvent<HTMLElement>) => {
     event.preventDefault(); // Prevenir navegación por defecto del Link (si se usa <a>)
@@ -117,7 +325,7 @@ export default function LandingPage() {
   return (
     // Envolver con TooltipProvider
     <TooltipProvider>
-      <div className="flex flex-col min-h-screen bg-gradient-to-b from-neutral-50 to-white dark:from-neutral-900 dark:to-neutral-800 overflow-x-hidden">
+      <div className="flex flex-col min-h-screen bg-gradient-to-b from-neutral-50 to-white dark:from-neutral-900 dark:to-neutral-800">
         {/* Sección Hero - Ajustar blurs y botón oscuro */}
         <section className="relative flex flex-col items-center justify-center text-center px-4 py-24 md:py-32 lg:py-48 overflow-hidden">
           {/* Fondo animado (gradiente ajustado en globals.css) */}
@@ -126,7 +334,7 @@ export default function LandingPage() {
           <div className="absolute top-0 right-0 -z-10 w-72 h-72 bg-primary-300/20 dark:bg-primary-500/30 rounded-full blur-3xl"></div> {/* Azul más claro */}
           <div className="absolute bottom-0 left-0 -z-10 w-96 h-96 bg-secondary-300/20 dark:bg-secondary-400/30 rounded-full blur-3xl"></div> {/* Verde más claro */}
           
-          <div className="relative z-10 transition-opacity duration-1000 ease-in-out opacity-100 animate-fadeIn">
+          <div ref={heroRef} className="relative z-10 opacity-100">
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold font-display text-neutral-900 dark:text-white mb-6 leading-tight text-shadow-subtle dark:dark:text-shadow-subtle">
               {/* Aplicar gradient-text */}
               Tu Compañera de <span className="gradient-text">Bienestar Mental</span> con IA
@@ -135,20 +343,23 @@ export default function LandingPage() {
               María te escucha, te comprende y te guía en tu camino hacia una mejor salud mental, utilizando inteligencia artificial avanzada para ofrecerte apoyo personalizado y empático.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              {/* << MODIFICADO: Usar onClick en lugar de href directo >> */}
+              {/* << MODIFICADO: Usar onClick, añadir ref al array, quitar clases de transform y hover >> */}
               <button
+                ref={(el) => { buttonsRef.current[0] = el; }} // << CORREGIDO: Sintaxis de función ref
                 onClick={handleChatLinkClick} 
                 disabled={status === 'loading'} // Deshabilitar mientras carga sesión
-                className={`button-shine inline-flex items-center justify-center whitespace-nowrap rounded-md text-lg font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 h-11 px-8 shadow-soft hover:shadow-soft-lg transform hover:-translate-y-1 ${
+                className={`button-shine inline-flex items-center justify-center whitespace-nowrap rounded-md text-lg font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 h-11 px-8 shadow-soft ${
                   status === 'loading' ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
+                }`} // Quitado: hover:shadow-soft-lg transform hover:-translate-y-1
               >
                 {status === 'loading' ? 'Cargando...' : 'Hablar con María'}
               </button>
-              <Link 
+              {/* << MODIFICADO: Añadir ref al array, quitar clases de transform y hover >> */}
+              <Link
+                ref={(el) => { buttonsRef.current[1] = el; }} // << CORREGIDO: Sintaxis de función ref
                 href="#features"
                 // Ajustar fondo oscuro del botón
-                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-lg font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-600 h-11 px-8 shadow-soft hover:shadow-soft-lg transform hover:-translate-y-1" // Cambiado dark:bg-neutral-800 a 700 y hover a 600
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-lg font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-600 h-11 px-8 shadow-soft" // Quitado: hover:shadow-soft-lg transform hover:-translate-y-1
               >
                 Descubre Más
               </Link>
@@ -156,38 +367,38 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* << NUEVO: Prompt Visual para Iniciar Sesión >> */} 
+        {/* << NUEVO: Prompt Visual para Iniciar Sesión >> */}
         {showLoginPrompt && (
-         <div 
-           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn" 
-           onClick={() => setShowLoginPrompt(false)} // Cerrar al hacer clic fuera
-         >
-           <div 
-             className="bg-white dark:bg-neutral-800 p-8 rounded-xl shadow-2xl max-w-md mx-4 text-center transform transition-all duration-300 ease-out scale-100" 
-             onClick={(e) => e.stopPropagation()} // Evitar que el clic dentro cierre el modal
-           >
-             <h3 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">Inicio de Sesión Requerido</h3>
-             <p className="text-neutral-600 dark:text-neutral-300 mb-6">
-               Para comenzar tu conversación con María, por favor inicia sesión con tu cuenta de Google.
-             </p>
-             <button 
-               onClick={() => {
-                   signIn('google');
-                   setShowLoginPrompt(false); // Cerrar al iniciar sesión
-               }}
-               className="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-lg font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 h-11 px-8 shadow-soft hover:shadow-soft-lg transform hover:-translate-y-1 bg-primary-600 hover:bg-primary-700 text-white"
-             >
-                Iniciar Sesión con Google
-             </button>
-             <button 
-               onClick={() => setShowLoginPrompt(false)}
-               className="mt-4 text-sm text-neutral-500 dark:text-neutral-400 hover:underline"
-             >
-               Cancelar
-             </button>
-           </div>
-         </div>
-       )}
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn" // Mantenemos fadeIn aquí por simplicidad del modal
+            onClick={() => setShowLoginPrompt(false)} // Cerrar al hacer clic fuera
+          >
+            <div 
+              className="bg-white dark:bg-neutral-800 p-8 rounded-xl shadow-2xl max-w-md mx-4 text-center transform transition-all duration-300 ease-out scale-100" 
+              onClick={(e) => e.stopPropagation()} // Evitar que el clic dentro cierre el modal
+            >
+              <h3 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">Inicio de Sesión Requerido</h3>
+              <p className="text-neutral-600 dark:text-neutral-300 mb-6">
+                Para comenzar tu conversación con María, por favor inicia sesión con tu cuenta de Google.
+              </p>
+              <button 
+                onClick={() => {
+                    signIn('google');
+                    setShowLoginPrompt(false); // Cerrar al iniciar sesión
+                }}
+                className="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-lg font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 h-11 px-8 shadow-soft hover:shadow-soft-lg transform hover:-translate-y-1 bg-primary-600 hover:bg-primary-700 text-white"
+              >
+                 Iniciar Sesión con Google
+              </button>
+              <button 
+                onClick={() => setShowLoginPrompt(false)}
+                className="mt-4 text-sm text-neutral-500 dark:text-neutral-400 hover:underline"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Sección de Características - Aplicar glass-effect, card-hover y animaciones */}
         <section id="features" className="relative py-20 md:py-28 bg-white dark:bg-neutral-800 overflow-hidden">
@@ -197,14 +408,15 @@ export default function LandingPage() {
 
           <div className="container mx-auto px-4 relative z-10">
             {/* Aplicar gradient-text */}
-            <h2 className="text-3xl md:text-4xl font-bold font-display text-center text-neutral-900 dark:text-white mb-16 gradient-text">
+            <h2 ref={featuresTitleRef} className="text-3xl md:text-4xl font-bold font-display text-center text-neutral-900 dark:text-white mb-16 gradient-text">
               ¿Cómo puede ayudarte María?
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10">
+            {/* << MODIFICADO: Añadir ref al grid >> */}
+            <div ref={featuresGridRef} className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10">
               {/* Característica 1 con Tooltip */}
               <div 
-                className="group rounded-lg p-0 card-hover glass-effect animate-fadeInUp opacity-0" 
-                style={{ animationDelay: '100ms', animationFillMode: 'forwards' }}
+                ref={(el) => { featuresRef.current[0] = el; }} // << CORREGIDO: Sintaxis de función ref
+                className="group rounded-lg p-0 card-hover glass-effect" // << MODIFICADO: Quitado opacity-0
               >
                 <div className="p-6 flex flex-col space-y-4 text-neutral-900 dark:text-neutral-100">
                   <div className="flex items-center space-x-3">
@@ -227,8 +439,8 @@ export default function LandingPage() {
               </div>
               {/* Característica 2 con Tooltip */}
               <div 
-                className="group rounded-lg p-0 card-hover glass-effect animate-fadeInUp opacity-0" 
-                style={{ animationDelay: '300ms', animationFillMode: 'forwards' }}
+                ref={(el) => { featuresRef.current[1] = el; }} // << CORREGIDO: Sintaxis de función ref
+                className="group rounded-lg p-0 card-hover glass-effect" // << MODIFICADO: Quitado opacity-0
               >
                  <div className="p-6 flex flex-col space-y-4 text-neutral-900 dark:text-neutral-100">
                    <div className="flex items-center space-x-3">
@@ -251,8 +463,8 @@ export default function LandingPage() {
               </div>
               {/* Característica 3 con Tooltip */}
               <div 
-                className="group rounded-lg p-0 card-hover glass-effect animate-fadeInUp opacity-0" 
-                style={{ animationDelay: '500ms', animationFillMode: 'forwards' }}
+                ref={(el) => { featuresRef.current[2] = el; }} // << CORREGIDO: Sintaxis de función ref
+                className="group rounded-lg p-0 card-hover glass-effect" // << MODIFICADO: Quitado opacity-0
               >
                 <div className="p-6 flex flex-col space-y-4 text-neutral-900 dark:text-neutral-100">
                    <div className="flex items-center space-x-3">
@@ -278,14 +490,14 @@ export default function LandingPage() {
         </section>
 
         {/* Sección de Testimonios - Añadir animación de entrada */}
-        <section className="relative py-20 md:py-28 bg-neutral-50 dark:bg-neutral-900/50 overflow-hidden animate-fadeInUp opacity-0" style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}>
+        <section ref={testimonialsRef} className="relative py-20 md:py-28 bg-neutral-50 dark:bg-neutral-900/50 overflow-hidden">
           {/* Elementos decorativos difuminados */}
           <div className="absolute top-32 right-10 -z-10 w-72 h-72 bg-primary-200/30 dark:bg-primary-800/30 rounded-full blur-3xl"></div>
           <div className="absolute bottom-20 left-10 -z-10 w-60 h-60 bg-secondary-200/20 dark:bg-secondary-700/20 rounded-full blur-3xl"></div>
 
           <div className="container mx-auto px-4 relative z-10">
             {/* Aplicar gradient-text */}
-            <h2 className="text-3xl md:text-4xl font-bold font-display text-center text-neutral-900 dark:text-white mb-16 gradient-text">
+            <h2 ref={testimonialsTitleRef} className="text-3xl md:text-4xl font-bold font-display text-center text-neutral-900 dark:text-white mb-16 gradient-text">
               Lo que dicen nuestros usuarios
             </h2>
 
@@ -331,9 +543,9 @@ export default function LandingPage() {
         </section>
 
         {/* Sección FAQ Mejorada - Añadir animación de entrada */}
-        <section id="faq" className="py-20 md:py-28 bg-neutral-100 dark:bg-neutral-900 animate-fadeInUp opacity-0" style={{ animationDelay: '400ms', animationFillMode: 'forwards' }}>
+        <section ref={faqRef} id="faq" className="py-20 md:py-28 bg-neutral-100 dark:bg-neutral-900">
           <div className="container mx-auto px-4 max-w-3xl">
-             <h2 className="text-3xl md:text-4xl font-bold font-display text-center text-neutral-900 dark:text-white mb-12 gradient-text">
+             <h2 ref={faqTitleRef} className="text-3xl md:text-4xl font-bold font-display text-center text-neutral-900 dark:text-white mb-12 gradient-text">
               Resolvemos tus dudas
             </h2>
             <Accordion type="single" collapsible className="w-full space-y-4"> {/* Añadir espacio entre items */}
@@ -358,26 +570,27 @@ export default function LandingPage() {
         </section>
 
         {/* Sección CTA - Aplicar fondo de olas */}
-        <section className="relative py-20 md:py-28 text-white overflow-hidden">
+        <section ref={ctaRef} className="relative py-20 md:py-28 text-white overflow-hidden">
            {/* Fondo de gradiente existente (puede quedarse o quitarse) */}
            <div className="absolute inset-0 -z-20 animated-gradient-bg opacity-70 dark:opacity-50"></div>
            {/* Fondo de olas animadas (encima del gradiente, debajo del contenido) */}
            <div className="absolute inset-0 -z-10 animated-waves-bg"></div>
           
-          <div className="container mx-auto px-4 text-center relative z-10 transition-opacity duration-1000 ease-in-out opacity-100 animate-fadeInUp delay-500">
+          <div className="container mx-auto px-4 text-center relative z-10">
             {/* Aplicar gradient-text */}
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold font-display mb-6 gradient-text">
+            <h2 ref={ctaTitleRef} className="text-3xl md:text-4xl lg:text-5xl font-bold font-display mb-6 gradient-text">
               Empieza tu camino hacia el bienestar hoy
             </h2>
             <p className="text-lg md:text-xl mb-10 max-w-2xl mx-auto text-white/90 dark:text-neutral-200/90">
               Da el primer paso hacia una mente más tranquila y resiliente. María está aquí para acompañarte en cada paso, ofreciéndote un espacio seguro y de apoyo.
             </p>
-            {/* << MODIFICADO: Usar onClick en lugar de href directo >> */}
+            {/* << MODIFICADO: Usar onClick, añadir ref, quitar hover de Tailwind >> */}
             <button
+              ref={ctaButtonRef} // << AÑADIDO: Ref
               onClick={handleChatLinkClick} 
               disabled={status === 'loading'} // Deshabilitar mientras carga sesión
               // Aplicar button-shine, quitar clases de color conflictivas
-              className={`button-shine inline-flex items-center justify-center whitespace-nowrap rounded-md text-lg font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-700 h-11 px-10 shadow-md transform hover:scale-105 ${
+              className={`button-shine inline-flex items-center justify-center whitespace-nowrap rounded-md text-lg font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary-700 h-11 px-10 shadow-md ${ // << MODIFICADO: Quitado transform hover:scale-105
                 status === 'loading' ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
