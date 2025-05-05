@@ -7,11 +7,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from './ThemeProvider';
 import { Sun, Moon, Menu, X, ChevronDown, LogIn, LogOut, User, Settings, Loader2 } from 'lucide-react';
 import { useSession, signIn, signOut } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 // Componente para el Dropdown del usuario
 const UserDropdown = ({ theme }: { theme: string }) => {
   const { data: session } = useSession();
   const [isOpen, setIsOpen] = useState(false);
+  const router = useRouter();
 
   if (!session || !session.user) return null;
 
@@ -19,6 +21,12 @@ const UserDropdown = ({ theme }: { theme: string }) => {
 
   const dropdownClasses = `absolute right-0 mt-2 w-48 origin-top-right rounded-md shadow-lg ring-1 ring-opacity-5 focus:outline-none transition-all duration-150 ease-in-out ${theme === 'dark' ? 'bg-gray-800 ring-black' : 'bg-white ring-black'} ${isOpen ? 'opacity-100 scale-100 visible' : 'opacity-0 scale-95 invisible'}`;
   const itemClasses = `flex items-center w-full px-4 py-2 text-sm transition-colors duration-150 ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'}`;
+
+  const handleProfileClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    setIsOpen(false);
+    router.push('/settings/profile');
+  };
 
   return (
     <div className="relative">
@@ -44,10 +52,15 @@ const UserDropdown = ({ theme }: { theme: string }) => {
             <span className={`block font-medium truncate ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>{user.name ?? user.email}</span>
           </div>
           <div className={`border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} my-1`}></div>
-          <Link href="/settings/profile" className={itemClasses} role="menuitem" onClick={() => setIsOpen(false)}>
+          <a 
+            href="/settings/profile" 
+            className={itemClasses} 
+            role="menuitem" 
+            onClick={handleProfileClick}
+          >
             <Settings className="w-4 h-4 mr-2" />
             Perfil
-          </Link>
+          </a>
           <button
             onClick={() => { signOut(); setIsOpen(false); }}
             className={`${itemClasses} w-full text-left`}
@@ -73,6 +86,7 @@ const Header = () => {
   const { data: session, status } = useSession();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [hasScrolled, setHasScrolled] = useState(false);
+  const router = useRouter();
 
   const navItems = [
     { name: 'Inicio', href: '/' },
@@ -331,16 +345,20 @@ const Header = () => {
                     )}
                     {status === 'authenticated' && session?.user && (
                       <>
-                         <Link
+                         <a
                           href="/settings/profile"
                           className={`flex items-center w-full px-3 py-2 rounded-md text-base font-medium transition-colors duration-200 
                             ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'}
                           `}
-                          onClick={() => setIsMenuOpen(false)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setIsMenuOpen(false);
+                            router.push('/settings/profile');
+                          }}
                         >
                            <Settings className="w-5 h-5 mr-2" />
                            Perfil
-                         </Link>
+                         </a>
                          <button
                           onClick={() => { signOut(); setIsMenuOpen(false); }}
                            className={`flex items-center w-full px-3 py-2 rounded-md text-base font-medium transition-colors duration-200 
