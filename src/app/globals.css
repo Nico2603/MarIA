@@ -2,100 +2,69 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Asegurar que las animaciones estén disponibles */
-.animate-fadeIn {
-  animation-name: fadeIn;
+/* Asegurar que las animaciones estén disponibles globalmente */
+@keyframes fadeIn {
+  from { opacity: 0; } to { opacity: 1; }
 }
 
-.animate-fadeInUp {
-  animation-name: fadeInUp;
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); }
 }
 
-/* Estilos base adicionales si son necesarios */
+@keyframes gradientMove {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes background-shine {
+  from { background-position: 0% center; }
+  to { background-position: -200% center; }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.5; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes accordion-down {
+  from { height: 0; } to { height: var(--radix-accordion-content-height); }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); } to { height: 0; }
+}
+
+@keyframes audio-wave {
+  0%, 100% { height: 3px; }
+  50% { height: 15px; }
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(14, 165, 233, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0); }
+}
+
+@keyframes wave-animation {
+  0% { background-position: 0 bottom; }
+  100% { background-position: 1440px bottom; } /* Mover una longitud de onda */
+}
+
+/* Estilos base globales */
 html,
 body,
 :root {
   height: 100%;
-  /* Ejemplo: Definir variables de color si se usan */
-  /* --primary-color: #3b82f6; */
-}
-
-/* Estilos para modo oscuro si se usa toggle manual */
-.dark body {
-  background-color: var(--neutral-900, #111827);
-  color: var(--neutral-200, #e5e7eb);
-}
-
-:root {
-  --primary-50: #f0f9ff;
-  --primary-100: #e0f2fe;
-  --primary-200: #bae6fd;
-  --primary-300: #7dd3fc;
-  --primary-400: #38bdf8;
-  --primary-500: #0ea5e9;
-  --primary-600: #0284c7;
-  --primary-700: #0369a1;
-  --primary-800: #075985;
-  --primary-900: #0c4a6e;
-  
-  --secondary-50: #ecfdf5;
-  --secondary-100: #d1fae5;
-  --secondary-200: #a7f3d0;
-  --secondary-300: #6ee7b7;
-  --secondary-400: #34d399;
-  --secondary-500: #10b981;
-  --secondary-600: #059669;
-  --secondary-700: #047857;
-  --secondary-800: #065f46;
-  --secondary-900: #064e3b;
-  
-  --accent-100: #fef3c7;
-  --accent-300: #fcd34d;
-  --accent-400: #fbbf24;
-  --accent-600: #d97706;
-  --accent-900: #78350f;
-  
-  --pink-100: #fce7f3;
-  --pink-300: #f9a8d4;
-  --pink-500: #ec4899;
-  --pink-600: #db2777;
-  
-  --neutral-50: #f8fafc;
-  --neutral-100: #f1f5f9;
-  --neutral-200: #e2e8f0;
-  --neutral-300: #cbd5e1;
-  --neutral-400: #94a3b8;
-  --neutral-500: #64748b;
-  --neutral-600: #475569;
-  --neutral-700: #334155;
-  --neutral-800: #1e293b;
-  --neutral-900: #0f172a;
-  
-  --radius: 0.75rem;
-  --border: var(--neutral-200);
-  .dark { --border: var(--neutral-700); }
-
-  /* Variables semánticas básicas (usadas por componentes UI como Card) */
-  --card: var(--neutral-50); /* Fondo de tarjeta claro */
-  --card-foreground: var(--neutral-800);
-  --popover: var(--neutral-50);
-  --popover-foreground: var(--neutral-800);
-  --primary: var(--primary-600);
-  --primary-foreground: var(--neutral-50);
-  --secondary: var(--secondary-600);
-  --secondary-foreground: var(--neutral-50);
-  --muted: var(--neutral-200);
-  --muted-foreground: var(--neutral-500);
-  --accent: var(--accent-400);
-  --accent-foreground: var(--neutral-800);
-  --destructive: #ef4444; /* Rojo para destructivo */
-  --destructive-foreground: var(--neutral-50);
-  --input: var(--neutral-300);
-  --ring: var(--primary-500);
 }
 
 body {
-  /* Usar variables semánticas directamente */
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
   min-height: 100vh;
@@ -104,6 +73,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Capa base para estilos fundamentales y variables CSS */
 @layer base {
   html {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
@@ -114,9 +84,10 @@ body {
   }
 
   * {
-     /* Aplicar borde usando la variable CSS (si es necesario por los componentes) */
-     /* border-color: hsl(var(--border)); */
+     /* Aplicar borde usando la variable CSS */
+     @apply border-border;
   }
+
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
@@ -144,6 +115,7 @@ body {
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
   }
+
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
@@ -170,27 +142,36 @@ body {
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
+
+  body { /* Mover la aplicación de bg/fg a @layer base para especificidad */
+    @apply bg-background text-foreground;
+  }
 }
 
+/* Capa para componentes reutilizables */
 @layer components {
   .container-app {
-    @apply max-w-7xl mx-auto;
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8; /* Añadir padding responsivo */
   }
   
   .btn {
-    @apply rounded-md px-4 inline-flex justify-center items-center transition-all duration-200 font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none;
+    @apply rounded-md px-4 py-2 inline-flex justify-center items-center transition-all duration-200 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none; /* Añadir py-2 y focus-visible */
   }
   
   .btn-primary {
-    @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring; /* Usar variables semánticas */
   }
   
   .btn-secondary {
-    @apply bg-secondary-600 text-white hover:bg-secondary-700 focus:ring-secondary-500;
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80 focus-visible:ring-ring; /* Usar variables semánticas */
   }
-  
+
+  .btn-destructive { /* Añadir variante destructiva */
+    @apply bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-ring;
+  }
+
   .btn-outline {
-    @apply bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-50 focus:ring-primary-500 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-700;
+    @apply border border-input bg-background hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring; /* Usar variables semánticas */
   }
   
   .shadow-soft {
@@ -210,15 +191,15 @@ body {
   }
   
   .chat-bubble {
-    @apply p-4 rounded-2xl max-w-[85%];
+    @apply p-3 rounded-lg max-w-[85%] shadow-sm; /* Ajustar padding y sombra */
   }
   
   .chat-bubble-user {
-    @apply chat-bubble bg-primary-600 text-white ml-auto;
+    @apply chat-bubble bg-primary text-primary-foreground ml-auto; /* Usar variables semánticas */
   }
   
   .chat-bubble-ai {
-    @apply chat-bubble bg-white border border-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:border-neutral-600 dark:text-neutral-100;
+    @apply chat-bubble bg-card text-card-foreground border border-border; /* Usar variables semánticas */
   }
   
   /* Estilos para la visualización de audio del avatar interactivo */
@@ -227,20 +208,11 @@ body {
   }
   
   .audio-wave-bar {
-    @apply w-1 rounded-full bg-primary-500;
-    animation: audio-wave 1s ease-in-out infinite;
+    @apply w-1 rounded-full bg-primary; /* Usar variable semántica */
+    animation: audio-wave 1s ease-in-out infinite; /* Reutilizar keyframe global */
   }
   
-  @keyframes audio-wave {
-    0%, 100% {
-      height: 3px;
-    }
-    50% {
-      height: 15px;
-    }
-  }
-  
-  /* Estilos para efectos de pulsación y brillos */
+  /* Estilos para efectos de pulsación */
   .pulse-effect {
     position: relative;
   }
@@ -248,25 +220,11 @@ body {
   .pulse-effect::after {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0; /* Simplificar top/left/right/bottom */
     border-radius: inherit;
-    box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.7);
-    animation: pulse 2s infinite;
-  }
-  
-  @keyframes pulse {
-    0% {
-      box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.7);
-    }
-    70% {
-      box-shadow: 0 0 0 10px rgba(14, 165, 233, 0);
-    }
-    100% {
-      box-shadow: 0 0 0 0 rgba(14, 165, 233, 0);
-    }
+    /* Usar variable de color y ajustar animación */
+    box-shadow: 0 0 0 0 hsla(var(--primary) / 0.7);
+    animation: pulse 2s infinite; /* Reutilizar keyframe global */
   }
   
   /* Transiciones suaves para componentes */
@@ -284,199 +242,134 @@ body {
   
   /* Mejoras de accesibilidad y foco */
   .focus-visible-ring {
-    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2;
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2; /* Usar variable --ring */
   }
   
   /* Estilo para el área de transcripción de texto */
   .transcription-area {
-    @apply bg-gradient-to-b from-blue-50 to-white p-4 rounded-lg border border-blue-100;
+     /* Simplificar y usar variables semánticas */
+    @apply bg-muted/50 p-4 rounded-lg border border-border text-muted-foreground;
   }
   
   /* Estilos para vistas móviles específicas */
   @media (max-width: 640px) {
     .sm-full-height {
-      min-height: calc(100vh - 64px);
+      min-height: calc(100vh - 64px); /* Mantener si es específico */
     }
     
     .sm-no-padding {
-      padding-left: 0;
-      padding-right: 0;
+      @apply px-0; /* Usar utilidad Tailwind */
     }
   }
   
-  /* Clases personalizadas SIN @apply - Prueba con HSL directos */
+  /* Clases personalizadas SIN @apply (manteniendo CSS directo donde sea complejo) */
   .gradient-text {
-    /* Valores HSL aproximados de tus variables --primary y --secondary (modo claro) */
-    background-image: linear-gradient(to right, hsl(207, 100%, 40%), hsl(168, 76%, 33%));
+    /* Valores HSL directos (se pueden refactorizar a variables si se desea) */
+    background-image: linear-gradient(to right, hsl(var(--primary)), hsl(var(--secondary)));
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
 
   .glass-effect {
-    /* Usar directamente propiedades CSS con variables y opacidad */
-    background-color: hsla(var(--background) / 0.60); /* hsla para opacidad */
-    backdrop-filter: blur(12px); /* Ajustar blur si es necesario */
+    background-color: hsla(var(--card) / 0.60); /* Usar variable --card */
+    backdrop-filter: blur(12px);
     border: 1px solid hsla(var(--border) / 0.30);
-    box-shadow: theme('boxShadow.lg'); /* Usar sombra de Tailwind */
+    @apply shadow-lg; /* Usar utilidad Tailwind para sombra */
   }
 
   .button-shine {
-    /* Valores HSL aproximados (modo claro) */
-    background: linear-gradient(90deg, hsl(207, 100%, 40%), hsl(168, 76%, 33%), hsl(207, 100%, 40%));
+    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--primary)));
     background-size: 200% 100%;
-    animation: background-shine 3s linear infinite;
-    color: hsl(210, 17%, 98%); /* Color foreground directo (modo claro) */
+    animation: background-shine 3s linear infinite; /* Reutilizar keyframe */
+    color: hsl(var(--primary-foreground));
     transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px hsla(var(--primary) / 0.4);
-    }
+    @apply hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/30; /* Utilidades Tailwind para hover */
   }
 
   .animated-gradient-bg {
-    background: linear-gradient(-45deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--accent)), hsl(var(--pink-500)), hsl(var(--primary)));
+    background: linear-gradient(-45deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--accent)), #ec4899, hsl(var(--primary))); /* Mantener rosa como ejemplo, podría ser variable */
     background-size: 400% 400%;
-    animation: gradientMove 15s ease infinite;
+    animation: gradientMove 15s ease infinite; /* Reutilizar keyframe */
   }
 
   .card-hover {
-     /* Ajustar transición y efecto hover */
-     @apply transition-all duration-300 ease-in-out hover:scale-[1.04] hover:shadow-xl dark:hover:shadow-primary/20;
+     @apply transition-all duration-300 ease-in-out hover:scale-[1.03] hover:shadow-xl dark:hover:shadow-primary/20; /* Ajustar scale */
   }
 
-  /* NUEVO: Fondo de Olas Animadas */
+  /* Fondo de Olas Animadas */
   .animated-waves-bg {
+    /* Usar variables para los colores de fill en el SVG si es posible (requiere codificación URL) */
+    /* Por simplicidad, mantenemos los colores codificados aquí */
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%230ea5e9' fill-opacity='0.15' d='M0,192L48,176C96,160,192,128,288,133.3C384,139,480,181,576,186.7C672,192,768,160,864,144C960,128,1056,128,1152,144C1248,160,1344,192,1392,208L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3Cpath fill='%2310b981' fill-opacity='0.1' d='M0,224L48,208C96,192,192,160,288,170.7C384,181,480,235,576,250.7C672,267,768,245,864,213.3C960,181,1056,139,1152,133.3C1248,128,1344,160,1392,176L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E");
     background-repeat: repeat-x;
     background-position: 0 bottom;
-    background-size: auto 150px; /* Ajustar altura de las olas */
-    animation: wave-animation 25s linear infinite;
+    background-size: auto 150px;
+    animation: wave-animation 25s linear infinite; /* Reutilizar keyframe */
   }
   
   .dark .animated-waves-bg {
-     /* Versión oscura con colores diferentes si se desea, o ajustar opacidad */
-     /* Ejemplo: Cambiar fill='%23...' en la URL del SVG */
+     /* Versión oscura */
      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%23075985' fill-opacity='0.2' d='M0,192L48,176C96,160,192,128,288,133.3C384,139,480,181,576,186.7C672,192,768,160,864,144C960,128,1056,128,1152,144C1248,160,1344,192,1392,208L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3Cpath fill='%23065f46' fill-opacity='0.15' d='M0,224L48,208C96,192,192,160,288,170.7C384,181,480,235,576,250.7C672,267,768,245,864,213.3C960,181,1056,139,1152,133.3C1248,128,1344,160,1392,176L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E");
   }
 }
 
+/* Capa para utilidades de bajo nivel */
 @layer utilities {
-  @keyframes gradient-animation {
+  @keyframes gradient-animation { /* Definir aquí si es reutilizada por utilidades */
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
   }
 
   .animate-gradient {
-    /* Light mode gradient - Más vibrante */
-    background: linear-gradient(-45deg, var(--primary-400), var(--secondary-300), #ffffff, var(--primary-200), var(--secondary-400)); /* Ajustado con blanco y tonos más vivos */
+    background: linear-gradient(-45deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--accent)), hsl(var(--primary))); /* Simplificado para usar variables */
     background-size: 400% 400%;
     animation: gradient-animation 15s ease infinite;
   }
 
-  .dark .dark\:animate-gradient {
-    /* Dark mode gradient - Ajustado para ser más azul/verde claro y menos gris */
-    /* Quitar neutral-900, usar tonos 500/600 de primary/secondary */
-    background: linear-gradient(-45deg, hsl(var(--primary-500)), hsl(var(--secondary-500)), hsl(var(--primary-600)), hsl(var(--secondary-600)), hsl(var(--primary-500))); 
+  /* El selector dark se aplica automáticamente por Tailwind, no necesita .dark\: aquí */
+  .dark .animate-gradient {
+    background: linear-gradient(-45deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--accent)), hsl(var(--primary))); /* Usar las mismas variables, el modo oscuro ya las cambia */
     background-size: 400% 400%;
-    animation: gradient-animation 15s ease infinite; /* Reusar animación existente */
+    animation: gradient-animation 15s ease infinite;
   }
 
   /* Efecto de sombra sutil para texto */
   .text-shadow-subtle {
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
+    text-shadow: 1px 1px 3px hsla(var(--foreground) / 0.1); /* Usar variable foreground */
   }
 
-  .dark .dark\:text-shadow-subtle {
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.4); /* Sombra ligeramente más oscura para modo oscuro */
+  .dark .text-shadow-subtle { /* Tailwind maneja el dark: prefijo */
+    text-shadow: 1px 1px 3px hsla(var(--foreground) / 0.4); /* Opacidad mayor en oscuro */
   }
 
-  /* Añadir animación float y pulse-soft si se quieren usar */
+  /* Utilidades de animación */
   .animate-float {
-    animation: float 6s ease-in-out infinite;
+    animation: float 6s ease-in-out infinite; /* Reutilizar keyframe */
   }
   .animate-pulse-soft {
-    animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; /* Reutilizar keyframe */
   }
-
-  /* Asegurar que las animaciones estén disponibles como utilidades */
   .animate-accordion-down {
-    animation: accordion-down 0.2s ease-out;
+    animation: accordion-down 0.2s ease-out; /* Reutilizar keyframe */
   }
   .animate-accordion-up {
-    animation: accordion-up 0.2s ease-out;
+    animation: accordion-up 0.2s ease-out; /* Reutilizar keyframe */
   }
   .animate-fade-in-up {
-    animation: fade-in-up 0.5s ease-out;
+    animation: fadeInUp 0.5s ease-out; /* Reutilizar keyframe */
   }
   .animate-fade-in {
-    animation: fade-in 0.5s ease-out;
+    animation: fadeIn 0.5s ease-out; /* Reutilizar keyframe */
   }
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; } to { opacity: 1; }
-}
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); }
-}
-@keyframes gradientMove {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-@keyframes background-shine {
-  from { background-position: 0% center; }
-  to { background-position: -200% center; }
-}
-@keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
-}
-@keyframes pulse-soft {
-  0% { opacity: 0.5; transform: scale(0.95); }
-  50% { opacity: 1; transform: scale(1); }
-  100% { opacity: 0.5; transform: scale(0.95); }
-}
-@keyframes accordion-down {
-  from { height: 0; } to { height: var(--radix-accordion-content-height); }
-}
-@keyframes accordion-up {
-  from { height: var(--radix-accordion-content-height); } to { height: 0; }
-}
-@keyframes audio-wave {
-  0%, 100% {
-    height: 3px;
-  }
-  50% {
-    height: 15px;
-  }
-}
-@keyframes wave-animation {
-  0% {
-    background-position: 0 bottom;
-  }
-  100% {
-     background-position: 1440px bottom; /* Mover una longitud de onda */
-  }
-}
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
+/* Estilos Globales Personalizados (fuera de @layer si son overrides específicos) */
 
-/* Custom Global Styles */
-
-/* Remove Dialog Overlay Background */
+/* Override para Dialog Overlay de Radix UI */
 div[data-radix-dialog-overlay][data-state="open"] {
-  background-color: transparent !important;
-  /* Optional: Add a subtle blur instead if you prefer */
-  /* backdrop-filter: blur(2px); */
+  background-color: rgba(0, 0, 0, 0.5) !important; /* Fondo semi-transparente sutil */
+  backdrop-filter: blur(2px) !important;        /* Desenfoque ligero */
 } 
