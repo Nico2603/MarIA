@@ -1169,54 +1169,62 @@ function VoiceChatContainer() {
   // Effect for handling Push-to-Talk (Spacebar)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Ignore if modifier keys are pressed
-      if (event.repeat || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
-        return;
-      }
+      // Verificar si el elemento está dentro de un campo de entrada o es editable
+      const targetElement = event.target as HTMLElement;
+      const isInputFocused = 
+        targetElement.tagName === 'INPUT' || 
+        targetElement.tagName === 'TEXTAREA' || 
+        targetElement.isContentEditable ||
+        targetElement.closest('input, textarea, [contenteditable="true"]') !== null;
 
-      // Handle Spacebar press
-      if (event.code === 'Space') {
-        // << CORREGIDO: Prevenir siempre el comportamiento por defecto (scroll/espacio) >>
+      // Si el espacio se presiona FUERA de un input, prevenir SIEMPRE el comportamiento por defecto
+      if (event.code === 'Space' && !isInputFocused) {
+        // Siempre prevenir el comportamiento por defecto para evitar scroll
         event.preventDefault();
-        // << AÑADIDO: Detener la propagación para evitar otros listeners >>
-        event.stopPropagation();
         
-        // --- Conditions to start listening ---
-        // Check these only AFTER handling preventDefault
+        // Verificar si podemos iniciar la escucha
         if (!isListening && !isProcessing && !isSpeaking && conversationActive && !isSessionClosed) {
-          console.log("Conditions met, starting push-to-talk listening.");
-          setIsPushToTalkActive(true); // Set visual indicator state
-          handleStartListening(); // Start the listening process
+          console.log("Iniciando Push-to-Talk con barra espaciadora");
+          setIsPushToTalkActive(true);
+          handleStartListening();
         } else {
-           // Log why listening didn't start
-           console.log("Space pressed, default prevented, but conditions not met for starting listening:", {
-               isListening,
-               isProcessing,
-               isSpeaking,
-               conversationActive,
-               isSessionClosed
-           });
+          console.log("Espacio presionado pero no se inicia escucha:", {
+            isListening,
+            isProcessing,
+            isSpeaking,
+            conversationActive,
+            isSessionClosed
+          });
         }
       }
     };
 
     const handleKeyUp = (event: KeyboardEvent) => {
-       // Stop listening only if Space is released and we were listening via push-to-talk
-      if (event.code === 'Space' && isListening && isPushToTalkActive) {
-      event.preventDefault();
-        handleStopListening(); // Stop the listening process
-        // isPushToTalkActive will be reset in the MediaRecorder's onstop handler
+      // Verificar si el elemento está dentro de un campo de entrada o es editable (mismo check que en keyDown)
+      const targetElement = event.target as HTMLElement;
+      const isInputFocused = 
+        targetElement.tagName === 'INPUT' || 
+        targetElement.tagName === 'TEXTAREA' || 
+        targetElement.isContentEditable ||
+        targetElement.closest('input, textarea, [contenteditable="true"]') !== null;
+        
+      // Solo detener si es espacio, estamos escuchando por push-to-talk, y NO estamos en un input
+      if (event.code === 'Space' && isListening && isPushToTalkActive && !isInputFocused) {
+        event.preventDefault(); // Prevenir cualquier acción por defecto
+        console.log("Deteniendo Push-to-Talk");
+        handleStopListening();
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
+    // Usar captura para interceptar eventos antes que otros handlers
+    window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('keyup', handleKeyUp, true);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('keyup', handleKeyUp, true);
     };
-  }, [isListening, isProcessing, isSpeaking, isPushToTalkActive, conversationActive, isSessionClosed, handleStartListening, handleStopListening]); // Dependencies
+  }, [isListening, isProcessing, isSpeaking, isPushToTalkActive, conversationActive, isSessionClosed, handleStartListening, handleStopListening]);
 
   // Effect for the session timeout with warning
   useEffect(() => {
@@ -1436,6 +1444,11 @@ function VoiceChatContainer() {
                         if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
                         handleSendTextMessage(e as unknown as FormEvent);
+                        }
+                        // Evitar que el espacio active push-to-talk si el textarea tiene foco
+                        // Esto es crucial para permitir escribir espacios normalmente
+                        if (e.code === 'Space') {
+                           e.stopPropagation(); // Detener propagación para evitar que llegue al listener global
                         }
                     }}
                     // Deshabilitar si se está escuchando, procesando, hablando, pensando, o la sesión está cerrada/inactiva

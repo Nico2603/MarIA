@@ -11,9 +11,12 @@ import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, Calendar, Clock } from 'lucide-react';
+import { Terminal, Calendar, Clock, User, Mail, BadgeCheck, MessageSquareHeart } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import type { UserProfile } from '@/types/profile';
 import type { ChatSession } from '@prisma/client';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import {
   Dialog,
   DialogContent,
@@ -24,6 +27,9 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog"
+
+// Registrar plugins de GSAP
+gsap.registerPlugin(ScrollTrigger);
 
 // Define the structure for the paginated history response matching the API
 interface PaginatedHistoryResponse {
@@ -51,8 +57,14 @@ export default function ProfilePage() {
   const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Refs para animaciones
   const containerRef = useRef<HTMLDivElement>(null);
+  const profileCardRef = useRef<HTMLDivElement>(null);
+  const historyCardRef = useRef<HTMLDivElement>(null);
   const historyGridRef = useRef<HTMLDivElement>(null);
+  const historyItemsRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const decorativeElementRef = useRef<HTMLDivElement>(null);
+  const avatarRef = useRef<HTMLDivElement>(null);
 
   const fetchProfile = useCallback(async () => {
     setIsLoadingProfile(true);
@@ -103,6 +115,101 @@ export default function ProfilePage() {
     }
   }, [status, fetchProfile, fetchHistory, currentPage]);
 
+  // Preparar el array de refs cuando el historial cambia
+  useEffect(() => {
+    if (history?.data) {
+      // Reiniciar el array de refs con la longitud adecuada
+      historyItemsRefs.current = Array(history.data.length).fill(null);
+    }
+  }, [history]);
+
+  // Efecto para animaciones con GSAP
+  useEffect(() => {
+    // Iniciar animaciones solo cuando el contenido está cargado
+    if (!isLoadingProfile && !isLoadingHistory) {
+      const ctx = gsap.context(() => {
+        // Animación para el contenedor principal con un efecto sutil
+        if (containerRef.current) {
+          gsap.fromTo(containerRef.current,
+            { opacity: 0, y: 20 },
+            { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }
+          );
+        }
+
+        // Animación para la tarjeta de perfil
+        if (profileCardRef.current) {
+          gsap.fromTo(profileCardRef.current,
+            { opacity: 0, y: 30 },
+            { opacity: 1, y: 0, duration: 0.9, ease: "power2.out", delay: 0.2 }
+          );
+        }
+
+        // Animación para el avatar
+        if (avatarRef.current) {
+          gsap.fromTo(avatarRef.current,
+            { scale: 0.8, opacity: 0 },
+            { scale: 1, opacity: 1, duration: 0.7, ease: "back.out(1.7)", delay: 0.5 } // Slightly more bounce
+          );
+        }
+
+        // Animación para la tarjeta de historial con scroll trigger
+        if (historyCardRef.current) {
+          gsap.fromTo(historyCardRef.current,
+            { opacity: 0, y: 40 },
+            {
+              opacity: 1,
+              y: 0,
+              duration: 0.9,
+              ease: "power2.out",
+              delay: 0.4,
+              scrollTrigger: {
+                trigger: historyCardRef.current,
+                start: "top 90%", // Trigger slightly later
+                toggleActions: "play none none none"
+              }
+            }
+          );
+        }
+
+        // Animación para las tarjetas de historial individual
+        const historyItems = historyItemsRefs.current.filter(item => item !== null);
+        if (historyItems.length > 0) {
+          gsap.fromTo(historyItems,
+            { opacity: 0, y: 25, scale: 0.95 },
+            {
+              opacity: 1,
+              y: 0,
+              scale: 1,
+              duration: 0.7,
+              stagger: 0.12, // Slightly increased stagger
+              ease: "power2.out",
+              delay: 0.6, // Adjusted delay to account for card animation
+              scrollTrigger: {
+                trigger: historyGridRef.current,
+                start: "top 90%", // Match history card trigger
+                toggleActions: "play none none none"
+              }
+            }
+          );
+        }
+
+        // Animación para elemento decorativo
+        if (decorativeElementRef.current) {
+          gsap.to(decorativeElementRef.current, {
+            backgroundPosition: "200% 0%", // Faster movement
+            duration: 12, // Faster duration
+            ease: "none",
+            repeat: -1,
+            yoyo: true
+          });
+        }
+      });
+
+      // Limpiar contexto al desmontar
+      return () => ctx.revert();
+    }
+  }, [isLoadingProfile, isLoadingHistory, history]);
+
   const handleUpdateProfile = async (e: FormEvent) => {
     e.preventDefault();
     if (!profile) return;
@@ -126,6 +233,14 @@ export default function ProfilePage() {
       setUsername(updatedProfile.username || updatedProfile.user?.name || '');
       toast.success('Perfil actualizado correctamente.');
 
+      // Animación sutil al actualizar (pequeño "pop")
+      if (profileCardRef.current) {
+        gsap.fromTo(profileCardRef.current,
+          { scale: 1 },
+          { scale: 1.01, duration: 0.15, ease: "power1.out", yoyo: true, repeat: 1 }
+        );
+      }
+
     } catch (err) {
       console.error("Error updating profile:", err);
       setError(err instanceof Error ? err.message : 'Error desconocido al actualizar.');
@@ -139,6 +254,8 @@ export default function ProfilePage() {
     if (currentPage > 1) {
       const newPage = currentPage - 1;
       setCurrentPage(newPage);
+      // Consider scroll to top of history section if needed
+      // historyCardRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -146,28 +263,36 @@ export default function ProfilePage() {
     if (history && currentPage < history.pagination.totalPages) {
       const newPage = currentPage + 1;
       setCurrentPage(newPage);
+      // Consider scroll to top of history section if needed
+      // historyCardRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
   if (status === 'loading') {
     return (
-      <div className="container mx-auto p-4">
-        <Skeleton className="h-8 w-1/4 mb-4" />
-        <Skeleton className="h-64 w-full" />
+      <div className="container mx-auto p-4 md:p-8 space-y-10">
+        <Skeleton className="h-10 w-1/3 mb-6 bg-muted/40" />
+        <Skeleton className="h-[400px] w-full rounded-xl bg-muted/40" />
+        <Skeleton className="h-6 w-1/4 mb-4 mt-10 bg-muted/40" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+           {[...Array(ITEMS_PER_PAGE)].map((_, i) =>
+             <Skeleton key={i} className="h-52 w-full rounded-lg bg-muted/30" />
+           )}
+         </div>
       </div>
     );
   }
 
   if (!session) {
     return (
-        <div className="container mx-auto p-4 flex justify-center items-center h-screen">
-            <Card className="w-full max-w-md">
+        <div className="container mx-auto p-4 flex justify-center items-center min-h-screen">
+            <Card className="w-full max-w-md shadow-xl border border-border/30 bg-card/80 backdrop-blur-sm">
                 <CardHeader>
-                    <CardTitle>Acceso Denegado</CardTitle>
-                    <CardDescription>Por favor, inicia sesión para ver tu perfil.</CardDescription>
+                    <CardTitle className="text-xl text-primary font-semibold">Acceso Denegado</CardTitle>
+                    <CardDescription className="text-muted-foreground">Por favor, inicia sesión para ver tu perfil.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Button onClick={() => import('next-auth/react').then(mod => mod.signIn('google'))} className="w-full">
+                    <Button onClick={() => import('next-auth/react').then(mod => mod.signIn('google'))} className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground shadow-md">
                         Iniciar Sesión con Google
                     </Button>
                 </CardContent>
@@ -177,143 +302,187 @@ export default function ProfilePage() {
 }
 
   return (
-    <div ref={containerRef} className="container mx-auto p-4 md:p-8 space-y-8">
+    <div ref={containerRef} className="container mx-auto p-4 md:p-8 space-y-12">
         <div>
-           <Card className="bg-gradient-to-br from-card/70 via-card/80 to-card/70 dark:from-card/40 dark:via-card/50 dark:to-card/40 backdrop-blur-lg shadow-sm border border-border/50 rounded-xl overflow-hidden">
-             <CardHeader>
-               <CardTitle className="text-2xl font-semibold text-primary dark:text-primary-foreground tracking-tight">Configuración del Perfil</CardTitle>
-               <CardDescription className="text-muted-foreground/90">Actualiza tu información personal y visualiza tus datos.</CardDescription>
+           <Card
+             ref={profileCardRef}
+             className="bg-gradient-to-br from-card via-card/95 to-secondary/10 dark:from-card dark:via-card/95 dark:to-secondary/20 backdrop-blur-md shadow-lg border border-border/30 rounded-2xl overflow-hidden transition-shadow duration-300 hover:shadow-xl"
+           >
+             <CardHeader className="pb-5 border-b border-border/20 bg-gradient-to-r from-transparent to-primary/5 dark:to-primary/10 px-6 md:px-8">
+               <CardTitle className="text-2xl font-bold text-primary dark:text-primary-foreground tracking-tight flex items-center gap-2.5">
+                  <User className="h-5 w-5 stroke-[2.5px]" /> Perfil de Usuario
+               </CardTitle>
+               <CardDescription className="text-muted-foreground/90 mt-1">Administra tu información personal y de cuenta.</CardDescription>
              </CardHeader>
-             <CardContent>
+             <CardContent className="pt-6 px-6 md:px-8">
                {isLoadingProfile ? (
-                 <div className="space-y-6">
-                   <div className="flex items-center space-x-6">
-                     <Skeleton className="h-32 w-32 rounded-full" />
-                     <div className="space-y-2">
-                       <Skeleton className="h-6 w-48" />
-                       <Skeleton className="h-4 w-64" />
+                 <div className="space-y-8">
+                   <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-8">
+                     <Skeleton className="h-36 w-36 rounded-full bg-muted/50" />
+                     <div className="space-y-3 flex-grow">
+                       <Skeleton className="h-7 w-3/4 bg-muted/50" />
+                       <Skeleton className="h-5 w-full bg-muted/40" />
+                       <Skeleton className="h-4 w-2/3 bg-muted/40" />
                      </div>
                    </div>
-                   <Skeleton className="h-10 w-full" />
-                   <Skeleton className="h-10 w-full" />
-                   <Skeleton className="h-10 w-24" />
+                   <Skeleton className="h-10 w-full bg-muted/40" />
+                   <Skeleton className="h-10 w-full bg-muted/40" />
+                   <Skeleton className="h-10 w-28 bg-muted/40" />
                  </div>
                ) : profile ? (
-                 <form onSubmit={handleUpdateProfile} className="space-y-6">
-                   <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6 mb-6 pb-6 border-b border-border/50">
-                     <Avatar className="h-32 w-32 text-4xl flex-shrink-0 ring-2 ring-primary/30 dark:ring-primary/20 p-1">
-                       <AvatarImage 
-                          src={profile.avatarUrl || session?.user?.image || ''}
-                          alt={username || session?.user?.name || 'Usuario'} 
-                       />
-                       <AvatarFallback>{username ? username.charAt(0).toUpperCase() : session?.user?.name?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
-                     </Avatar>
-                     
-                     <div className="flex-grow space-y-1 text-center sm:text-left">
-                        <h2 className="text-2xl font-semibold">{username || session?.user?.name || 'Usuario'}</h2>
-                        <p className="text-sm text-muted-foreground">{session?.user?.email}</p>
-                        <p className="text-xs text-muted-foreground pt-2">
-                          Tu email e imagen provienen de Google.
+                 <form onSubmit={handleUpdateProfile} className="space-y-8">
+                   <div className="flex flex-col sm:flex-row items-center space-y-6 sm:space-y-0 sm:space-x-8 pb-8 border-b border-border/20">
+                     <div ref={avatarRef} className="relative group">
+                       <Avatar className="h-36 w-36 text-5xl flex-shrink-0 ring-4 ring-primary/30 dark:ring-primary/25 p-1.5 shadow-xl group-hover:ring-primary/50 transition-all duration-300">
+                         <AvatarImage
+                            src={profile.avatarUrl || session?.user?.image || ''}
+                            alt={username || session?.user?.name || 'Usuario'}
+                            className="object-cover rounded-full"
+                         />
+                         <AvatarFallback className="bg-gradient-to-br from-primary/90 to-secondary/70 text-primary-foreground">{username ? username.charAt(0).toUpperCase() : session?.user?.name?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+                       </Avatar>
+                       {/* Potential Upload Button Overlay - Example */}
+                       {/* <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer">
+                         <Camera className="h-8 w-8 text-white" />
+                       </div> */}
+                     </div>
+
+                     <div className="flex-grow space-y-1.5 text-center sm:text-left">
+                        <h2 className="text-3xl font-bold tracking-tight">{username || session?.user?.name || 'Usuario'}</h2>
+                        <p className="text-base text-muted-foreground flex items-center justify-center sm:justify-start gap-1.5">
+                          <Mail className="h-4 w-4 text-primary/80"/> {session?.user?.email}
+                        </p>
+                        <p className="text-xs text-muted-foreground/80 pt-2 flex items-center justify-center sm:justify-start gap-1.5">
+                          <BadgeCheck className="h-3.5 w-3.5 text-green-500"/> Identidad verificada a través de Google.
                         </p>
                      </div>
                    </div>
 
-                   <div className="space-y-4">
-                       <div className="space-y-2">
-                         <Label htmlFor="email">Email</Label>
-                         <Input 
-                           id="email" 
-                           type="email" 
-                           value={session?.user?.email || ''} 
-                           disabled 
-                           className="cursor-not-allowed bg-muted/50 text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                   <div className="grid grid-cols-1 gap-6">
+                       <div className="space-y-2.5">
+                         <Label htmlFor="email" className="text-sm font-medium text-foreground/90">Email</Label>
+                         <Input
+                           id="email"
+                           type="email"
+                           value={session?.user?.email || ''}
+                           disabled
+                           className="cursor-not-allowed bg-muted/60 border-border/30 text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/70"
                          />
-                         <p className="text-sm text-muted-foreground/90">
-                             Tu email está vinculado a tu cuenta de Google y no se puede cambiar aquí.
+                         <p className="text-xs text-muted-foreground/80">
+                             Tu email está vinculado a tu cuenta de Google y no puede modificarse aquí.
                          </p>
                        </div>
 
-                       <div className="space-y-2">
-                         <Label htmlFor="username">Nombre de usuario</Label>
+                       <div className="space-y-2.5">
+                         <Label htmlFor="username" className="text-sm font-medium text-foreground/90">Nombre de usuario</Label>
                          <Input
                            id="username"
                            value={username}
                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
-                           placeholder="Tu nombre de usuario visible"
+                           placeholder="Elige un nombre visible"
                            disabled={isUpdating}
+                           className="border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/60 transition-colors duration-200 placeholder:text-muted-foreground/70"
+                           aria-describedby="username-description"
                          />
-                         <p className="text-sm text-muted-foreground/90">
-                           Este nombre se mostrará públicamente.
+                         <p id="username-description" className="text-xs text-muted-foreground/80">
+                           Este será tu nombre visible en la plataforma.
                          </p>
                        </div>
                    </div>
 
-                  <div className="pt-4">
+                  <div className="pt-5 flex flex-col items-start">
                      {error && (
-                         <Alert variant="destructive" className="mb-4">
+                         <Alert variant="destructive" className="mb-5 w-full">
                            <Terminal className="h-4 w-4" />
-                           <AlertTitle>Error</AlertTitle>
+                           <AlertTitle>Error de Actualización</AlertTitle>
                            <AlertDescription>{error}</AlertDescription>
                          </Alert>
                        )}
-                     <Button type="submit" disabled={isUpdating} className="transition-colors duration-200 ease-in-out">
+                     <Button
+                       type="submit"
+                       disabled={isUpdating}
+                       className="transition-all duration-300 ease-in-out bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground shadow-lg hover:shadow-primary/30 px-6 py-2.5 font-semibold text-sm tracking-wide disabled:opacity-70 disabled:cursor-not-allowed"
+                       aria-live="polite"
+                     >
                        {isUpdating ? 'Actualizando...' : 'Guardar Cambios'}
                      </Button>
                    </div>
 
                  </form>
                ) : (
-                  <p>No se pudo cargar el perfil.</p>
+                  <p className="text-center text-muted-foreground py-10">No se pudo cargar la información del perfil.</p>
                )}
              </CardContent>
            </Card>
          </div>
 
         <div>
-          <Card className="bg-gradient-to-br from-card/70 via-card/80 to-card/70 dark:from-card/40 dark:via-card/50 dark:to-card/40 backdrop-blur-lg shadow-sm border border-border/50 rounded-xl overflow-hidden">
-             <CardHeader>
-               <CardTitle className="text-xl font-semibold text-primary dark:text-primary-foreground tracking-tight">Historial de Conversaciones</CardTitle>
-               <CardDescription className="text-muted-foreground/90">
-                 Revisa tus sesiones anteriores y sus resúmenes.
+          <Card
+            ref={historyCardRef}
+            className="bg-gradient-to-br from-card via-card/95 to-primary/10 dark:from-card dark:via-card/95 dark:to-primary/20 backdrop-blur-md shadow-lg border border-border/30 rounded-2xl overflow-hidden transition-shadow duration-300 hover:shadow-xl"
+          >
+             <CardHeader className="pb-5 border-b border-border/20 bg-gradient-to-r from-transparent to-secondary/5 dark:to-secondary/10 px-6 md:px-8">
+               <CardTitle className="text-2xl font-bold text-secondary dark:text-secondary-foreground tracking-tight flex items-center gap-2.5">
+                  <MessageSquareHeart className="h-5 w-5 stroke-[2.5px]" /> Historial de Conversaciones
+               </CardTitle>
+               <CardDescription className="text-muted-foreground/90 mt-1">
+                 Explora tus sesiones anteriores y accede a sus resúmenes.
                  {history?.pagination?.totalItems !== undefined && (
-                   <span className="block mt-1 text-xs text-muted-foreground">
-                     Total de sesiones completadas: {history.pagination.totalItems}
+                   <span className="block mt-1.5 text-xs font-medium text-muted-foreground">
+                     Total de sesiones: {history.pagination.totalItems}
                    </span>
                  )}
                </CardDescription>
              </CardHeader>
-             <CardContent>
+             <CardContent className="pt-6 px-6 md:px-8 pb-8">
                {isLoadingHistory ? (
-                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                    {[...Array(ITEMS_PER_PAGE)].map((_, i) =>
-                     <Skeleton key={i} className="h-40 w-full rounded-lg bg-muted/50" />
+                     <Skeleton key={i} className="h-56 w-full rounded-xl bg-muted/40" />
                    )}
                  </div>
                ) : history?.data && history.data.length > 0 ? (
                  <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                    <div
                      ref={historyGridRef}
-                     className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
+                     className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
                    >
                      {history.data.map((session: ChatSession, index: number) => {
                         const sessionNumber = history.pagination.totalItems - ((history.pagination.currentPage - 1) * ITEMS_PER_PAGE + index);
+
                         return (
                            <DialogTrigger asChild key={session.id} onClick={() => setSelectedSession(session)}>
                                <div
-                                   className="bg-background/70 dark:bg-background/50 border border-border/60 rounded-lg p-4 hover:shadow-lg hover:border-primary/70 dark:hover:border-primary/50 transition-all duration-200 ease-in-out cursor-pointer flex flex-col h-full min-h-[160px]"
+                                   ref={(el) => { historyItemsRefs.current[index] = el; }}
+                                   className="bg-background/70 dark:bg-background/50 border border-border/40 shadow-md rounded-xl p-5 hover:shadow-xl hover:border-primary/70 dark:hover:border-primary/50 hover:scale-[1.03] transition-all duration-300 ease-in-out cursor-pointer flex flex-col h-full min-h-[220px] relative overflow-hidden group"
                                >
-                                 <CardTitle className="text-base font-medium mb-2 text-foreground/90">Sesión #{sessionNumber}</CardTitle>
-                                 <div className="text-xs text-muted-foreground mb-3 flex items-center space-x-1.5">
+                                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-primary/10 dark:to-primary/15 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+
+                                 <CardTitle className="text-base font-semibold mb-3 text-foreground flex items-center gap-2 z-10">
+                                   <span className="h-7 w-7 rounded-full bg-primary/15 dark:bg-primary/25 flex items-center justify-center text-xs font-bold text-primary dark:text-primary-foreground shrink-0">
+                                     {sessionNumber}
+                                   </span>
+                                   Sesión <span className="font-mono">#{sessionNumber}</span>
+                                 </CardTitle>
+
+                                 <div className="text-xs text-muted-foreground mb-4 flex items-center space-x-1.5 bg-muted/40 dark:bg-muted/30 py-1 px-2.5 rounded-md w-fit z-10">
                                    <Calendar className="h-3.5 w-3.5" />
                                    <span>{new Date(session.createdAt).toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
                                  </div>
-                                 <CardDescription className="text-sm text-muted-foreground/80 flex-grow line-clamp-3 mb-3">
+
+                                 <CardDescription className="text-sm text-muted-foreground flex-grow line-clamp-5 mb-4 leading-relaxed z-10">
                                    {session.summary
                                      ? (session.summary.startsWith('Resumen:') ? session.summary.substring(8).trim() : session.summary)
-                                     : <span className="italic">Resumen no disponible.</span>
+                                     : <span className="italic text-muted-foreground/70">Resumen no disponible.</span>
                                    }
                                  </CardDescription>
-                                 <p className="text-xs text-primary dark:text-primary/80 mt-3 self-end">Ver detalles</p>
+
+                                 <div className="pt-3 mt-auto border-t border-border/30 z-10">
+                                   <p className="text-xs text-primary dark:text-primary font-semibold flex items-center justify-end gap-1.5 group-hover:gap-2.5 transition-all duration-300">
+                                     Ver detalles
+                                     <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 transform group-hover:translate-x-1" />
+                                   </p>
+                                 </div>
                                </div>
                            </DialogTrigger>
                         );
@@ -321,53 +490,65 @@ export default function ProfilePage() {
                    </div>
 
                    {selectedSession && (
-                     <DialogContent className="sm:max-w-[600px] bg-card/90 backdrop-blur-sm border border-border/70 rounded-lg">
-                       <DialogHeader>
-                         <DialogTitle className="text-lg font-semibold">Detalles de la Sesión #{history?.pagination?.totalItems ? (history.pagination.totalItems - history.data.findIndex(s => s.id === selectedSession.id) - ((history.pagination.currentPage - 1) * ITEMS_PER_PAGE)) : ''}</DialogTitle>
-                         <DialogDescription className="text-muted-foreground/90">
-                           Resumen completo de la conversación.
+                     <DialogContent className="sm:max-w-[650px] bg-card border border-border/50 rounded-xl shadow-2xl z-[60] p-0">
+                       <DialogHeader className="p-6 pb-4 border-b border-border/20">
+                         <DialogTitle className="text-xl font-bold text-primary flex items-center gap-2">
+                             <MessageSquareHeart className="h-5 w-5 stroke-2"/>
+                             Detalles de la Sesión <span className="font-mono">#{history?.pagination?.totalItems ? (history.pagination.totalItems - history.data.findIndex(s => s.id === selectedSession.id) - ((history.pagination.currentPage - 1) * ITEMS_PER_PAGE)) : ''}</span>
+                         </DialogTitle>
+                         <DialogDescription className="text-muted-foreground/90 pt-1">
+                           Resumen completo y detalles de la conversación.
                          </DialogDescription>
                        </DialogHeader>
-                       <div className="grid gap-4 py-4">
-                         <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                            <Calendar className="h-4 w-4" /> 
-                            <span>Inicio: {new Date(selectedSession.createdAt).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                       <div className="grid gap-5 p-6">
+                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-muted/40 dark:bg-muted/30 p-4 rounded-lg border border-border/20">
+                           <div className="flex items-center space-x-2.5 text-sm text-muted-foreground">
+                              <Calendar className="h-4 w-4 text-primary/80" />
+                              <span className="font-medium text-foreground/90">Inicio:</span>
+                              <span>{new Date(selectedSession.createdAt).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                           </div>
+                            <div className="flex items-center space-x-2.5 text-sm text-muted-foreground">
+                              <Clock className="h-4 w-4 text-primary/80" />
+                              <span className="font-medium text-foreground/90">Fin:</span>
+                              <span>{selectedSession.endedAt ? new Date(selectedSession.endedAt).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' }) : <span className="italic">En curso</span>}</span>
+                            </div>
                          </div>
-                          <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                            <Clock className="h-4 w-4" />
-                            <span>Fin: {selectedSession.endedAt ? new Date(selectedSession.endedAt).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A'}</span>
-                          </div>
-                          <div className="mt-2 p-3 bg-muted/50 dark:bg-muted/20 rounded-md max-h-[40vh] overflow-y-auto">
-                            <h4 className="font-semibold mb-2 text-foreground/95">Resumen Completo:</h4>
+                          <div className="mt-1 p-4 bg-background/50 dark:bg-background/30 rounded-lg max-h-[40vh] overflow-y-auto border border-border/30 shadow-inner">
+                            <h4 className="font-semibold text-base mb-3 text-foreground/95 border-b border-border/20 pb-2">Resumen Completo:</h4>
                             <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
                                  {selectedSession.summary
                                    ? (selectedSession.summary.startsWith('Resumen:') ? selectedSession.summary.substring(8).trim() : selectedSession.summary)
-                                   : <span className="italic">No disponible</span>
+                                   : <span className="italic text-muted-foreground/70">Resumen no disponible para esta sesión.</span>
                                  }
                             </p>
                           </div>
                        </div>
-                       <DialogFooter>
+                       <DialogFooter className="p-6 pt-4 border-t border-border/20 bg-muted/20 dark:bg-muted/10 rounded-b-xl">
                           <DialogClose asChild>
-                             <Button type="button" variant="secondary">
+                             <Button
+                               type="button"
+                               variant="ghost"
+                               className="transition-all duration-200 hover:bg-muted/50 dark:hover:bg-muted/40 text-muted-foreground hover:text-foreground"
+                             >
                                Cerrar
                              </Button>
                           </DialogClose>
                        </DialogFooter>
                      </DialogContent>
                    )}
-                   
+
                    {history.pagination && history.pagination.totalPages > 1 && (
-                     <div className="flex items-center justify-between mt-6 pt-4 border-t border-border/50">
-                       <span className="text-sm text-muted-foreground">
-                         Página {history.pagination.currentPage} de {history.pagination.totalPages} (Total: {history.pagination.totalItems} sesiones)
+                     <div className="flex flex-col sm:flex-row items-center justify-between mt-10 pt-6 border-t border-border/20">
+                       <span className="text-sm text-muted-foreground mb-4 sm:mb-0">
+                         Página <span className="font-semibold text-foreground">{history.pagination.currentPage}</span> de <span className="font-semibold text-foreground">{history.pagination.totalPages}</span> (Total: <span className="font-semibold text-foreground">{history.pagination.totalItems}</span> sesiones)
                        </span>
-                       <div className="space-x-2">
+                       <div className="flex space-x-2">
                          <Button
                            variant="outline"
                            size="sm"
                            onClick={handlePreviousPage}
                            disabled={currentPage <= 1 || isLoadingHistory}
+                           className="border-border/40 hover:bg-primary/5 hover:border-primary/40 transition-colors duration-200"
                          >
                            Anterior
                          </Button>
@@ -376,6 +557,7 @@ export default function ProfilePage() {
                            size="sm"
                            onClick={handleNextPage}
                            disabled={currentPage >= history.pagination.totalPages || isLoadingHistory}
+                           className="border-border/40 hover:bg-primary/5 hover:border-primary/40 transition-colors duration-200"
                          >
                            Siguiente
                          </Button>
@@ -384,12 +566,12 @@ export default function ProfilePage() {
                    )}
                  </Dialog>
                ) : (
-                 <p className="text-center text-muted-foreground">No hay historial de conversaciones disponible.</p>
+                 <p className="text-center text-muted-foreground py-12 italic">No se encontró historial de conversaciones.</p>
                )}
                 {error && !isLoadingHistory && (
-                     <Alert variant="destructive" className="mt-4">
+                     <Alert variant="destructive" className="mt-6">
                        <Terminal className="h-4 w-4" />
-                       <AlertTitle>Error al cargar historial</AlertTitle>
+                       <AlertTitle>Error al Cargar Historial</AlertTitle>
                        <AlertDescription>{error}</AlertDescription>
                      </Alert>
                  )}
@@ -397,8 +579,12 @@ export default function ProfilePage() {
            </Card>
         </div>
 
-        {/* Decorative Element */}
-                <div className="h-2 w-full bg-gradient-to-r from-primary/30 via-secondary/30 to-primary/30 dark:from-primary/20 dark:via-secondary/20 dark:to-primary/20 rounded" style={{ backgroundSize: "200% 100%" }}/>
+        {/* Elemento decorativo con animación */}
+        <div
+          ref={decorativeElementRef}
+          className="h-1.5 w-full bg-gradient-to-r from-primary/50 via-secondary/50 to-primary/50 dark:from-primary/40 dark:via-secondary/40 dark:to-primary/40 rounded-full opacity-70"
+          style={{ backgroundSize: "400% 100%" }} // Increased size for smoother gradient shift
+        />
     </div>
   );
 } 
