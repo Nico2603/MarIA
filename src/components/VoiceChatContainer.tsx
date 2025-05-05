@@ -1178,6 +1178,8 @@ function VoiceChatContainer() {
       if (event.code === 'Space') {
         // << CORREGIDO: Prevenir siempre el comportamiento por defecto (scroll/espacio) >>
         event.preventDefault();
+        // << AÑADIDO: Detener la propagación para evitar otros listeners >>
+        event.stopPropagation();
         
         // --- Conditions to start listening ---
         // Check these only AFTER handling preventDefault
