@@ -98,6 +98,7 @@ Reglas Inquebrantables:
 6. REGLA CIERRE TÉCNICA: Tras último paso, preguntar "¿cómo te sientes ahora?".
 7. LÍMITES CLAROS: NO diagnosticar, NO medicación, NO reemplazo terapia.
 8. REGLA DE FINALIZACIÓN (INQUEBRANTABLE): Cuando detectes que el usuario quiere cerrar ("finalizar", "cerrar sesión", "ya basta", "terminar", "acabar", etc.) o si recibes el mensaje de sistema "USER_WANTS_TO_CLOSE", activa la regla de finalización inmediatamente: resumen de 1-2 frases + despedida única + terminar. NO HAGAS MÁS PREGUNTAS.
+9. REGLA DE SEÑAL DE CIERRE (NUEVO): Cuando generes tu respuesta final de cierre (ya sea por solicitud del usuario, por límite de tiempo, o porque consideras que la conversación ha concluido naturalmente según tu criterio y el flujo), DEBES añadir la cadena exacta '[CIERRE_DE_SESION]' al FINAL de tu respuesta textual. Esta señal NO es para el sistema/usuario, será eliminada antes de mostrar/reproducir.
 
 Gestión del Tiempo (Instrucción para IA):
 - Recibirás: "[Contexto de Sesión: Han transcurrido X minutos...]".
@@ -291,6 +292,23 @@ export async function POST(request: Request) {
     let finalResponse = aiResponse;
     // --- FIN Lógica Introducción Flujo ---
 
+    // --- Detección de Señal de Cierre [CIERRE_DE_SESION] (NUEVO) ---
+    let isClosingResponse = false;
+    const closingSignal = '[CIERRE_DE_SESION]';
+    if (finalResponse && finalResponse.endsWith(closingSignal)) {
+        console.log(`[${requestId}] Señal de cierre detectada y eliminada de la respuesta.`);
+        isClosingResponse = true;
+        finalResponse = finalResponse.substring(0, finalResponse.length - closingSignal.length).trim();
+    } else {
+        // También considerar el caso donde el tiempo se agotó o el usuario pidió cerrar
+        // Esto asegura que aunque la IA olvide la señal, si las condiciones de entrada lo indicaban, se marque como cierre.
+        isClosingResponse = isTimeRunningOut || wantsToClose;
+        if(isClosingResponse) {
+            console.log(`[${requestId}] Marcando como cierre basado en isTimeRunningOut (${isTimeRunningOut}) o wantsToClose (${wantsToClose}).`);
+        }
+    }
+    // -------------------------------------------------------------
+
     // --- Detección de Mención/Solicitud de Video y Modificación de Respuesta --- 
     let suggestedVideo: { title: string; url: string } | null = null;
     let videoDetected = false;
@@ -361,9 +379,10 @@ export async function POST(request: Request) {
     console.log(`[${requestId}] Valor final de suggestedVideo antes de respuesta:`, suggestedVideo);
 
     // Devolver la respuesta de texto y opcionalmente el video sugerido
-    return NextResponse.json({ 
-      response: aiResponse, // Respuesta textual de María
-      suggestedVideo // null si no se detectó, o {title, url} si sí
+    return NextResponse.json({
+      response: finalResponse, // << CORREGIDO: Usar finalResponse (sin señal)
+      suggestedVideo, // null si no se detectó, o {title, url} si sí
+      isClosingResponse // << NUEVO: Añadir la bandera
     });
 
   } catch (error: unknown) {

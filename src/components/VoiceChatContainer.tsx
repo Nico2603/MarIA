@@ -574,6 +574,7 @@ function VoiceChatContainer() {
       const data = await response.json();
       const aiText = data.response;
       const suggestedVideoData = data.suggestedVideo; // Get potential video suggestion
+      const isClosingMessageFromApi = data.isClosingResponse; // <<< NUEVO: Obtener la bandera
       
       if (!aiText) {
         setIsThinking(false); // << AÑADIDO: Asegurar quitar thinking si no hay texto >>
@@ -595,11 +596,8 @@ function VoiceChatContainer() {
       setPendingAiMessage(incomingAiMessage); // << GUARDAR en estado pendiente >>
       
       // Check if this is a closing message BEFORE generating TTS
-      const lowerAiText = aiText.toLowerCase();
-      // TEMPORALMENTE DESHABILITADO: No confiar solo en frases para cerrar.
-      // const isClosingMessage = CLOSING_PHRASES.some(phrase => lowerAiText.includes(phrase.toLowerCase()));
-      const isClosingMessage = false; // <-- Forzar a false para evitar cierre prematuro por frases
-      console.log(`Mensaje de IA recibido. ¿Es de cierre? ${isClosingMessage} (Cierre por frases deshabilitado)`);
+      // << NUEVO: Usar la bandera del API para determinar si es mensaje de cierre >>
+      console.log(`Mensaje de IA recibido. ¿Es de cierre (según API)? ${isClosingMessageFromApi}`);
 
       // --- TTS Generation ---
       try {
@@ -628,7 +626,8 @@ function VoiceChatContainer() {
 
              // Play the audio. playAudio ahora manejará setIsThinking(false)
              // Pasar el valor (ahora siempre false) de isClosingMessage
-             playAudio(audioUrlToPlay, incomingAiMessage.id, isClosingMessage);
+             // << CORREGIDO: Pasar la bandera recibida de la API >>
+             playAudio(audioUrlToPlay, incomingAiMessage.id, isClosingMessageFromApi);
              // setIsThinking(false); // << ELIMINADO de aquí >>
           } else {
              // TTS API succeeded but didn't return an audioId
@@ -654,6 +653,11 @@ function VoiceChatContainer() {
           //   console.warn("Fallo TTS para mensaje de cierre. Forzando finalización de sesión.");
           //   endSession();
           // }
+          // << NUEVO: Si TTS falla pero ERA un mensaje de cierre, forzar fin >>
+          if (isClosingMessageFromApi) {
+              console.warn("Fallo TTS para mensaje de cierre (según API). Forzando finalización de sesión.");
+              endSession();
+          }
       }
       // --- End TTS Generation ---
 
@@ -1165,15 +1169,32 @@ function VoiceChatContainer() {
   // Effect for handling Push-to-Talk (Spacebar)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Ignore if modifier keys are pressed or if input field has focus
-      if (event.repeat || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || textAreaRef.current === document.activeElement) {
-        return; 
+      // Ignore if modifier keys are pressed
+      if (event.repeat || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return;
       }
-      // Start listening only if Space is pressed, not already listening/processing/speaking, and conversation is active
-      if (event.code === 'Space' && !isListening && !isProcessing && !isSpeaking && conversationActive && !isSessionClosed) {
-      event.preventDefault(); 
-        setIsPushToTalkActive(true); // Set visual indicator state
-        handleStartListening(); // Start the listening process
+
+      // Handle Spacebar press
+      if (event.code === 'Space') {
+        // << CORREGIDO: Prevenir siempre el comportamiento por defecto (scroll/espacio) >>
+        event.preventDefault();
+        
+        // --- Conditions to start listening ---
+        // Check these only AFTER handling preventDefault
+        if (!isListening && !isProcessing && !isSpeaking && conversationActive && !isSessionClosed) {
+          console.log("Conditions met, starting push-to-talk listening.");
+          setIsPushToTalkActive(true); // Set visual indicator state
+          handleStartListening(); // Start the listening process
+        } else {
+           // Log why listening didn't start
+           console.log("Space pressed, default prevented, but conditions not met for starting listening:", {
+               isListening,
+               isProcessing,
+               isSpeaking,
+               conversationActive,
+               isSessionClosed
+           });
+        }
       }
     };
 
