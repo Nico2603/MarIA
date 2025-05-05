@@ -126,6 +126,7 @@ const requestBodySchema = z.object({
       username: z.string().nullable().optional(),
       avatarUrl: z.string().url().nullable().optional(),
   }).nullable().optional(),
+  isTimeRunningOut: z.boolean().optional().default(false),
 });
 
 // --- Lista de Keywords para detectar cierre ---
@@ -156,7 +157,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Cuerpo de la solicitud inválido o mal formado.', requestId }, { status: 400 });
     }
 
-    const { message, history, sessionStartTime, introduceFlow, initialContext, userProfile } = parsedBody.data;
+    const { message, history, sessionStartTime, introduceFlow, initialContext, userProfile, isTimeRunningOut } = parsedBody.data;
     // const providedRequestId = parsedBody.data.requestId; // Usar si el cliente envía un ID
     // if (providedRequestId) requestId = providedRequestId; // Sobrescribir si el cliente envía uno
 
@@ -245,7 +246,16 @@ export async function POST(request: Request) {
         content: msg.content,
     })));
 
-    // 4. Mensaje Actual del Usuario (con contexto de tiempo si aplica)
+    // 4. Instrucción Condicional de Cierre por Tiempo
+    if (isTimeRunningOut) {
+        console.log(`[${requestId}] Añadiendo instrucción de cierre por tiempo.`);
+        messagesForOpenAI.push({ 
+            role: "system", 
+            content: "[Instrucción Urgente: El tiempo de la sesión se está agotando (isTimeRunningOut=true). Inicia INMEDIATAMENTE la secuencia de cierre: agradece brevemente al usuario por la sesión, resume en 1 frase lo más importante que hablaron o la técnica principal que exploraron, y despídete amablemente. NO hagas preguntas nuevas ni ofrezcas más ayuda o técnicas.]" 
+        });
+    }
+
+    // 5. Mensaje Actual del Usuario (con contexto de tiempo si aplica)
     messagesForOpenAI.push({ role: "user", content: userMessageForAI });
 
     // --- Llamada a la API de OpenAI ---

@@ -11,15 +11,25 @@ import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal } from 'lucide-react';
+import { Terminal, Calendar, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { UserProfile } from '@/types/profile'; // Assuming types/profile.ts exists
 import type { ChatSession } from '@prisma/client'; // Import ChatSession type
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog"
 
-// Define the structure for the paginated history response
+// Define the structure for the paginated history response matching the API
 interface PaginatedHistoryResponse {
-  sessions: ChatSession[];
-  metadata: {
+  data: ChatSession[]; // Changed from 'sessions'
+  pagination: {        // Changed from 'metadata'
     totalItems: number;
     totalPages: number;
     currentPage: number;
@@ -39,6 +49,8 @@ export default function ProfilePage() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
+  const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchProfile = useCallback(async () => {
     setIsLoadingProfile(true);
@@ -64,12 +76,13 @@ export default function ProfilePage() {
     setIsLoadingHistory(true);
     setError(null);
     try {
-      const response = await fetch(`/api/chat-sessions/history?page=${page}&limit=${ITEMS_PER_PAGE}`);
+      // Use the correct API endpoint structure (assuming pageSize is needed instead of limit)
+      const response = await fetch(`/api/chat-sessions/history?page=${page}&pageSize=${ITEMS_PER_PAGE}`);
       if (!response.ok) {
         throw new Error('Error al obtener el historial.');
       }
       const data: PaginatedHistoryResponse = await response.json();
-      setHistory(data);
+      setHistory(data); // Store the received data directly
     } catch (err) {
       console.error("Error fetching history:", err);
       setError(err instanceof Error ? err.message : 'Error desconocido al obtener el historial.');
@@ -130,7 +143,7 @@ export default function ProfilePage() {
   };
 
   const handleNextPage = () => {
-    if (history && currentPage < history.metadata.totalPages) {
+    if (history && currentPage < history.pagination.totalPages) {
       const newPage = currentPage + 1;
       setCurrentPage(newPage);
     }
@@ -262,70 +275,123 @@ export default function ProfilePage() {
                <CardTitle className="text-xl text-primary dark:text-primary-foreground">Historial de Conversaciones</CardTitle>
               <CardDescription>
                 Revisa tus sesiones anteriores y sus resúmenes.
-                {history?.metadata?.totalItems !== undefined && (
+                {history?.pagination?.totalItems !== undefined && (
                   <span className="block mt-1 text-xs text-muted-foreground">
-                    Total de sesiones completadas: {history.metadata.totalItems}
+                    Total de sesiones completadas: {history.pagination.totalItems}
                   </span>
                 )}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {isLoadingHistory ? (
-                  <div className="space-y-2">
-                    {[...Array(ITEMS_PER_PAGE)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
-                  </div>
-              ) : history && history.sessions && history.sessions.length > 0 ? (
-                <>
-                  <Table>
-                     <TableHeader>
-                       <TableRow>
-                         <TableHead>Inicio</TableHead>
-                         <TableHead>Fin</TableHead>
-                         <TableHead className="w-[40%]">Resumen</TableHead>
-                       </TableRow>
-                     </TableHeader>
-                     <TableBody>
-                       {history.sessions.map((session: ChatSession) => (
-                         <TableRow key={session.id}>
-                           <TableCell className="font-mono text-xs">{session.id.substring(0, 8)}...</TableCell>
-                           <TableCell>{new Date(session.createdAt).toLocaleString()}</TableCell>
-                           <TableCell>{session.endedAt ? new Date(session.endedAt).toLocaleString() : 'En curso'}</TableCell>
-                           <TableCell className="text-xs text-muted-foreground">
-                             {session.summary 
-                               ? session.summary.length > 150 
-                                 ? `${session.summary.substring(0, 150)}...` 
-                                 : session.summary
-                               : <span className="italic">No disponible</span>
-                             }
-                           </TableCell>
-                         </TableRow>
-                       ))}
-                     </TableBody>
-                   </Table>
-                    <div className="flex items-center justify-between mt-4">
-                       <span className="text-sm text-muted-foreground">
-                         Página {history.metadata.currentPage} de {history.metadata.totalPages} (Total: {history.metadata.totalItems} sesiones)
-                       </span>
-                       <div className="space-x-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[...Array(ITEMS_PER_PAGE)].map((_, i) => 
+                    <Skeleton key={i} className="h-36 w-full rounded-lg" />
+                  )}
+                </div>
+              ) : history?.data && history.data.length > 0 ? (
+                <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                  <motion.div 
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                    initial="hidden"
+                    animate="visible"
+                    variants={{ 
+                      visible: { transition: { staggerChildren: 0.05 } },
+                      hidden: {},
+                    }}
+                  >
+                    {history.data.map((session: ChatSession, index: number) => {
+                       const sessionNumber = history.pagination.totalItems - ((history.pagination.currentPage - 1) * ITEMS_PER_PAGE + index);
+                       return (
+                          <DialogTrigger asChild key={session.id} onClick={() => setSelectedSession(session)}>
+                              <motion.div
+                                variants={{ 
+                                  visible: { opacity: 1, y: 0 },
+                                  hidden: { opacity: 0, y: 10 },
+                                }}
+                                className="bg-card border border-border rounded-lg p-4 hover:shadow-md hover:border-primary/50 dark:hover:border-primary/40 transition-all cursor-pointer flex flex-col h-full"
+                              >
+                                <CardTitle className="text-lg mb-2">Sesión #{sessionNumber}</CardTitle>
+                                <div className="text-xs text-muted-foreground mb-3 flex items-center space-x-2">
+                                  <Calendar className="h-3 w-3" />
+                                  <span>{new Date(session.createdAt).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                </div>
+                                <CardDescription className="text-sm text-muted-foreground flex-grow line-clamp-3">
+                                  {session.summary 
+                                    ? (session.summary.startsWith('Resumen:') ? session.summary.substring(8).trim() : session.summary)
+                                    : <span className="italic">Resumen no disponible.</span>
+                                  }
+                                </CardDescription>
+                                <p className="text-xs text-primary dark:text-primary/80 mt-3 self-end">Ver detalles</p>
+                              </motion.div>
+                          </DialogTrigger>
+                       );
+                    })}
+                  </motion.div>
+
+                  {selectedSession && (
+                    <DialogContent className="sm:max-w-[600px]">
+                      <DialogHeader>
+                        <DialogTitle>Detalles de la Sesión #{history?.pagination?.totalItems ? (history.pagination.totalItems - history.data.findIndex(s => s.id === selectedSession.id) - ((history.pagination.currentPage - 1) * ITEMS_PER_PAGE)) : ''}</DialogTitle>
+                        <DialogDescription>
+                          Resumen completo de la conversación.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                           <Calendar className="h-4 w-4" /> 
+                           <span>Inicio: {new Date(selectedSession.createdAt).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                        </div>
+                         <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                           <Clock className="h-4 w-4" />
+                           <span>Fin: {selectedSession.endedAt ? new Date(selectedSession.endedAt).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A'}</span>
+                        </div>
+                        <div className="mt-2 p-3 bg-muted/50 dark:bg-muted/20 rounded-md max-h-[40vh] overflow-y-auto">
+                          <h4 className="font-semibold mb-2 text-foreground">Resumen Completo:</h4>
+                          <p className="text-sm text-foreground whitespace-pre-wrap"> 
+                              {selectedSession.summary 
+                                ? (selectedSession.summary.startsWith('Resumen:') ? selectedSession.summary.substring(8).trim() : selectedSession.summary)
+                                : <span className="italic">No disponible</span>
+                              }
+                          </p>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                         <DialogClose asChild>
+                            <Button type="button" variant="secondary">
+                              Cerrar
+                            </Button>
+                         </DialogClose>
+                      </DialogFooter>
+                    </DialogContent>
+                  )}
+                  
+                  {history.pagination && history.pagination.totalPages > 1 && (
+                    <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
+                      <span className="text-sm text-muted-foreground">
+                        Página {history.pagination.currentPage} de {history.pagination.totalPages} (Total: {history.pagination.totalItems} sesiones)
+                      </span>
+                      <div className="space-x-2">
                         <Button
-                           variant="outline"
-                           size="sm"
-                           onClick={handlePreviousPage}
-                           disabled={currentPage <= 1 || isLoadingHistory}
-                         >
-                           Anterior
-                         </Button>
-                         <Button
-                           variant="outline"
-                           size="sm"
-                           onClick={handleNextPage}
-                           disabled={currentPage >= history.metadata.totalPages || isLoadingHistory}
-                         >
-                           Siguiente
-                         </Button>
-                       </div>
-                     </div>
-                </>
+                          variant="outline"
+                          size="sm"
+                          onClick={handlePreviousPage}
+                          disabled={currentPage <= 1 || isLoadingHistory}
+                        >
+                          Anterior
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleNextPage}
+                          disabled={currentPage >= history.pagination.totalPages || isLoadingHistory}
+                        >
+                          Siguiente
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </Dialog>
               ) : (
                 <p className="text-center text-muted-foreground">No hay historial de conversaciones disponible.</p>
               )}

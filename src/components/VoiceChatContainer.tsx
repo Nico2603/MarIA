@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect, useRef, useCallback, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -11,9 +13,13 @@ import {
     Track 
 } from 'livekit-client';
 import TranscribedResponse from './TranscribedResponse';
-import { Send, AlertCircle, Mic, ChevronsLeft, ChevronsRight, MessageSquare, Loader2 } from 'lucide-react';
+import { Send, AlertCircle, Mic, ChevronsLeft, ChevronsRight, MessageSquare, Loader2, Terminal, Calendar, Clock } from 'lucide-react';
 import ThinkingIndicator from './ThinkingIndicator';
 import { useSession } from 'next-auth/react';
+import Link from 'next/link'; // Import Link from next/link
+import type { UserProfile } from '@/types/profile'; // Assuming types/profile.ts exists
+import type { ChatSession } from '@prisma/client'; // Import ChatSession type
+import { Button } from '@/components/ui/button'; // Import Button from @/components/ui/button
 
 // Definir constante para la longitud del historial (debe coincidir con backend)
 const HISTORY_LENGTH = 12;
@@ -111,6 +117,8 @@ function VoiceChatContainer() {
   const [initialContext, setInitialContext] = useState<string | null>(null); // << NUEVO: Estado para resumen previo
   const [userProfile, setUserProfile] = useState<Profile | null>(null); // << NUEVO: Estado para perfil de usuario
   const [totalPreviousSessions, setTotalPreviousSessions] = useState<number | null>(null); // << NUEVO: Contador total sesiones
+  // << NUEVO: Estado para indicar que el tiempo se está acabando >>
+  const [isTimeRunningOut, setIsTimeRunningOut] = useState(false); 
   
   const roomRef = useRef<Room | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null); // << NUEVO: Ref para MediaRecorder
@@ -508,6 +516,13 @@ function VoiceChatContainer() {
         return;
     }
     
+    const timeRunningOutFlag = isTimeRunningOut; // Capture state before potential reset
+    if (timeRunningOutFlag) {
+        console.log("Enviando flag isTimeRunningOut=true a OpenAI");
+        // Reset flag immediately after capturing it for the current request
+        setIsTimeRunningOut(false); 
+    }
+    
     setIsThinking(true); // Indicate processing starts
     setIsProcessing(false); // Ensure transcription processing state is off
     clearError(); 
@@ -533,10 +548,11 @@ function VoiceChatContainer() {
             username: userProfile.username,
             avatarUrl: userProfile.avatarUrl 
         } : null,
-        sessionId: activeSessionId // Send current session ID
+        sessionId: activeSessionId, // Send current session ID
+        isTimeRunningOut: timeRunningOutFlag // << AÑADIDO: Enviar la bandera a la API
       };
 
-      console.log("Enviando a /api/openai:", { message: userMessage, historyCount: historyToSend.length, introduceFlow: shouldIntroduceFlow, hasContext: !!contextToSend, hasProfile: !!userProfile, sessionId: activeSessionId });
+      console.log("Enviando a /api/openai:", { message: userMessage, historyCount: historyToSend.length, introduceFlow: shouldIntroduceFlow, hasContext: !!contextToSend, hasProfile: !!userProfile, sessionId: activeSessionId, isTimeRunningOut: timeRunningOutFlag });
 
       const response = await fetch('/api/openai', {
         method: 'POST',
@@ -580,8 +596,10 @@ function VoiceChatContainer() {
       
       // Check if this is a closing message BEFORE generating TTS
       const lowerAiText = aiText.toLowerCase();
-      const isClosingMessage = CLOSING_PHRASES.some(phrase => lowerAiText.includes(phrase.toLowerCase()));
-      console.log(`Mensaje de IA recibido. ¿Es de cierre? ${isClosingMessage}`);
+      // TEMPORALMENTE DESHABILITADO: No confiar solo en frases para cerrar.
+      // const isClosingMessage = CLOSING_PHRASES.some(phrase => lowerAiText.includes(phrase.toLowerCase()));
+      const isClosingMessage = false; // <-- Forzar a false para evitar cierre prematuro por frases
+      console.log(`Mensaje de IA recibido. ¿Es de cierre? ${isClosingMessage} (Cierre por frases deshabilitado)`);
 
       // --- TTS Generation ---
       try {
@@ -589,15 +607,15 @@ function VoiceChatContainer() {
         const ttsResponse = await fetch('/api/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: aiText }) 
+          body: JSON.stringify({ text: aiText })
         });
 
         if (ttsResponse.ok) {
           const { audioId } = await ttsResponse.json();
           if (audioId) {
-             const audioUrlToPlay = `/api/audio/${audioId}`; 
+             const audioUrlToPlay = `/api/audio/${audioId}`;
              console.log(`TTS generado (${audioId}), añadiendo mensaje y reproduciendo audio...`);
-             
+
              // << MOVIDO Y CORREGIDO: Añadir mensaje a UI y guardar ANTES de reproducir >>
              // Usar directamente incomingAiMessage, ya que pendingAiMessage puede ser null aquí según los logs.
              setMessages(prev => [...prev, incomingAiMessage]); // Usar incomingAiMessage
@@ -606,10 +624,11 @@ function VoiceChatContainer() {
              setPendingAiMessage(null);
 
              // << NUEVO: Quitar thinking DESPUÉS de añadir mensaje y ANTES de reproducir >>
-             setIsThinking(false); 
+             setIsThinking(false);
 
              // Play the audio. playAudio ahora manejará setIsThinking(false)
-             playAudio(audioUrlToPlay, incomingAiMessage.id, isClosingMessage); 
+             // Pasar el valor (ahora siempre false) de isClosingMessage
+             playAudio(audioUrlToPlay, incomingAiMessage.id, isClosingMessage);
              // setIsThinking(false); // << ELIMINADO de aquí >>
           } else {
              // TTS API succeeded but didn't return an audioId
@@ -619,7 +638,7 @@ function VoiceChatContainer() {
           // TTS API request failed
           const errorData = await ttsResponse.json().catch(() => ({}));
           // << NUEVO: Quitar thinking aquí también si TTS falla ANTES de intentar reproducir >>
-          setIsThinking(false); 
+          setIsThinking(false);
           throw new Error(errorData.error || `Error del servidor TTS: ${ttsResponse.status}`);
         }
       } catch (ttsError) {
@@ -628,13 +647,13 @@ function VoiceChatContainer() {
           console.error("Error al obtener o procesar audio TTS:", ttsError);
           setAppError({ type: 'tts', message: ttsError instanceof Error ? ttsError.message : 'Error desconocido en TTS.' });
           // Don't try to play audio if TTS failed
-          setIsSpeaking(false); 
+          setIsSpeaking(false);
           setCurrentSpeakingId(null);
-          // If it was a closing message and TTS failed, end the session immediately
-          if (isClosingMessage) {
-            console.warn("Fallo TTS para mensaje de cierre. Forzando finalización de sesión.");
-            endSession(); 
-          }
+          // Si TTS falla, y isClosingMessage *era* true (ahora siempre false), no forzará cierre aquí
+          // if (isClosingMessage) { // <-- Esta condición ahora siempre será false
+          //   console.warn("Fallo TTS para mensaje de cierre. Forzando finalización de sesión.");
+          //   endSession();
+          // }
       }
       // --- End TTS Generation ---
 
@@ -647,7 +666,7 @@ function VoiceChatContainer() {
       setIsSpeaking(false); 
       setCurrentSpeakingId(null);
     } 
-  }, [activeSessionId, isFirstInteraction, initialContext, messages, sessionStartTime, userProfile, saveMessage, playAudio, endSession, pendingAiMessage]); // << AÑADIDO pendingAiMessage >>
+  }, [activeSessionId, isFirstInteraction, initialContext, messages, sessionStartTime, userProfile, saveMessage, playAudio, endSession, pendingAiMessage, isTimeRunningOut]); // << AÑADIDO isTimeRunningOut a dependencias >>
 
 
   // --- Controladores de Interacción del Usuario (Micrófono, Texto) ---
@@ -703,6 +722,8 @@ function VoiceChatContainer() {
     setIsListening(true); // Set listening state
     audioChunksRef.current = []; // Reset audio chunks buffer
 
+    let recorder: MediaRecorder; // Declarar recorder fuera del bloque try
+
     try {
         // Request microphone access
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -710,7 +731,7 @@ function VoiceChatContainer() {
 
         // Attempt to use preferred mimeType, fall back if necessary
         const options = { mimeType: 'audio/webm;codecs=opus' }; 
-        let recorder;
+        // let recorder; // Mover declaración arriba
         try {
             recorder = new MediaRecorder(stream, options);
             console.log(`Usando mimeType: ${recorder.mimeType}`);
@@ -888,6 +909,7 @@ function VoiceChatContainer() {
 
     clearError();
     setIsSessionClosed(false); // Ensure session is marked as open
+    setIsTimeRunningOut(false); // << AÑADIDO: Resetear la bandera al iniciar nueva sesión
     setIsFirstInteraction(true); // Reset interaction flag for the new session
     setTextInput(''); // Clear any previous text input
     // Clear previous messages *except* potentially the greeting if we want to keep it?
@@ -958,27 +980,106 @@ function VoiceChatContainer() {
         return;
     }
     
-    console.log("Ejecutando useEffect para preparar saludo inicial...");
-    const prepareInitialGreeting = async () => {
-        const initialGreetingText = "Hola, soy María. Estoy aquí para escucharte y ofrecerte apoyo. ¿Cómo te sientes hoy?";
+      console.log("Ejecutando useEffect para preparar saludo inicial...");
+      const prepareInitialGreeting = async () => {
+        let initialGreetingText = ""; // Initialize greeting text
+        let personalizedLog = false; // Flag for logging
+
+        // Check if it's the very first session (or history count is unavailable)
+        if (totalPreviousSessions === null || totalPreviousSessions === 0) {
+             // --- First Session Greeting ---
+             initialGreetingText = "Hola";
+             let firstName = "";
+             // Try to get first name for the first greeting too
+             if (userProfile?.username) {
+                 firstName = userProfile.username.split(' ')[0];
+             } else if (session?.user?.name) {
+                  firstName = session.user.name.split(' ')[0];
+             }
+             if (firstName) {
+                 initialGreetingText += `, ${firstName}`;
+             }
+             initialGreetingText += ". Soy María. Estoy aquí para escucharte y ofrecerte apoyo. ¿Cómo te sientes hoy?";
+             // console.log("Generando audio para saludo inicial (Primera Sesión) (sin reproducir)..."); // Logged below
+
+        } else {
+            // --- Subsequent Session Greeting (Personalized) ---
+            personalizedLog = true; // Mark for personalized log message
+            let greeting = "Hola";
+            let firstName = "";
+            // Extract First Name
+            if (userProfile?.username) {
+                firstName = userProfile.username.split(' ')[0]; // Get first part
+            } else if (session?.user?.name) {
+                 firstName = session.user.name.split(' ')[0]; // Fallback
+            }
+            if (firstName) {
+                greeting += `, ${firstName}`;
+            }
+            greeting += ". Soy María."; // Add the fixed part of the intro
+
+            // Context Integration & Personalized Follow-up
+            if (initialContext) {
+                // Try to identify the main feeling/situation based on keywords
+                let feelingMention = "que estabas lidiando con ansiedad"; // Default feeling mention
+                let situationMention = "";
+                 if (initialContext.toLowerCase().includes('trabajo') || initialContext.toLowerCase().includes('laboral')){
+                     situationMention = " relacionada con preocupaciones laborales";
+                } else if (initialContext.toLowerCase().includes('reuniones')) {
+                     situationMention = " relacionada con las reuniones";
+                } else if (initialContext.toLowerCase().includes('impostor')) {
+                     situationMention = " y sentimientos asociados al síndrome del impostor";
+                }
+                if (situationMention) {
+                    feelingMention += situationMention;
+                }
+
+                // Identify explored techniques
+                let techniquesMention = "";
+                const techniques = [];
+                if (initialContext.toLowerCase().includes('grounding') || initialContext.toLowerCase().includes('5-4-3-2-1')) techniques.push('la técnica de grounding 5-4-3-2-1');
+                if (initialContext.toLowerCase().includes('respiración') || initialContext.toLowerCase().includes('4-7-8')) techniques.push('ejercicios de respiración 4-7-8');
+                if (initialContext.toLowerCase().includes('mindfulness')) techniques.push('mindfulness');
+                if(techniques.length > 0){
+                     let techniquesString = techniques.join(techniques.length > 2 ? ', ' : ' y ');
+                     if (techniques.length > 2) {
+                        const lastCommaIndex = techniquesString.lastIndexOf(', ');
+                        techniquesString = techniquesString.substring(0, lastCommaIndex) + ' y ' + techniquesString.substring(lastCommaIndex + 2);
+                     }
+                    techniquesMention = ` y terminamos explorando ${techniquesString} para ayudarte`;
+                }
+
+                greeting += ` En nuestra sesión anterior me comentaste ${feelingMention}${techniquesMention}.`;
+                greeting += ` Cuéntame, ¿te sirvió ${techniques.length > 0 ? 'lo que exploramos' : 'hablar de ello'} y cómo has seguido con esas sensaciones?`;
+
+            } else {
+                 // Fallback for subsequent sessions if context is somehow missing
+                 greeting += " Qué bueno tenerte de vuelta. ¿Cómo te has sentido desde nuestra última conversación?";
+            }
+            initialGreetingText = greeting; // Final constructed greeting text
+        }
+
+        // --- Common logic for both first and subsequent sessions ---
         const msgId = `greeting-${Date.now()}`;
         setGreetingMessageId(msgId); // Save ID to associate with audio later
-        
-        // Set the initial message in state *without* saving it yet
+
         const initialMessage: Message = {
             id: msgId,
-            text: initialGreetingText,
+            text: initialGreetingText, // Use the determined greeting text
             isUser: false,
             timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
         };
         setMessages([initialMessage]); // Display greeting text immediately
+
+        // Log appropriately
+        console.log(`Generando audio para saludo inicial ${personalizedLog ? 'PERSONALIZADO' : '(Primera Sesión)'} (sin reproducir)...`);
         
-        console.log("Generando audio para saludo inicial (sin reproducir)...");
+        // TTS Generation (using the determined initialGreetingText)
         try {
             const ttsResponse = await fetch('/api/tts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: initialGreetingText })
+                body: JSON.stringify({ text: initialGreetingText }) // Send the correct greeting text to TTS
             });
             if (ttsResponse.ok) {
                 const ttsData = await ttsResponse.json();
@@ -1094,47 +1195,70 @@ function VoiceChatContainer() {
     };
   }, [isListening, isProcessing, isSpeaking, isPushToTalkActive, conversationActive, isSessionClosed, handleStartListening, handleStopListening]); // Dependencies
 
-  // Effect for the 20-minute session timeout
+  // Effect for the session timeout with warning
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout | null = null;
+    let warningTimeoutId: NodeJS.Timeout | null = null;
+    let finalTimeoutId: NodeJS.Timeout | null = null;
     
-    // Set timeout only if conversation is active, has a start time, and is not already closed
+    // Set timeouts only if conversation is active, has a start time, and is not already closed
     if (conversationActive && sessionStartTime && !isSessionClosed) {
       const SESSION_DURATION_MS = 20 * 60 * 1000; // 20 minutes
-      const elapsedTime = Date.now() - sessionStartTime;
-      const remainingTime = SESSION_DURATION_MS - elapsedTime;
+      const WARNING_THRESHOLD_MS = 18 * 60 * 1000; // 18 minutes warning
+      const now = Date.now();
+      const elapsedTime = now - sessionStartTime;
+      
+      const remainingWarningTime = WARNING_THRESHOLD_MS - elapsedTime;
+      const remainingFinalTime = SESSION_DURATION_MS - elapsedTime;
 
-      if (remainingTime > 0) {
-        console.log(`Estableciendo timeout de sesión para ${Math.round(remainingTime / 1000)}s restantes.`);
-        timeoutId = setTimeout(() => {
+      // Set Warning Timeout
+      if (remainingWarningTime > 0) {
+        console.log(`Estableciendo timeout de ADVERTENCIA para ${Math.round(remainingWarningTime / 1000)}s restantes.`);
+        warningTimeoutId = setTimeout(() => {
+          console.log("Tiempo de advertencia (18 min) alcanzado. Estableciendo flag...");
+          // Set the flag. The next interaction will trigger the AI's closing remarks.
+          setIsTimeRunningOut(true); 
+        }, remainingWarningTime);
+      } else if (!isTimeRunningOut && elapsedTime >= WARNING_THRESHOLD_MS) {
+          // If warning time already passed when effect runs (e.g., refresh), set flag immediately
+          console.log("Tiempo de advertencia ya había pasado. Estableciendo flag...");
+          setIsTimeRunningOut(true);
+      }
+
+      // Set Final Timeout
+      if (remainingFinalTime > 0) {
+        console.log(`Estableciendo timeout FINAL para ${Math.round(remainingFinalTime / 1000)}s restantes.`);
+        finalTimeoutId = setTimeout(() => {
           console.log("Tiempo máximo de sesión (20 min) alcanzado. Finalizando...");
-          setAppError({ type: null, message: "La sesión ha finalizado por inactividad (20 min)." });
+          setAppError({ type: null, message: "La sesión ha finalizado automáticamente (20 min)." });
           endSession(); // Trigger the session end process
-        }, remainingTime);
+        }, remainingFinalTime);
       } else {
-        // If remaining time is zero or negative, end the session immediately
-        console.log("Tiempo máximo de sesión ya había expirado al montar/actualizar. Finalizando...");
-        // Check again if it's *already* closed to prevent double-ending
+        // If final time already passed, end immediately
+        console.log("Tiempo máximo de sesión ya había expirado. Finalizando...");
+        // Check again if it's *already* closed
         if (!isSessionClosed) { 
-             setAppError({ type: null, message: "La sesión ha finalizado por inactividad (20 min)." });
+             setAppError({ type: null, message: "La sesión ha finalizado automáticamente (20 min)." });
              endSession();
         }
       }
     } else {
-        // Log why timeout is not being set
-         if (!conversationActive) console.log("Timeout no establecido: Conversación inactiva.");
-         if (!sessionStartTime) console.log("Timeout no establecido: Hora de inicio desconocida.");
-         if (isSessionClosed) console.log("Timeout no establecido: Sesión ya cerrada.");
+         // Log why timeouts are not being set (optional)
+         // console.log("Timeouts no establecidos: conversación inactiva, sin hora de inicio, o sesión cerrada.");
     }
 
-    // Cleanup function to clear the timeout if component unmounts or dependencies change
+    // Cleanup function to clear the timeouts
     return () => {
-      if (timeoutId) {
-        console.log("Limpiando timeout de sesión activo.");
-        clearTimeout(timeoutId);
+      if (warningTimeoutId) {
+        console.log("Limpiando timeout de advertencia activo.");
+        clearTimeout(warningTimeoutId);
+      }
+      if (finalTimeoutId) {
+        console.log("Limpiando timeout final activo.");
+        clearTimeout(finalTimeoutId);
       }
     };
-  }, [conversationActive, sessionStartTime, isSessionClosed, endSession]); // Dependencies for timeout
+    // Dependencies: only re-run if conversation starts/stops or session ends
+  }, [conversationActive, sessionStartTime, isSessionClosed, endSession]); 
 
 
   // --- Effect for Video Source ---
@@ -1330,22 +1454,21 @@ function VoiceChatContainer() {
                  </form>
                   {/* Botón para Iniciar Nueva Sesión o Mensaje Push-to-Talk */}
                   {isSessionClosed ? (
-                    // Mostrar botón "Iniciar Nueva Sesión" si la sesión está cerrada
+                    // Mostrar botón "Ir al Perfil" si la sesión está cerrada
                     <div className="text-center mt-3">
-                      <button 
-                        onClick={handleStartConversation}
-                         // Deshabilitar si el saludo TTS aún no está listo o no autenticado
-                        disabled={!isReadyToStart || authStatus !== 'authenticated'}
-                        className={`px-4 py-2 text-white rounded-lg text-sm font-semibold shadow focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 transition-colors ${
-                             !isReadyToStart || authStatus !== 'authenticated' 
-                               ? 'bg-neutral-500 cursor-not-allowed opacity-60' 
-                               : 'bg-secondary-600 hover:bg-secondary-700 cursor-pointer'
-                        }`}
+                      <Link 
+                        href="/settings/profile" 
+                        passHref 
+                        legacyBehavior // Important for nesting custom components like Button
                       >
-                        {authStatus !== 'authenticated' ? 'Inicia sesión primero' : 
-                         !isReadyToStart ? 'Preparando IA...' : 
-                         'Iniciar Nueva Sesión'}
-                      </button>
+                        {/* Anchor tag provided by Link legacyBehavior */}
+                        <Button 
+                          // Remove the 'as="a"' prop
+                          className="bg-secondary-600 hover:bg-secondary-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 transition-colors cursor-pointer"
+                        >
+                          Ver Historial en Perfil
+                        </Button>
+                      </Link>
                     </div>
                   ) : (
                      // Mostrar mensaje "Mantén [Espacio]" si la sesión está activa
