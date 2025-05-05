@@ -45,6 +45,12 @@ const nextConfig = {
             key: 'Referrer-Policy',
             value: 'origin-when-cross-origin',
           },
+          {
+            key: 'Content-Security-Policy',
+            // NOTA: 'unsafe-eval' se añade para GSAP. 'unsafe-inline' puede ser necesario para estilos/scripts inline.
+            // Considera ajustar estas directivas según tus necesidades específicas y entorno (desarrollo vs producción).
+            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: lh3.googleusercontent.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';".replace(/\s{2,}/g, ' ').trim(),
+          },
         ],
       },
     ]

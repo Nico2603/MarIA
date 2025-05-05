@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,6 +14,7 @@ const UserDropdown = ({ theme }: { theme: string }) => {
   const { data: session } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   if (!session || !session.user) return null;
 
@@ -45,7 +46,7 @@ const UserDropdown = ({ theme }: { theme: string }) => {
         />
       </button>
 
-      <div className={dropdownClasses} role="menu" aria-orientation="vertical">
+      <div ref={dropdownRef} className={dropdownClasses} role="menu" aria-orientation="vertical">
         <div className="py-1" role="none">
           <div className={`px-4 py-2 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
             Logueado como
@@ -62,7 +63,10 @@ const UserDropdown = ({ theme }: { theme: string }) => {
             Perfil
           </a>
           <button
-            onClick={() => { signOut(); setIsOpen(false); }}
+            onClick={(e) => { 
+              signOut(); 
+              setIsOpen(false); 
+            }}
             className={`${itemClasses} w-full text-left`}
             role="menuitem"
           >
@@ -71,12 +75,6 @@ const UserDropdown = ({ theme }: { theme: string }) => {
           </button>
         </div>
       </div>
-      {isOpen && (
-        <div 
-          className="fixed inset-0 z-0" 
-          onClick={() => setIsOpen(false)}
-        ></div>
-      )}
     </div>
   );
 };
