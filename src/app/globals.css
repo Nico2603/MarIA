@@ -47,14 +47,20 @@
 }
 
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.7); }
-  70% { box-shadow: 0 0 0 10px rgba(14, 165, 233, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
 }
 
 @keyframes wave-animation {
   0% { background-position: 0 bottom; }
   100% { background-position: 1440px bottom; } /* Mover una longitud de onda */
+}
+
+@keyframes green-blue-gradient-move {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 /* Estilos base globales */
@@ -89,58 +95,59 @@ body {
   }
 
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
+    /* Nueva paleta de colores con azules llamativos */
+    --background: 210 50% 98%;
+    --foreground: 214 60% 15%;
+    --card: 210 50% 98%;
+    --card-foreground: 214 60% 15%;
+    --popover: 210 50% 98%;
+    --popover-foreground: 214 60% 15%;
+    --primary: 210 100% 50%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 199 89% 48%;
+    --secondary-foreground: 210 40% 98%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 191 97% 77%;
+    --accent-foreground: 214 60% 15%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    --ring: 210 100% 50%;
+    --chart-1: 210 100% 60%;
+    --chart-2: 199 89% 48%;
+    --chart-3: 191 97% 77%;
+    --chart-4: 217 91% 60%;
+    --chart-5: 224 76% 48%;
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 214 60% 10%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 214 60% 10%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    --popover: 214 60% 10%;
     --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
+    --primary: 210 100% 60%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 199 89% 48%;
     --secondary-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 191 97% 77%;
+    --accent-foreground: 214 60% 15%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --ring: 210 100% 60%;
+    --chart-1: 210 100% 60%;
+    --chart-2: 199 89% 48%;
+    --chart-3: 191 97% 77%;
+    --chart-4: 217 91% 60%;
+    --chart-5: 224 76% 48%;
   }
 
   body { /* Mover la aplicación de bg/fg a @layer base para especificidad */
@@ -159,35 +166,35 @@ body {
   }
   
   .btn-primary {
-    @apply bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring; /* Usar variables semánticas */
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring shadow-md shadow-primary/20; /* Añadir sombra */
   }
   
   .btn-secondary {
-    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80 focus-visible:ring-ring; /* Usar variables semánticas */
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80 focus-visible:ring-ring shadow-md shadow-secondary/20; /* Añadir sombra */
   }
 
   .btn-destructive { /* Añadir variante destructiva */
-    @apply bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-ring;
+    @apply bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-ring shadow-md shadow-destructive/20;
   }
 
   .btn-outline {
-    @apply border border-input bg-background hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring; /* Usar variables semánticas */
+    @apply border border-input bg-background hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring shadow-sm;
   }
   
   .shadow-soft {
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.1);
   }
   
   .dark .shadow-soft {
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.2);
   }
   
   .shadow-soft-lg {
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 30px rgba(59, 130, 246, 0.15);
   }
   
   .dark .shadow-soft-lg {
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 8px 30px rgba(59, 130, 246, 0.3);
   }
   
   .chat-bubble {
@@ -195,11 +202,11 @@ body {
   }
   
   .chat-bubble-user {
-    @apply chat-bubble bg-primary text-primary-foreground ml-auto; /* Usar variables semánticas */
+    @apply chat-bubble bg-primary text-primary-foreground ml-auto shadow-md shadow-primary/20; /* Añadir sombra */
   }
   
   .chat-bubble-ai {
-    @apply chat-bubble bg-card text-card-foreground border border-border; /* Usar variables semánticas */
+    @apply chat-bubble bg-card text-card-foreground border border-accent/30 shadow-md shadow-accent/10; /* Usar variables semánticas */
   }
   
   /* Estilos para la visualización de audio del avatar interactivo */
@@ -208,7 +215,7 @@ body {
   }
   
   .audio-wave-bar {
-    @apply w-1 rounded-full bg-primary; /* Usar variable semántica */
+    @apply w-1 rounded-full bg-secondary; /* Cambiar a secondary para contraste */
     animation: audio-wave 1s ease-in-out infinite; /* Reutilizar keyframe global */
   }
   
@@ -247,8 +254,8 @@ body {
   
   /* Estilo para el área de transcripción de texto */
   .transcription-area {
-     /* Simplificar y usar variables semánticas */
-    @apply bg-muted/50 p-4 rounded-lg border border-border text-muted-foreground;
+    /* Nuevo estilo más llamativo */
+    @apply bg-accent/10 p-4 rounded-lg border border-accent/30 text-foreground shadow-md shadow-accent/10;
   }
   
   /* Estilos para vistas móviles específicas */
@@ -264,22 +271,22 @@ body {
   
   /* Clases personalizadas SIN @apply (manteniendo CSS directo donde sea complejo) */
   .gradient-text {
-    /* Valores HSL directos (se pueden refactorizar a variables si se desea) */
-    background-image: linear-gradient(to right, hsl(var(--primary)), hsl(var(--secondary)));
+    /* Nuevo gradiente más llamativo con azules */
+    background-image: linear-gradient(to right, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--accent)));
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
 
   .glass-effect {
-    background-color: hsla(var(--card) / 0.60); /* Usar variable --card */
+    background-color: hsla(var(--card) / 0.75); /* Aumentar opacidad para mayor contraste */
     backdrop-filter: blur(12px);
-    border: 1px solid hsla(var(--border) / 0.30);
-    @apply shadow-lg; /* Usar utilidad Tailwind para sombra */
+    border: 1px solid hsla(var(--accent) / 0.30); /* Cambiar a acento para borde */
+    @apply shadow-lg shadow-accent/10; /* Añadir sombra con acento */
   }
 
   .button-shine {
-    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--primary)));
+    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--accent)), hsl(var(--primary)));
     background-size: 200% 100%;
     animation: background-shine 3s linear infinite; /* Reutilizar keyframe */
     color: hsl(var(--primary-foreground));
@@ -288,20 +295,24 @@ body {
   }
 
   .animated-gradient-bg {
-    background: linear-gradient(-45deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--accent)), #ec4899, hsl(var(--primary))); /* Mantener rosa como ejemplo, podría ser variable */
+    background: linear-gradient(-45deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--accent)), hsl(210, 100%, 65%), hsl(var(--primary))); /* Añadir azul más claro */
     background-size: 400% 400%;
     animation: gradientMove 15s ease infinite; /* Reutilizar keyframe */
+    opacity: 0.80 !important; /* Aumentar opacidad para mayor contraste */
+  }
+
+  .dark .animated-gradient-bg {
+    opacity: 0.40 !important; /* Aumentar opacidad para mayor contraste en modo oscuro */
   }
 
   .card-hover {
-     @apply transition-all duration-300 ease-in-out hover:scale-[1.03] hover:shadow-xl dark:hover:shadow-primary/20; /* Ajustar scale */
+     @apply transition-all duration-300 ease-in-out hover:scale-[1.03] hover:shadow-xl hover:shadow-primary/20 dark:hover:shadow-primary/30; /* Añadir sombra con color */
   }
 
-  /* Fondo de Olas Animadas */
+  /* Fondo de Olas Animadas - Actualizado con colores más vibrantes */
   .animated-waves-bg {
-    /* Usar variables para los colores de fill en el SVG si es posible (requiere codificación URL) */
-    /* Por simplicidad, mantenemos los colores codificados aquí */
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%230ea5e9' fill-opacity='0.15' d='M0,192L48,176C96,160,192,128,288,133.3C384,139,480,181,576,186.7C672,192,768,160,864,144C960,128,1056,128,1152,144C1248,160,1344,192,1392,208L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3Cpath fill='%2310b981' fill-opacity='0.1' d='M0,224L48,208C96,192,192,160,288,170.7C384,181,480,235,576,250.7C672,267,768,245,864,213.3C960,181,1056,139,1152,133.3C1248,128,1344,160,1392,176L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E");
+    /* Usando azules más vibrantes con mayor opacidad */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%233B82F6' fill-opacity='0.30' d='M0,192L48,176C96,160,192,128,288,133.3C384,139,480,181,576,186.7C672,192,768,160,864,144C960,128,1056,128,1152,144C1248,160,1344,192,1392,208L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3Cpath fill='%2338BDF8' fill-opacity='0.25' d='M0,224L48,208C96,192,192,160,288,170.7C384,181,480,235,576,250.7C672,267,768,245,864,213.3C960,181,1056,139,1152,133.3C1248,128,1344,160,1392,176L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E");
     background-repeat: repeat-x;
     background-position: 0 bottom;
     background-size: auto 150px;
@@ -309,8 +320,27 @@ body {
   }
   
   .dark .animated-waves-bg {
-     /* Versión oscura */
-     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%23075985' fill-opacity='0.2' d='M0,192L48,176C96,160,192,128,288,133.3C384,139,480,181,576,186.7C672,192,768,160,864,144C960,128,1056,128,1152,144C1248,160,1344,192,1392,208L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3Cpath fill='%23065f46' fill-opacity='0.15' d='M0,224L48,208C96,192,192,160,288,170.7C384,181,480,235,576,250.7C672,267,768,245,864,213.3C960,181,1056,139,1152,133.3C1248,128,1344,160,1392,176L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E");
+     /* Versión oscura con azules más intensos */
+     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%232563EB' fill-opacity='0.35' d='M0,192L48,176C96,160,192,128,288,133.3C384,139,480,181,576,186.7C672,192,768,160,864,144C960,128,1056,128,1152,144C1248,160,1344,192,1392,208L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3Cpath fill='%230EA5E9' fill-opacity='0.30' d='M0,224L48,208C96,192,192,160,288,170.7C384,181,480,235,576,250.7C672,267,768,245,864,213.3C960,181,1056,139,1152,133.3C1248,128,1344,160,1392,176L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E");
+  }
+
+  /* Nuevo gradiente animado verde-azul */
+  .green-blue-gradient {
+    background: linear-gradient(90deg, #4ade80, #2563eb, #4ade80);
+    background-size: 200% auto;
+    animation: green-blue-gradient-move 3s linear infinite;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .dark .green-blue-gradient {
+    background: linear-gradient(90deg, #4ade80, #3b82f6, #4ade80);
+    background-size: 200% auto;
+    animation: green-blue-gradient-move 3s linear infinite;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 }
 
@@ -326,6 +356,7 @@ body {
     background: linear-gradient(-45deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--accent)), hsl(var(--primary))); /* Simplificado para usar variables */
     background-size: 400% 400%;
     animation: gradient-animation 15s ease infinite;
+    opacity: 0.60 !important; /* Aumentar opacidad para mayor contraste */
   }
 
   /* El selector dark se aplica automáticamente por Tailwind, no necesita .dark\: aquí */
@@ -333,15 +364,16 @@ body {
     background: linear-gradient(-45deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--accent)), hsl(var(--primary))); /* Usar las mismas variables, el modo oscuro ya las cambia */
     background-size: 400% 400%;
     animation: gradient-animation 15s ease infinite;
+    opacity: 0.40 !important; /* Aumentar opacidad en modo oscuro */
   }
 
   /* Efecto de sombra sutil para texto */
   .text-shadow-subtle {
-    text-shadow: 1px 1px 3px hsla(var(--foreground) / 0.1); /* Usar variable foreground */
+    text-shadow: 1px 1px 3px hsla(var(--primary) / 0.2); /* Usar variable primary */
   }
 
   .dark .text-shadow-subtle { /* Tailwind maneja el dark: prefijo */
-    text-shadow: 1px 1px 3px hsla(var(--foreground) / 0.4); /* Opacidad mayor en oscuro */
+    text-shadow: 1px 1px 3px hsla(var(--primary) / 0.5); /* Opacidad mayor en oscuro */
   }
 
   /* Utilidades de animación */
@@ -363,6 +395,25 @@ body {
   .animate-fade-in {
     animation: fadeIn 0.5s ease-out; /* Reutilizar keyframe */
   }
+  
+  /* Nuevas utilidades para sombras con colores primarios */
+  .shadow-primary-sm {
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+  }
+  .shadow-primary-md {
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+  .shadow-primary-lg {
+    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+  }
+  
+  /* Nuevas utilidades para bordes con brillo */
+  .border-glow {
+    box-shadow: 0 0 5px 1px hsla(var(--accent) / 0.5);
+  }
+  .border-glow-lg {
+    box-shadow: 0 0 15px 2px hsla(var(--accent) / 0.5);
+  }
 }
 
 
@@ -370,6 +421,6 @@ body {
 
 /* Override para Dialog Overlay de Radix UI */
 div[data-radix-dialog-overlay][data-state="open"] {
-  background-color: rgba(0, 0, 0, 0.5) !important; /* Fondo semi-transparente sutil */
-  backdrop-filter: blur(2px) !important;        /* Desenfoque ligero */
-} 
+  background-color: rgba(37, 99, 235, 0.2) !important; /* Fondo azul semi-transparente */
+  backdrop-filter: blur(3px) !important;        /* Desenfoque ligero */
+}

@@ -337,7 +337,7 @@ export default function LandingPage() {
           <div ref={heroRef} className="relative z-10 opacity-100">
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold font-display text-neutral-900 dark:text-white mb-6 leading-tight text-shadow-subtle dark:dark:text-shadow-subtle">
               {/* Aplicar gradient-text */}
-              Tu Compañera de <span className="gradient-text">Bienestar Mental</span> con IA
+              Tu Compañera de <span className="green-blue-gradient">Bienestar Mental</span> con IA
             </h1>
             <p className="text-lg md:text-xl text-neutral-600 dark:text-neutral-300 mb-10 max-w-3xl mx-auto text-shadow-subtle dark:dark:text-shadow-subtle">
               María te escucha, te comprende y te guía en tu camino hacia una mejor salud mental, utilizando inteligencia artificial avanzada para ofrecerte apoyo personalizado y empático.
@@ -578,10 +578,10 @@ export default function LandingPage() {
           
           <div className="container mx-auto px-4 text-center relative z-10">
             {/* Aplicar gradient-text */}
-            <h2 ref={ctaTitleRef} className="text-3xl md:text-4xl lg:text-5xl font-bold font-display mb-6 gradient-text">
+            <h2 ref={ctaTitleRef} className="text-3xl md:text-4xl lg:text-5xl font-bold font-display mb-6 green-blue-gradient">
               Empieza tu camino hacia el bienestar hoy
             </h2>
-            <p className="text-lg md:text-xl mb-10 max-w-2xl mx-auto text-white/90 dark:text-neutral-200/90">
+            <p className="text-lg md:text-xl mb-10 max-w-2xl mx-auto text-neutral-600 dark:text-neutral-300">
               Da el primer paso hacia una mente más tranquila y resiliente. María está aquí para acompañarte en cada paso, ofreciéndote un espacio seguro y de apoyo.
             </p>
             {/* << MODIFICADO: Usar onClick, añadir ref, quitar hover de Tailwind >> */}
