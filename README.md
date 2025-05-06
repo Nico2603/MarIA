@@ -1,68 +1,256 @@
 # MarIA - Asistente de Salud Mental basado en IA
 
-<p align="center">
-  <img src="https://user-images.githubusercontent.com/128390201/242078407-46ba9b82-a9b7-499d-9eec-1de7b7261c3c.png" alt="MarIA - Asistente de Salud Mental" width="600">
-</p>
+<div align="center">
+  <img src="public/img/MarIA.png" alt="MarIA Logo" width="300px">
+  <br>
+  <strong>Un compañero de salud mental potenciado por inteligencia artificial</strong>
+  <br><br>
+  <a href="https://ai-mental-health-zyb6.onrender.com" target="_blank">Ver Demo en Vivo</a>
+</div>
 
-## Descripción General
+## 📖 Introducción
 
-MarIA es un innovador chatbot de salud mental desarrollado por [Teilur AI](https://www.teilur.ai/), el primer Venture Studio de IA Generativa en Latinoamérica. El nombre "MarIA" combina la serenidad y calma que proporciona el mar con el poder de la Inteligencia Artificial (IA), creando una experiencia terapéutica única.
+MarIA es un **chatbot de salud mental** impulsado por inteligencia artificial que integra **Next.js**, **TypeScript**, y las APIs más avanzadas para ofrecer soporte emocional y técnicas de relajación personalizadas en tiempo real. Diseñado para brindar empatía, guías de mindfulness y análisis de voz, MarIA acompaña a los usuarios en momentos de ansiedad, estrés o para fomentar su bienestar mental general.
 
-Esta plataforma utiliza tecnologías avanzadas como OpenAI, Livekit y Deepgram para ofrecer una experiencia conversacional empática y personalizada. MarIA está diseñada para:
+[![Teilur Banner](public/img/teilur-banner.png)](https://www.teilur.ai/)
 
-- Proporcionar apoyo emocional en momentos de ansiedad o estrés
-- Ofrecer técnicas de relajación y mindfulness adaptadas al usuario
-- Escuchar activamente y responder con empatía a las preocupaciones del usuario
-- Sugerir recursos de salud mental y bienestar según las necesidades identificadas
+## 🔍 Características principales
 
-## Tecnologías Utilizadas
+- **Chat terapéutico**: Respuestas empáticas generadas por GPT-4.1-mini para sostener conversaciones profundas y seguras
+- **Técnicas de relajación**: Guías de respiración y mindfulness adaptadas al usuario
+- **Análisis de voz y emociones**: Procesamiento de audio con Deepgram Nova-2 para identificar tono, sentimientos y patrones emocionales
+- **Comunicación en tiempo real**: Integración con LiveKit para chat de voz y texto sin latencia perceptible
+- **Historial de sesiones**: Registro seguro de conversaciones y recomendaciones en PostgreSQL mediante Prisma
+- **TTS y STT**: Conversión de texto a voz (GPT-4o-mini-tts) y voz a texto (Deepgram Nova-2) para una experiencia más natural
+- **Autenticación segura**: Integración con Google OAuth y NextAuth para proteger los datos de los usuarios
 
-*   **Framework Frontend:** [Next.js](https://nextjs.org/) (App Router) - Framework de React para construir aplicaciones web renderizadas en servidor.
-*   **Lenguaje:** [TypeScript](https://www.typescriptlang.org/) - Superset tipado de JavaScript.
-*   **Estilos:** [Tailwind CSS](https://tailwindcss.com/) - Framework CSS utility-first.
-    *   **Componentes UI:** [shadcn/ui](https://ui.shadcn.com/) - Componentes reutilizables basados en Radix UI.
-*   **ORM:** [Prisma](https://www.prisma.io/) - ORM para TypeScript y Node.js.
-*   **Base de Datos:** PostgreSQL - Base de datos relacional robusta.
-*   **IA / GPTs / APIs:**
-    *   **OpenAI API** - Integración con modelos avanzados de lenguaje para generar respuestas empáticas.
-    *   **Livekit** - Para comunicación en tiempo real.
-    *   **Deepgram** - Para procesamiento y análisis de voz.
-*   **Despliegue:** [Render](https://render.com/) - Plataforma cloud para hosting de aplicaciones web.
+## 📸 Capturas de pantalla
 
-## Estructura del Proyecto
+<div align="center">
+  <table>
+    <tr>
+      <td align="center"><strong>Landing Page</strong></td>
+      <td align="center"><strong>Chat Principal</strong></td>
+    </tr>
+    <tr>
+      <td><img src="public/img/landingpage.png" alt="Landing Page" width="350px"></td>
+      <td><img src="public/img/chatbot.png" alt="Chatbot Interface" width="350px"></td>
+    </tr>
+    <tr>
+      <td align="center"><strong>Perfiles de Usuario</strong></td>
+      <td align="center"><strong>Funcionalidades</strong></td>
+    </tr>
+    <tr>
+      <td><img src="public/img/profiles.png" alt="User Profiles" width="350px"></td>
+      <td><img src="public/img/chatbot.png" alt="Features" width="350px"></td>
+    </tr>
+  </table>
+</div>
 
-```
-.
+## 🚀 Tecnologías
+
+- **Frontend**: 
+  - Next.js (App Router)
+  - TypeScript
+  - Tailwind CSS + shadcn/ui
+  - React
+
+- **Backend**:
+  - Prisma ORM
+  - Supabase + PostgreSQL
+  - NextAuth.js
+  - Node.js
+
+- **IA y APIs**:
+  - OpenAI API
+    - GPT-4.1-mini-2025-04-14 (para conversaciones principales)
+    - GPT-3.5-turbo (para historial de conversaciones)
+    - GPT-4o-mini-tts (para texto a voz)
+  - Deepgram Nova-2 (para reconocimiento de voz y análisis emocional)
+  - LiveKit (comunicación en tiempo real)
+  - Google OAuth (autenticación)
+
+- **Despliegue**:
+  - Render.com
+
+## 📂 Estructura del proyecto
+
+```bash
+AI-Mental-Health/
+│
+├── README.md
+├── next.config.js
+├── tailwind.config.js
+├── package-lock.json
+├── package.json
+├── components.json
+├── .gitignore
+├── prompt.txt
+├── next-env.d.ts
+├── tsconfig.json
+├── postcss.config.js
+│
+├── .git/
+├── .vscode/
+├── .cursor/
+│
 ├── public/
-│   └── assets/
-│       └── MarIA.png            # Banner del proyecto
+│   ├── favicon.ico
+│   ├── img/
+│   │   ├── teilur-banner.png
+│   │   ├── MarIA.png
+│   │   ├── chatbot.png
+│   │   ├── profiles.png
+│   │   └── landingpage.png
+│   ├── assets/
+│   │   ├── main.js
+│   │   └── main.css
+│   ├── videos/
+│   │   ├── voz.mp4
+│   │   └── mute.mp4
+│   ├── scripts/
+│   └── styles/
+│
+├── prisma/
+│   ├── schema.prisma
+│   ├── migrations/
+│   │   ├── migration_lock.toml
+│   │   ├── 20250430063310_rename_session_to_chatsession/
+│   │   ├── 20250430054609_add_nextauth_models/
+│   │   └── 20250430040007_init/
+│
+├── types/
+│   └── next-auth.d.ts
+│
 ├── src/
-│   ├── app/                     # Rutas y componentes (Next.js App Router)
-│   ├── components/              # Componentes reutilizables
-│   └── lib/                     # Utilidades, configuración de API, etc.
-├── prisma/                      # Esquema de base de datos
-├── types/                       # Definiciones de tipos TypeScript
-└── [Archivos de configuración]  # next.config.js, tailwind.config.js, etc.
+    ├── middleware.ts
+    ├── lib/
+    │   ├── auth.ts
+    │   ├── utils.ts
+    │   └── prisma.ts
+    ├── types/
+    │   └── profile.ts
+    ├── app/
+        ├── globals.css
+        ├── page.tsx
+        ├── layout.tsx
+        ├── api/
+        │   ├── sessions/
+        │   ├── chat-sessions/
+        │   ├── messages/
+        │   ├── summarize/
+        │   ├── profile/
+        │   ├── auth/
+        │   ├── tts/
+        │   ├── openai/
+        │   ├── audio/
+        │   ├── stt/
+        │   └── livekit-token/
+        ├── dashboard/
+        ├── chat/
+        ├── consejos/
+        ├── contacto/
+        ├── legal/
+        │   ├── limitaciones/
+        │   ├── aviso-legal/
+        │   ├── cookies/
+        │   ├── privacidad/
+        │   └── terminos/
+        ├── recursos/
+        │   ├── page.tsx
+        │   ├── profesionales/
+        │   ├── crisis/
+        │   ├── tecnicas/
+        │   └── ansiedad/
+        └── settings/
+            └── profile/
 ```
 
-## Uso
+## 🛠️ Instalación
 
-El chatbot MarIA está disponible en línea como un servicio SaaS (Software as a Service) en:
+1. **Clona el repositorio**:
+   ```bash
+   git clone https://github.com/Nico2603/MarIA.git
+   cd MarIA
+   ```
 
-🔗 [https://ai-mental-health-zyb6.onrender.com](https://ai-mental-health-zyb6.onrender.com)
+2. **Instala dependencias**:
+   ```bash
+   npm install
+   ```
 
-### Características principales:
+3. **Configura variables de entorno**:
+   Crea un archivo `.env.local` con las siguientes variables:
+   ```env
+   # Servidor
+   PORT=3000
+   
+   # Base de datos (Supabase)
+   DATABASE_URL="postgresql://..."
+   NEXT_PUBLIC_SUPABASE_URL=
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=
+   
+   # LiveKit
+   LIVEKIT_API_KEY=
+   LIVEKIT_API_SECRET=
+   LIVEKIT_URL=
+   NEXT_PUBLIC_LIVEKIT_URL=
+   
+   # OpenAI
+   OPENAI_API_KEY=
+   OPENAI_MODEL=gpt-4.1-mini-2025-04-14
+   OPENAI_HISTORY_MODEL=gpt-3.5-turbo
+   OPENAI_TTS_MODEL=gpt-4o-mini-tts
+   
+   # Deepgram
+   DEEPGRAM_API_KEY=
+   DEEPGRAM_MODEL=nova-2
+   
+   # Autenticación
+   GOOGLE_CLIENT_ID=
+   GOOGLE_CLIENT_SECRET=
+   NEXTAUTH_SECRET=
+   NEXTAUTH_URL=
+   ```
 
-1. **Chat terapéutico**: Conversa con MarIA sobre tus preocupaciones y emociones.
-2. **Técnicas de relajación**: Recibe guías de respiración y mindfulness.
-3. **Análisis de emociones**: MarIA identifica patrones emocionales y ofrece perspectivas útiles.
-4. **Disponibilidad 24/7**: Acceso a apoyo emocional en cualquier momento.
-5. **Interfaz intuitiva**: Diseñada para proporcionar una experiencia calmante y reconfortante.
+4. **Aplica migraciones de Prisma**:
+   ```bash
+   npx prisma migrate dev --name init
+   ```
 
-## Licencia
+5. **Genera el cliente Prisma**:
+   ```bash
+   npx prisma generate
+   ```
 
-Este proyecto está desarrollado y licenciado bajo los términos y condiciones de © [Teilur, Inc.](https://www.teilur.ai/)
+## ▶️ Uso en desarrollo
+
+Inicia el servidor de desarrollo:
+```bash
+npm run dev
+```
+Luego, navega a `http://localhost:3000` para ver la aplicación.
+
+## 🚀 Despliegue en producción
+
+1. **Construye la aplicación**:
+   ```bash
+   npm run build
+   ```
+
+2. **Inicia el servidor**:
+   ```bash
+   npm run start
+   ```
+
+La aplicación está actualmente desplegada en: [https://ai-mental-health-zyb6.onrender.com](https://ai-mental-health-zyb6.onrender.com)
+
+## 📄 Licencia
+
+Este proyecto está licenciado bajo © [Teilur, Inc.](https://www.teilur.ai/)
 
 ---
 
-© [Teilur, Inc.](https://www.teilur.ai/)
+<div align="center">
+  <p>Desarrollado con ❤️ por <a href="https://github.com/Nico2603">Nico2603</a></p>
+  <p>© 2025 Teilur, Inc. Todos los derechos reservados</p
