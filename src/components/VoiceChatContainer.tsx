@@ -1328,6 +1328,26 @@ function VoiceChatContainer() {
         </motion.div>
       )}
 
+      {/* << NUEVO: Botón unificado para toggle, posicionado absolutamente >> */}
+      {conversationActive && (
+          <button
+              onClick={toggleChatVisibility}
+              className={`absolute top-1/2 transform -translate-y-1/2 z-30 p-2 bg-neutral-200 dark:bg-neutral-700 rounded-full shadow-md hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-all duration-300 ease-in-out ${
+                  isChatVisible 
+                      ? 'left-[calc(33.33%-28px)] md:left-[calc(33.33%-28px)]' // Ajustar el offset (-28px) para que no tape el borde
+                      : 'left-4' // Posición cuando el chat está oculto
+              }`}
+              aria-label={isChatVisible ? "Ocultar chat" : "Mostrar chat"}
+              style={{ transform: 'translateY(-50%)' }} // Asegurar centrado vertical
+          >
+              {isChatVisible ? (
+                  <ChevronsLeft className="h-5 w-5 text-neutral-700 dark:text-neutral-200" />
+              ) : (
+                  <ChevronsRight className="h-5 w-5 text-neutral-700 dark:text-neutral-200" />
+              )}
+          </button>
+      )}
+
       {/* Panel de Chat (Izquierda) */}
       <AnimatePresence>
         {isChatVisible && (
@@ -1337,21 +1357,9 @@ function VoiceChatContainer() {
               animate={{ x: '0%', opacity: 1 }}
               exit={{ x: '-100%', opacity: 0 }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
-              // << MODIFICADO: Añadir relative para posicionar botón dentro >>
-              className="relative w-full md:w-1/3 flex flex-col h-full bg-neutral-100 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-700"
+              // << CORREGIDO: No necesita 'relative' aquí si el botón está fuera >>
+              className="w-full md:w-1/3 flex flex-col h-full bg-neutral-100 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-700"
             >
-              {/* << MOVIDO: Botón dentro del panel >> */}
-              {/* Se muestra solo si la conversación está activa */}
-              {conversationActive && (
-                <button
-                  onClick={toggleChatVisibility}
-                  className="absolute top-1/2 -right-5 transform -translate-y-1/2 z-20 p-2 bg-neutral-200 dark:bg-neutral-700 rounded-full shadow-md hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
-                  aria-label={isChatVisible ? "Ocultar chat" : "Mostrar chat"}
-                >
-                  <ChevronsLeft className="h-5 w-5 text-neutral-700 dark:text-neutral-200" />
-                </button>
-              )}
-
               {/* Área de Mensajes */}
               <div 
                 ref={chatContainerRef} // Referencia para scroll
@@ -1528,8 +1536,8 @@ function VoiceChatContainer() {
             loop // Repetir video
             muted // Silenciado (requerido para autoplay en muchos navegadores)
             playsInline // Para reproducción inline en iOS
-            className="w-full h-full object-cover" // Estilo para cubrir contenedor
-            // src={isSpeaking ? '/videos/maria-speaking.mp4' : '/videos/maria-idle.mp4'} // Fuente inicial (ahora manejado por useEffect)
+            // << MODIFICADO: object-fit condicional y transicion >>
+            className={`w-full h-full transition-all duration-300 ease-in-out ${isChatVisible ? 'object-cover' : 'object-contain'}`}
           >
             Tu navegador no soporta el elemento de video. 
           </video>
@@ -1641,19 +1649,6 @@ function VoiceChatContainer() {
              )}
           </motion.div>
         </div>
-      )}
-
-      {/* << MOVIDO: Botón ocultar/mostrar fuera del panel de chat, pero bajo el overlay >> */}
-      {/* Se muestra solo si la conversación está activa y el chat NO está visible */}
-      {conversationActive && !isChatVisible && (
-        <button
-          onClick={toggleChatVisibility}
-          // << MODIFICADO: Posicionamiento a la izquierda, z-index 5 para estar sobre video pero bajo overlay (z-10) >>
-          className="absolute top-1/2 left-4 transform -translate-y-1/2 z-5 p-2 bg-neutral-200 dark:bg-neutral-700 rounded-full shadow-md hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
-          aria-label="Mostrar chat"
-        >
-          <ChevronsRight className="h-5 w-5 text-neutral-700 dark:text-neutral-200" />
-        </button>
       )}
 
     </div>
