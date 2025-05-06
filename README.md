@@ -1,97 +1,67 @@
-# Teilur AI - Proyecto AI Mental Health
+# MarIA - Asistente de Salud Mental basado en IA
 
-[![Banner Teilur AI](public/assets/teilur-banner.png)](https://www.teilur.ai/)
-
-Este proyecto es una aplicación web desarrollada como parte de [Teilur AI](https://www.teilur.ai/), el primer Venture Studio de IA Generativa en Latinoamérica.
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/128390201/242078407-46ba9b82-a9b7-499d-9eec-1de7b7261c3c.png" alt="MarIA - Asistente de Salud Mental" width="600">
+</p>
 
 ## Descripción General
 
-(***Nota: Por favor, añade aquí una descripción más detallada de la funcionalidad específica y el propósito de la aplicación AI Mental Health.***)
+MarIA es un innovador chatbot de salud mental desarrollado por [Teilur AI](https://www.teilur.ai/), el primer Venture Studio de IA Generativa en Latinoamérica. El nombre "MarIA" combina la serenidad y calma que proporciona el mar con el poder de la Inteligencia Artificial (IA), creando una experiencia terapéutica única.
 
-Esta aplicación está construida utilizando un stack tecnológico moderno para ofrecer una experiencia de usuario robusta y escalable, integrando posiblemente funcionalidades de IA para abordar aspectos relacionados con la salud mental.
+Esta plataforma utiliza tecnologías avanzadas como OpenAI, Livekit y Deepgram para ofrecer una experiencia conversacional empática y personalizada. MarIA está diseñada para:
+
+- Proporcionar apoyo emocional en momentos de ansiedad o estrés
+- Ofrecer técnicas de relajación y mindfulness adaptadas al usuario
+- Escuchar activamente y responder con empatía a las preocupaciones del usuario
+- Sugerir recursos de salud mental y bienestar según las necesidades identificadas
 
 ## Tecnologías Utilizadas
 
-*   **Framework Frontend:** [Next.js](https://nextjs.org/) (App Router) - Un framework de React para construir aplicaciones web renderizadas en servidor y estáticas.
-*   **Lenguaje:** [TypeScript](https://www.typescriptlang.org/) - Un superset tipado de JavaScript que compila a JavaScript plano.
-*   **Estilos:** [Tailwind CSS](https://tailwindcss.com/) - Un framework CSS utility-first para construir rápidamente interfaces de usuario personalizadas.
-    *   **Componentes UI:** (Posiblemente [shadcn/ui](https://ui.shadcn.com/) basado en `components.json`) - Componentes UI reutilizables.
-*   **ORM:** [Prisma](https://www.prisma.io/) - Un ORM de próxima generación para Node.js y TypeScript. Facilita el trabajo con bases de datos.
-*   **Base de Datos:** (***Nota: Especificar la base de datos configurada con Prisma, ej: PostgreSQL, MySQL, SQLite, MongoDB***)
-*   **IA / GPTs / APIs:** (***Nota: Detallar aquí los modelos de IA específicos, GPTs, o APIs externas que se estén utilizando y cómo se integran. Ej: OpenAI API, modelos de Hugging Face, etc.***)
-*   **Gestor de Paquetes:** [npm](https://www.npmjs.com/)
+*   **Framework Frontend:** [Next.js](https://nextjs.org/) (App Router) - Framework de React para construir aplicaciones web renderizadas en servidor.
+*   **Lenguaje:** [TypeScript](https://www.typescriptlang.org/) - Superset tipado de JavaScript.
+*   **Estilos:** [Tailwind CSS](https://tailwindcss.com/) - Framework CSS utility-first.
+    *   **Componentes UI:** [shadcn/ui](https://ui.shadcn.com/) - Componentes reutilizables basados en Radix UI.
+*   **ORM:** [Prisma](https://www.prisma.io/) - ORM para TypeScript y Node.js.
+*   **Base de Datos:** PostgreSQL - Base de datos relacional robusta.
+*   **IA / GPTs / APIs:**
+    *   **OpenAI API** - Integración con modelos avanzados de lenguaje para generar respuestas empáticas.
+    *   **Livekit** - Para comunicación en tiempo real.
+    *   **Deepgram** - Para procesamiento y análisis de voz.
+*   **Despliegue:** [Render](https://render.com/) - Plataforma cloud para hosting de aplicaciones web.
 
 ## Estructura del Proyecto
 
-\`\`\`
+```
 .
-├── .next/           # Directorio de build de Next.js
-├── .vscode/         # Configuración de VSCode
-├── node_modules/    # Dependencias del proyecto
-├── prisma/          # Esquema y migraciones de Prisma
-│   └── schema.prisma
-├── public/          # Archivos estáticos
+├── public/
 │   └── assets/
-│       └── teilur-banner.png # Banner del proyecto
-├── src/             # Código fuente de la aplicación Next.js (App Router)
-│   ├── app/         # Rutas y componentes de la aplicación
-│   ├── components/  # Componentes reutilizables (si aplica)
-│   └── lib/         # Utilidades y helpers (si aplica)
-├── types/           # Definiciones de tipos TypeScript
-├── .gitignore       # Archivos ignorados por Git
-├── components.json  # Configuración de componentes (posiblemente shadcn/ui)
-├── next.config.js   # Configuración de Next.js
-├── package.json     # Metadatos y dependencias del proyecto
-├── postcss.config.js # Configuración de PostCSS
-├── README.md        # Este archivo
-├── tailwind.config.js # Configuración de Tailwind CSS
-└── tsconfig.json    # Configuración de TypeScript
-\`\`\`
-
-## Instalación y Puesta en Marcha
-
-1.  **Clonar el repositorio:**
-    \`\`\`bash
-    git clone <URL_DEL_REPOSITORIO>
-    cd <NOMBRE_DEL_DIRECTORIO>
-    \`\`\`
-
-2.  **Instalar dependencias:**
-    \`\`\`bash
-    npm install
-    \`\`\`
-
-3.  **Configurar variables de entorno:**
-    *   Crea un archivo `.env.local` en la raíz del proyecto.
-    *   Añade las variables necesarias (ej: `DATABASE_URL` para Prisma, claves de API para servicios de IA, etc.). Consulta `.env.example` si existe.
-
-4.  **Ejecutar migraciones de la base de datos (Prisma):**
-    \`\`\`bash
-    npx prisma migrate dev
-    \`\`\`
-    (Opcional) Generar el cliente de Prisma si es necesario:
-    \`\`\`bash
-    npx prisma generate
-    \`\`\`
-
-5.  **Iniciar el servidor de desarrollo:**
-    \`\`\`bash
-    npm run dev
-    \`\`\`
-
-Abre [http://localhost:3000](http://localhost:3000) en tu navegador para ver la aplicación.
+│       └── MarIA.png            # Banner del proyecto
+├── src/
+│   ├── app/                     # Rutas y componentes (Next.js App Router)
+│   ├── components/              # Componentes reutilizables
+│   └── lib/                     # Utilidades, configuración de API, etc.
+├── prisma/                      # Esquema de base de datos
+├── types/                       # Definiciones de tipos TypeScript
+└── [Archivos de configuración]  # next.config.js, tailwind.config.js, etc.
+```
 
 ## Uso
 
-(***Nota: Añade aquí instrucciones sobre cómo usar las principales características de la aplicación.***)
+El chatbot MarIA está disponible en línea como un servicio SaaS (Software as a Service) en:
 
-## Contribuciones
+🔗 [https://ai-mental-health-zyb6.onrender.com](https://ai-mental-health-zyb6.onrender.com)
 
-(***Nota: Si deseas aceptar contribuciones, describe aquí el proceso. Ej: Fork, crear rama, hacer commit, Pull Request.***)
+### Características principales:
+
+1. **Chat terapéutico**: Conversa con MarIA sobre tus preocupaciones y emociones.
+2. **Técnicas de relajación**: Recibe guías de respiración y mindfulness.
+3. **Análisis de emociones**: MarIA identifica patrones emocionales y ofrece perspectivas útiles.
+4. **Disponibilidad 24/7**: Acceso a apoyo emocional en cualquier momento.
+5. **Interfaz intuitiva**: Diseñada para proporcionar una experiencia calmante y reconfortante.
 
 ## Licencia
 
-Este proyecto está licenciado bajo los términos de la licencia [ISC](LICENSE).
+Este proyecto está desarrollado y licenciado bajo los términos y condiciones de © [Teilur, Inc.](https://www.teilur.ai/)
 
 ---
 
