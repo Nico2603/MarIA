@@ -6,11 +6,7 @@ const Footer = () => {
 
   // Listas de enlaces actualizadas y enfocadas en Ansiedad
   const legalLinks = [
-    { href: '/legal/aviso-legal', label: 'Aviso Legal' },
-    { href: '/legal/privacidad', label: 'Privacidad' },
-    { href: '/legal/cookies', label: 'Cookies' },
-    { href: '/legal/terminos', label: 'Términos' },
-    { href: '/legal/limitaciones', label: 'Limitaciones' },
+    { href: '/legal', label: 'Política de Privacidad' },
   ];
 
   // Enlaces de la aplicación (combinados y reestructurados)
@@ -47,7 +43,7 @@ const Footer = () => {
               </Link>
             </div>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              &copy; {currentYear} AI Mental Health Colombia.
+              &copy; {currentYear} Teilur, Inc.
               <br/>Todos los derechos reservados.
             </p>
           </div>
@@ -84,10 +80,10 @@ const Footer = () => {
           <div>
             <h3 className="text-sm font-semibold text-neutral-900 dark:text-white uppercase tracking-wider mb-4">Contacto</h3>
             <ul className="space-y-2 text-sm text-neutral-500 dark:text-neutral-400">
-              <li>Calle Falsa 123, Bogotá</li>
-              <li>Ciudad, País</li>
-              <li><a href="tel:+5712345678" className="hover:text-neutral-900 dark:hover:text-white transition-colors">+57 123 456 78</a></li>
-              <li><a href="mailto:info@maria-ai.com" className="hover:text-neutral-900 dark:hover:text-white transition-colors">info@maria-ai.com</a></li>
+              <li>2093 Philadelphia Pike #9001</li>
+              <li>Claymont, DE, 19703, United States</li>
+              <li><a href="tel:+13476544961" className="hover:text-neutral-900 dark:hover:text-white transition-colors">+1 (347) 654 4961</a></li>
+              <li><a href="mailto:talent@teilur.com" className="hover:text-neutral-900 dark:hover:text-white transition-colors">talent@teilur.com</a></li>
             </ul>
           </div>
         </div>

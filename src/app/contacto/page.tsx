@@ -81,10 +81,9 @@ export default function ContactoPage() {
                   </div>
                   <div>
                     <h3 className={`font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-neutral-800'}`}>Email</h3>
-                    <a href="mailto:info.co@aimentalhealth.com" className="text-blue-500 hover:underline">
-                      info.co@aimentalhealth.com
+                    <a href="mailto:talent@teilur.com" className="text-blue-500 hover:underline">
+                      talent@teilur.com
                     </a>
-                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-neutral-500'}`}>(Email inventado)</p>
                   </div>
                 </div>
 
@@ -96,11 +95,9 @@ export default function ContactoPage() {
                   </div>
                   <div>
                     <h3 className={`font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-neutral-800'}`}>Teléfono</h3>
-                    <a href="tel:+576011234567" className="text-blue-500 hover:underline">
-                      +57 (601) 123 4567
+                    <a href="tel:+13476544961" className="text-blue-500 hover:underline">
+                      +1 (347) 654 4961
                     </a>
-                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-neutral-500'}`}>(Número inventado)</p>
-                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-neutral-500'}`}>Lunes a Viernes: 9am - 5pm (Hora Colombia)</p>
                   </div>
                 </div>
                 
@@ -113,9 +110,9 @@ export default function ContactoPage() {
                   </div>
                   <div>
                     <h3 className={`font-medium ${theme === 'dark' ? 'text-gray-100' : 'text-neutral-800'}`}>Dirección</h3>
-                    <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-neutral-600'}`}>Carrera 15 # 88 - 21, Oficina 501</p>
-                    <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-neutral-600'}`}>Bogotá D.C., Colombia</p>
-                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-neutral-500'}`}>(Dirección inventada)</p>
+                    <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-neutral-600'}`}>2093 Philadelphia Pike #9001</p>
+                    <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-neutral-600'}`}>Claymont, DE, 19703</p>
+                    <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-neutral-600'}`}>United States</p>
                   </div>
                 </div>
                 
@@ -277,7 +274,12 @@ export default function ContactoPage() {
                   </form>
                   
                   <p className={`mt-6 text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-neutral-500'} text-center`}>
-                    Al enviar este formulario, aceptas nuestra <Link href="/legal/privacidad" className="underline hover:text-blue-500">política de privacidad</Link> y el tratamiento de tus datos para poder responder a tu consulta.
+                    Al enviar este formulario, aceptas nuestra <Link href="/legal" className="underline hover:text-blue-500">política de privacidad</Link>.
+                    Si tienes alguna pregunta sobre esta Política de Privacidad, puedes contactarnos:
+                    Por email: <a href="mailto:talent@teilur.com" className="underline hover:text-blue-500">talent@teilur.com</a> | 
+                    Visitando: <a href="https://www.teilur.com/contact" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-500">www.teilur.com/contact</a> | 
+                    Teléfono: <a href="tel:+13476544961" className="underline hover:text-blue-500">+1 (347) 654 4961</a> | 
+                    Correo: 2093 Philadelphia Pike #9001 Claymont, DE, 19703, United States
                   </p>
                 </div>
               )}

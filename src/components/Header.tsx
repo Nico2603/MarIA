@@ -101,11 +101,7 @@ const Header = () => {
     {
       name: 'Legal',
       submenu: [
-        { name: 'Aviso Legal', href: '/legal/aviso-legal' },
-        { name: 'Privacidad', href: '/legal/privacidad' },
-        { name: 'Cookies', href: '/legal/cookies' },
-        { name: 'Términos', href: '/legal/terminos' },
-        { name: 'Limitaciones', href: '/legal/limitaciones' },
+        { name: 'Política de Privacidad', href: '/legal' },
       ],
     },
     { name: 'Contacto', href: '/contacto' },

@@ -43,8 +43,6 @@ export async function PUT(request: Request, { params }: RouteParams) {
       },
     });
 
-    // La llamada a /api/summarize se sigue haciendo desde el cliente en endSession.
-
     return NextResponse.json(updatedSession);
 
   } catch (error) {

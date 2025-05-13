@@ -2,11 +2,14 @@
 
 import React from 'react';
 import VoiceChatContainer from '@/components/VoiceChatContainer';
+import { ErrorProvider } from '@/contexts/ErrorContext';
 
 export default function ChatPage() {
   return (
     <div className="h-full">
-      <VoiceChatContainer />
+      <ErrorProvider>
+        <VoiceChatContainer />
+      </ErrorProvider>
     </div>
   );
 } 

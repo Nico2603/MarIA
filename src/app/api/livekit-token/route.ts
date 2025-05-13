@@ -18,12 +18,27 @@ export async function GET(request: Request) {
   const roomName = url.searchParams.get('room');
   const participantName = url.searchParams.get('participant') || `User_${Math.random().toString(36).substring(7)}`;
 
+  // Leer metadata adicional de los query parameters
+  const userId = url.searchParams.get('userId');
+  const username = url.searchParams.get('username');
+  const latestSummary = url.searchParams.get('latestSummary');
+  const chatSessionId = url.searchParams.get('chatSessionId');
+
   if (!roomName) {
     return NextResponse.json({ error: 'Falta el parámetro "room".' }, { status: 400 });
   }
 
+  // Construir objeto de metadata para el token
+  const tokenMetadata: Record<string, string> = {};
+  if (userId) tokenMetadata.userId = userId;
+  if (username) tokenMetadata.username = username;
+  if (latestSummary) tokenMetadata.latestSummary = latestSummary;
+  if (chatSessionId) tokenMetadata.chatSessionId = chatSessionId;
+
   const at = new AccessToken(apiKey, apiSecret, {
     identity: participantName,
+    // Añadir metadata al token. El agente la recibirá en job.participant.metadata
+    metadata: JSON.stringify(tokenMetadata), 
   });
 
   at.addGrant({ 

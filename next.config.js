@@ -55,6 +55,12 @@ const nextConfig = {
       },
     ]
   },
+
+  webpack(config) {
+    const path = require('path');
+    config.resolve.alias['@'] = path.resolve(__dirname, 'src');
+    return config;
+  },
 }
 
 module.exports = nextConfig 
