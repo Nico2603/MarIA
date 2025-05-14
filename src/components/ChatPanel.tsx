@@ -74,7 +74,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               )}
               {initialContext && (
                 <p className="mt-3 text-xs italic text-neutral-500 dark:text-neutral-500 max-w-md mx-auto">
-                  Contexto anterior: "{initialContext.substring(0, 80)}{initialContext.length > 80 ? '...' : ''}"
+                  Contexto anterior: &quot;{initialContext.substring(0, 80)}{initialContext.length > 80 ? '...' : ''}&quot;
                 </p>
               )}
             </div>

@@ -80,7 +80,7 @@ export default function LegalPage() {
           <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
             You have the right to access, correct, or delete your personal
             information at any time. You can also withdraw your consent or ask
-            questions about how we handle your data. If you'd like to reach out,
+            questions about how we handle your data. If you&apos;d like to reach out,
             please contact us at:
           </p>
           <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md text-sm mb-4">

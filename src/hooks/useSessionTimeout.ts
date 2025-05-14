@@ -70,7 +70,7 @@ export function useSessionTimeout({
         clearTimeout(finalTimeoutId);
       }
     };
-  }, [conversationActive, sessionStartTime, isSessionClosed, onTimeout, onWarning, sessionDurationMs, warningThresholdMs]);
+  }, [conversationActive, sessionStartTime, isSessionClosed, onTimeout, onWarning, sessionDurationMs, warningThresholdMs, isTimeRunningOut]);
 
   // Retornamos isTimeRunningOut para que el componente pueda usarlo si necesita mostrar algo en la UI
   return { isTimeRunningOut, setIsTimeRunningOut }; 

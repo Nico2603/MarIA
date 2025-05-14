@@ -62,7 +62,7 @@ const TecnicasRelajacionPage = () => {
                 <li>Exhala lentamente por la boca/nariz, siente cómo tu abdomen baja.</li>
                 <li>Continúa 5-10 min, enfocado/a en tu respiración.</li>
               </ol>
-              <p className="text-sm italic">Prueba la "Respiración Cuadrada": Inhala (4s), Sostén (4s), Exhala (4s), Pausa (4s).</p>
+              <p className="text-sm italic">Prueba la &quot;Respiración Cuadrada&quot;: Inhala (4s), Sostén (4s), Exhala (4s), Pausa (4s).</p>
             </TechniqueCard>
 
             {/* Relajación Muscular Progresiva */}
@@ -150,7 +150,7 @@ const TecnicasRelajacionPage = () => {
               </p>
               <h3 className="text-lg font-medium mb-2 text-pink-500 dark:text-pink-400">Cómo usarlas:</h3>
               <ul className="space-y-2 list-disc pl-5 mb-4">
-                <li>Elige frases que resuenen contigo (ej. "Estoy a salvo", "Puedo manejar esto", "Soy capaz").</li>
+                <li>Elige frases que resuenen contigo (ej. &quot;Estoy a salvo&quot;, &quot;Puedo manejar esto&quot;, &quot;Soy capaz&quot;).</li>
                 <li>Repítelas mentalmente o en voz alta, especialmente en momentos de estrés o duda.</li>
                 <li>Puedes escribirlas y dejarlas en lugares visibles.</li>
                 <li>Combínalas con la respiración profunda.</li>

@@ -51,7 +51,7 @@ const AnsiedadPage = () => {
               La ansiedad es una respuesta natural al estrés o peligro percibido. Se vuelve un problema cuando es **excesiva, persistente y desproporcionada** a la situación, afectando tu vida diaria.
             </p>
             <p className="mb-4">
-              Se caracteriza por preocupación intensa, miedo abrumador, sensación de peligro y síntomas físicos (taquicardia, sudoración, tensión, etc.). No es simplemente "estar nervioso".
+              Se caracteriza por preocupación intensa, miedo abrumador, sensación de peligro y síntomas físicos (taquicardia, sudoración, tensión, etc.). No es simplemente &quot;estar nervioso&quot;.
             </p>
             <p className={`text-sm italic ${theme === 'dark' ? 'text-gray-400' : 'text-neutral-500'}`}>
                Puede influir la genética, experiencias de vida, química cerebral y factores ambientales.
