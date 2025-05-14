@@ -4,9 +4,19 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import OpenAI from 'openai';
 
-const openai = new OpenAI({ // La clave API se toma automáticamente de process.env.OPENAI_API_KEY
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Constantes para la llamada a la API de OpenAI
+const OPENAI_MODEL_NAME = "gpt-3.5-turbo";
+const OPENAI_SUMMARY_TEMPERATURE = 0.5;
+const OPENAI_MAX_SUMMARY_TOKENS = 150;
+const OPENAI_SYSTEM_PROMPT_SUMMARY = "Eres un asistente experto en resumir conversaciones terapéuticas. Proporciona un resumen conciso (8-10 frases) de los temas clave tratados en la siguiente conversación entre un usuario y una IA llamada Maria. El resumen debe capturar los puntos emocionales o problemas principales mencionados por el usuario.";
+const OPENAI_USER_PROMPT_CONVERSATION_PREFIX = "Conversación a resumir:\n\n";
+
+// Inicialización del cliente OpenAI.
+// La API Key se toma automáticamente de la variable de entorno OPENAI_API_KEY si no se provee explícitamente.
+const openai = new OpenAI();
+
+// La variable PYTHON_SUMMARY_SERVICE_URL ya no es necesaria aquí
+// const PYTHON_SUMMARY_SERVICE_URL = process.env.PYTHON_SUMMARY_SERVICE_URL || "http://localhost:8000/summarize-text";
 
 // POST /api/summarize - Genera y guarda un resumen para una ChatSession
 export async function POST(request: Request) {
@@ -14,6 +24,11 @@ export async function POST(request: Request) {
 
   if (!session || !session.user?.id) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  }
+
+  if (!process.env.OPENAI_API_KEY) {
+    console.error("La variable de entorno OPENAI_API_KEY no está configurada.");
+    return NextResponse.json({ error: "Servicio de resumen no configurado correctamente (falta API Key)." }, { status: 503 });
   }
 
   let chatSessionId: string;
@@ -24,11 +39,11 @@ export async function POST(request: Request) {
       throw new Error("ID de sesión de chat inválido o no proporcionado.");
     }
   } catch (error) {
+    console.error("Error al parsear el cuerpo de la solicitud POST /api/summarize:", error);
     return NextResponse.json({ error: "Cuerpo de solicitud inválido" }, { status: 400 });
   }
 
   try {
-    // 1. Verificar que la ChatSession pertenece al usuario y está finalizada (opcional pero bueno)
     const chatSession = await prisma.chatSession.findUnique({
       where: { id: chatSessionId },
       select: { userId: true, endedAt: true, summary: true }
@@ -40,61 +55,47 @@ export async function POST(request: Request) {
     if (chatSession.userId !== session.user.id) {
       return NextResponse.json({ error: "No autorizado para esta sesión de chat" }, { status: 403 });
     }
-    // Considerar si se requiere que endedAt no sea null para resumir
-    // if (!chatSession.endedAt) {
-    //   return NextResponse.json({ error: "La sesión de chat aún no ha finalizado" }, { status: 400 });
-    // }
-    // No resumir si ya existe un resumen
     if (chatSession.summary) {
-      console.log(`Resumen ya existe para sesión de chat ${chatSessionId}.`);
-      return NextResponse.json({ summary: chatSession.summary }); // Devolver resumen existente
+      console.log(`Resumen ya existe para sesión de chat ${chatSessionId}, devolviendo el existente.`);
+      return NextResponse.json({ summary: chatSession.summary });
     }
 
-    // 2. Obtener mensajes de la ChatSession
     const messages = await prisma.message.findMany({
       where: { chatSessionId: chatSessionId },
-      orderBy: { timestamp: 'asc' }, // Ordenar cronológicamente
+      orderBy: { timestamp: 'asc' },
     });
 
     if (messages.length === 0) {
       return NextResponse.json({ error: "No hay mensajes en esta sesión de chat para resumir" }, { status: 400 });
     }
 
-    // Definir tipo basado en el array messages
     type MessageType = typeof messages[number];
-
-    // 3. Formatear para OpenAI (ejemplo simple)
     const conversationText = messages
       .map((msg: MessageType) => `${msg.sender === 'user' ? 'Usuario' : 'Maria'}: ${msg.content}`)
       .join('\n');
 
-    // 4. Llamar a OpenAI para generar resumen
     console.log(`Solicitando resumen para sesión de chat ${chatSessionId} a OpenAI...`);
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo", // Modelo sugerido por el usuario
-      messages: [
-        {
-          role: "system",
-          content: "Eres un asistente experto en resumir conversaciones terapéuticas. Proporciona un resumen conciso (8-10 frases) de los temas clave tratados en la siguiente conversación entre un usuario y una IA llamada Maria. El resumen debe capturar los puntos emocionales o problemas principales mencionados por el usuario."
-        },
-        {
-          role: "user",
-          content: `Conversación a resumir:\n\n${conversationText}`
-        }
-      ],
-      temperature: 0.5, // Un poco de creatividad pero manteniendo fidelidad
-      max_tokens: 150, // Límite para el resumen
+    
+    // Llamada directa a OpenAI
+    const openaiResponse = await openai.chat.completions.create({
+        model: OPENAI_MODEL_NAME,
+        messages: [
+            {"role": "system", "content": OPENAI_SYSTEM_PROMPT_SUMMARY},
+            {"role": "user", "content": `${OPENAI_USER_PROMPT_CONVERSATION_PREFIX}${conversationText}`}
+        ],
+        temperature: OPENAI_SUMMARY_TEMPERATURE,
+        max_tokens: OPENAI_MAX_SUMMARY_TOKENS,
     });
 
-    const summary = completion.choices[0]?.message?.content?.trim();
+    const summary = openaiResponse.choices[0]?.message?.content?.trim();
 
     if (!summary) {
+      console.error("OpenAI no devolvió contenido en el resumen.");
       throw new Error("OpenAI no devolvió un resumen.");
     }
 
-    console.log(`Resumen generado para sesión de chat ${chatSessionId}: ${summary}`);
+    console.log(`Resumen generado por OpenAI para sesión de chat ${chatSessionId}`);
 
-    // 5. Guardar resumen en la ChatSession
     await prisma.chatSession.update({
       where: { id: chatSessionId },
       data: { summary: summary },
@@ -102,13 +103,21 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ summary: summary });
 
-  } catch (error) {
-    console.error(`Error al generar/guardar resumen para sesión de chat ${chatSessionId}:`, error);
-    const errorMessage = error instanceof Error ? error.message : "Error interno del servidor";
-    // Diferenciar errores de OpenAI
+  } catch (error: unknown) {
+    console.error(`Error en POST /api/summarize para chatSessionId ${chatSessionId}:`, error);
+    
+    let errorMessage = "Error interno del servidor procesando el resumen";
+    let errorStatus = 500;
+
     if (error instanceof OpenAI.APIError) {
-        return NextResponse.json({ error: `Error de OpenAI: ${error.message}` }, { status: error.status || 500 });
-    }
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+        console.error('Error de la API de OpenAI:', error);
+        errorMessage = `Error de OpenAI: ${error.message}`;
+        errorStatus = error.status || 500;
+        return NextResponse.json({ error: errorMessage, details: error.status }, { status: errorStatus });
+    } else if (error instanceof Error) {
+        errorMessage = error.message;
+    } // Si es otro tipo de error, se usa el mensaje genérico
+
+    return NextResponse.json({ error: errorMessage }, { status: errorStatus });
   }
 } 
