@@ -29,11 +29,7 @@ import { usePushToTalk } from '@/hooks/usePushToTalk';
 import { useError, AppError as AppErrorTypeFromContext } from '@/contexts/ErrorContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import NotificationDisplay from './NotificationDisplay';
-import { fetchHistory } from "@/lib/history";
-import { generateTitle } from "@/lib/generateTitle";
-import { deleteSession } from "@/lib/deleteSession";
-import { getSupabaseClient } from "@/lib/supabaseClient";
-import { SESSION_STATUS, SessionData, Message } from "@/types";
+import type { Message } from "@/types";
 import { SupabaseClient } from "@supabase/supabase-js";
 
 // Definir constante para la longitud del historial (debe coincidir con backend)
