@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Inter, Montserrat } from 'next/font/google'
 import './globals.css'
 import Providers from '@/components/Providers'
 import AuthProvider from '@/components/providers/SessionProvider'
@@ -10,25 +11,32 @@ export const metadata: Metadata = {
   description: 'Asistente conversacional especializado en ansiedad y depresión con IA',
 }
 
+// Configuración de fuentes con next/font
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+  weight: ['300', '400', '500', '600', '700']
+})
+
+const montserrat = Montserrat({
+  subsets: ['latin'],
+  variable: '--font-montserrat',
+  display: 'swap',
+  weight: ['400', '500', '600', '700']
+})
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
-    <html lang="es" className="h-full">
+    <html lang="es" className={`${inter.variable} ${montserrat.variable} h-full`}>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        
-        {/* Carga normal de fuentes */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
       </head>
-      <body className="flex flex-col min-h-screen">
+      <body className={`flex flex-col min-h-screen ${inter.className} ${montserrat.className}`}>
         <AuthProvider>
           <Providers>
             <Header />

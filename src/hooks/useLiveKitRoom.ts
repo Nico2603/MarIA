@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Room,
   RoomEvent,
@@ -47,6 +47,8 @@ interface UseLiveKitRoomProps {
 interface UseLiveKitRoomReturn {
   room: Room | null;
   connectionState: LiveKitConnectionState;
+  connect: () => Promise<void>;
+  disconnect: () => Promise<void>;
 }
 
 export const useLiveKitRoom = ({
@@ -65,47 +67,23 @@ export const useLiveKitRoom = ({
   onConnectionError,
 }: UseLiveKitRoomProps): UseLiveKitRoomReturn => {
   const roomRef = useRef<Room | null>(null);
+  const newRoomRef = useRef<Room | null>(null);
   const [currentConnectionState, setCurrentConnectionState] = useState<LiveKitConnectionState>(
     LiveKitConnectionState.Disconnected
   );
 
-  useEffect(() => {
-    let didCancel = false; // Para manejar limpieza en efectos asíncronos
+  // Esta función configura una nueva sala con todos los event listeners
+  const setupNewRoom = useCallback(() => {
+    if (!token || !liveKitUrl) return null;
 
-    if (!token) {
-      if (roomRef.current && roomRef.current.state !== LiveKitConnectionState.Disconnected) {
-        console.log('[useLiveKitRoom] Token es null, desconectando sala existente...');
-        roomRef.current.disconnect(true).then(() => {
-          if (!didCancel) {
-             setCurrentConnectionState(LiveKitConnectionState.Disconnected);
-          }
-        });
-      }
-      // Asegurarse que roomRef se limpia si no hay token
-      // roomRef.current = null; // Esto se hace en el .on(RoomEvent.Disconnected) o en el cleanup
-      return;
-    }
-
-    // Si ya existe una sala y está conectada o conectando, y el token no ha cambiado esencialmente
-    // (esto es difícil de determinar solo con el token string si la sala/identidad subyacente es la misma)
-    // Por ahora, si hay un token, y no hay sala, o la sala está desconectada, intentamos conectar.
-    // Si hay una sala conectada y llega un nuevo token, el efecto se re-ejecutará,
-    // la limpieza desconectará la sala anterior, y se conectará una nueva.
-
-    console.log('[useLiveKitRoom] useEffect activado con token.');
-    
     const newRoom = new Room({
       adaptiveStream: true,
       dynacast: true,
       publishDefaults: audioPublishDefaults,
     });
 
-    setCurrentConnectionState(LiveKitConnectionState.Connecting);
-    // console.log('[useLiveKitRoom] Estado interno: Connecting');
-
     newRoom
       .on(RoomEvent.Connected, () => {
-        if (didCancel) return;
         console.log('[useLiveKitRoom] Conectado a la sala LiveKit.');
         roomRef.current = newRoom;
         setCurrentConnectionState(LiveKitConnectionState.Connected);
@@ -114,12 +92,6 @@ export const useLiveKitRoom = ({
         }
       })
       .on(RoomEvent.Disconnected, (reason: DisconnectReason | undefined) => {
-        if (didCancel && roomRef.current !== newRoom) {
-            // Si didCancel es true, y esta no es la sala que este efecto creó (ej. una sala antigua siendo desconectada por cleanup)
-            // no deberíamos tocar el estado de la sala actual o llamar a onDisconnected del padre para esta sala antigua.
-            console.log('[useLiveKitRoom] Evento Disconnected de sala anterior ignorado en cleanup.');
-            return;
-        }
         console.log('[useLiveKitRoom] Desconectado de la sala LiveKit:', reason);
         if (roomRef.current === newRoom) { // Solo limpiar ref si es la sala actual
             roomRef.current = null;
@@ -130,75 +102,90 @@ export const useLiveKitRoom = ({
         }
       })
       .on(RoomEvent.TrackSubscribed, (track, pub, p) => {
-        if (didCancel) return;
         if (onTrackSubscribed) onTrackSubscribed(track, pub, p, newRoom);
       })
       .on(RoomEvent.TrackUnsubscribed, (track, pub, p) => {
-        if (didCancel) return;
         if (onTrackUnsubscribed) onTrackUnsubscribed(track, pub, p, newRoom);
       })
       .on(RoomEvent.ParticipantDisconnected, (p) => {
-        if (didCancel) return;
         if (onParticipantDisconnected) onParticipantDisconnected(p, newRoom);
       })
       .on(RoomEvent.DataReceived, (payload, p, kind, topic) => {
-        if (didCancel) return;
         if (onDataReceived) onDataReceived(payload, p, kind, topic, newRoom);
       });
 
-    newRoom
-      .connect(liveKitUrl, token)
-      .then(() => {
-        if (didCancel) {
-            // Si se canceló mientras se conectaba, desconectar esta nueva sala
-            console.log('[useLiveKitRoom] Conexión exitosa pero didCancel es true, desconectando nueva sala.');
-            newRoom.disconnect(true);
-            return;
-        }
-        // El evento 'Connected' ya maneja el estado y el callback onConnected
-        // roomRef.current = newRoom; // Se establece en RoomEvent.Connected
-        console.log('[useLiveKitRoom] room.connect() promesa resuelta.');
-      })
-      .catch((error: Error) => {
-        if (didCancel) {
-            console.log('[useLiveKitRoom] Error de conexión pero didCancel es true, ignorando.');
-            return;
-        }
-        console.error('[useLiveKitRoom] Error al conectar con LiveKit:', error);
-        setCurrentConnectionState(LiveKitConnectionState.Disconnected);
-        if (roomRef.current === newRoom) { // Solo limpiar ref si es la sala actual que falló
-             roomRef.current = null;
-        }
-        if (onConnectionError) {
-          onConnectionError(error);
-        }
-      });
+    return newRoom;
+  }, [token, liveKitUrl, audioPublishDefaults, onConnected, onDisconnected, onTrackSubscribed, onTrackUnsubscribed, onParticipantDisconnected, onDataReceived]);
 
+  // Conectar explícitamente a la sala
+  const connect = useCallback(async () => {
+    if (!token || !liveKitUrl) {
+      console.warn('[useLiveKitRoom] Intento de conectar sin token o URL.');
+      return;
+    }
+
+    if (roomRef.current && roomRef.current.state === LiveKitConnectionState.Connected) {
+      console.log('[useLiveKitRoom] Ya conectado, ignorando solicitud de conexión.');
+      return;
+    }
+
+    setCurrentConnectionState(LiveKitConnectionState.Connecting);
+    
+    try {
+      // Crear una nueva sala si no existe o está desconectada
+      if (!newRoomRef.current) {
+        newRoomRef.current = setupNewRoom();
+      }
+      
+      if (!newRoomRef.current) {
+        throw new Error('No se pudo crear la sala de LiveKit');
+      }
+      
+      await newRoomRef.current.connect(liveKitUrl, token);
+      console.log('[useLiveKitRoom] Conexión manual exitosa a LiveKit.');
+      // El evento Connected actualizará roomRef.current
+    } catch (error) {
+      console.error('[useLiveKitRoom] Error en conexión manual a LiveKit:', error);
+      setCurrentConnectionState(LiveKitConnectionState.Disconnected);
+      if (onConnectionError && error instanceof Error) {
+        onConnectionError(error);
+      }
+      // Limpiar referencias si hay error
+      if (newRoomRef.current && roomRef.current !== newRoomRef.current) {
+        newRoomRef.current = null;
+      }
+    }
+  }, [token, liveKitUrl, setupNewRoom, onConnectionError]);
+
+  // Desconectar explícitamente de la sala
+  const disconnect = useCallback(async () => {
+    if (roomRef.current) {
+      console.log('[useLiveKitRoom] Desconectando manualmente de LiveKit...');
+      await roomRef.current.disconnect(true);
+      // El evento Disconnected limpiará roomRef.current
+    } else {
+      console.log('[useLiveKitRoom] No hay sala activa para desconectar.');
+    }
+  }, []);
+
+  // Limpieza al desmontar
+  useEffect(() => {
     return () => {
-      didCancel = true;
-      console.log('[useLiveKitRoom] Cleanup: Desconectando sala...');
-      // Desconectar la sala que este efecto específico creó y está gestionando.
-      // No usar roomRef.current directamente aquí si roomRef.current pudo haber sido
-      // sobreescrito por una ejecución posterior del efecto antes de que esta limpieza se ejecute.
-      newRoom.disconnect(true);
-      if (roomRef.current === newRoom) { // Solo limpiar la ref si sigue siendo la sala de este efecto.
+      if (roomRef.current) {
+        console.log('[useLiveKitRoom] Limpieza al desmontar: desconectando sala...');
+        roomRef.current.disconnect(true);
         roomRef.current = null;
       }
+      if (newRoomRef.current) {
+        newRoomRef.current = null;
+      }
     };
-  // Las dependencias deben incluir todos los props que, si cambian, requieren re-conectar
-  // o re-adjuntar manejadores.
-  }, [
-    token, 
-    liveKitUrl, 
-    audioPublishDefaults, // Si esto puede cambiar y requiere recrear la sala
-    onConnected, 
-    onDisconnected, 
-    onTrackSubscribed, 
-    onTrackUnsubscribed,
-    onParticipantDisconnected,
-    onDataReceived,
-    onConnectionError
-  ]);
+  }, []);
 
-  return { room: roomRef.current, connectionState: currentConnectionState };
+  return { 
+    room: roomRef.current, 
+    connectionState: currentConnectionState,
+    connect,
+    disconnect 
+  };
 }; 

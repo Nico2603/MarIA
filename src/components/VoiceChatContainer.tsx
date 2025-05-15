@@ -29,7 +29,7 @@ import { usePushToTalk } from '@/hooks/usePushToTalk';
 import { useError, AppError as AppErrorTypeFromContext } from '@/contexts/ErrorContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import NotificationDisplay from './NotificationDisplay';
-import type { Message } from "@/types";
+import type { Message } from "@/types/message";
 import { SupabaseClient } from "@supabase/supabase-js";
 
 // Definir constante para la longitud del historial (debe coincidir con backend)
@@ -122,53 +122,6 @@ function VoiceChatContainer() {
   const toggleChatVisibility = useCallback(() => {
     setIsChatVisible(prev => !prev);
   }, []);
-
-  const endSession = useCallback(async (notify = true, reason?: string) => {
-    if (isSessionClosed) {
-      console.log("La sesión ya está marcada como cerrada localmente. No se tomarán más acciones en endSession.");
-      return;
-    }
-    
-    console.log(`Finalizando sesión localmente... (ID Sesión API: ${activeSessionId})`);
-    setIsSessionClosed(true);
-    setConversationActive(false);
-
-    setIsListening(false);
-    setIsProcessing(false);
-    setIsSpeaking(false);
-    setCurrentSpeakingId(null);
-
-    if (roomRef.current && roomRef.current.localParticipant) {
-      try {
-        await roomRef.current.localParticipant.setMicrophoneEnabled(false);
-        console.log("Micrófono local deshabilitado al finalizar sesión.");
-      } catch (error) {
-        console.error("Error al deshabilitar micrófono al finalizar sesión:", error);
-         setAppError('livekit', "Error al deshabilitar micrófono.");
-      }
-    }
-    if (audioStreamRef.current) {
-      audioStreamRef.current.getTracks().forEach(track => track.stop());
-      audioStreamRef.current = null;
-    }
-    
-    setSessionStartTime(null);
-    setIsFirstInteraction(true);
-    setPendingAiMessage(null);
-
-    if (roomRef.current && roomRef.current.state === 'connected') {
-      console.log("Desconectando de LiveKit para finalizar sesión...");
-      await roomRef.current.disconnect();
-    }
-    console.log("Proceso de finalización de sesión en frontend completado.");
-
-    if (notify) {
-      const message = reason
-        ? `Sesión terminada: ${reason}`
-        : "Sesión terminada.";
-      showNotification(message, "info");
-    }
-  }, [activeSessionId, isSessionClosed, setAppError, showNotification]);
 
   const handleTrackSubscribed = useCallback((track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
     if (participant.identity === AGENT_IDENTITY && track.kind === Track.Kind.Audio) {
@@ -298,25 +251,161 @@ function VoiceChatContainer() {
     }
   }, [session?.user?.id, userProfile?.username, session?.user?.name, initialContext, activeSessionId, clearError, setAppError, setLiveKitToken, setConnectionState]);
 
-  const saveMessage = useCallback(async (message: Message) => {
-    if (!activeSessionId) {
-      console.warn("Intento de guardar mensaje sin sesión activa (API).");
+  const { room, connect: connectToLiveKit, disconnect: disconnectFromLiveKit } = useLiveKitRoom({
+    token: liveKitToken,
+    liveKitUrl: process.env.NEXT_PUBLIC_LIVEKIT_WS_URL || '',
+    onConnected: () => {
+      console.log("Conectado a LiveKit exitosamente.");
+      setConnectionState(LiveKitConnectionState.Connected);
+      setAppError('livekit', null);
+      showNotification("Conectado a la sala de voz", "success");
+      
+      if (conversationActive && roomRef.current?.localParticipant) {
+        roomRef.current.localParticipant.setMicrophoneEnabled(true);
+        setIsListening(true);
+        console.log("Micrófono reactivado al reconectar con conversación activa.");
+      }
+    },
+    onDisconnected: () => {
+      console.log("Desconectado de LiveKit.");
+      setConnectionState(LiveKitConnectionState.Disconnected);
+      showNotification("Desconectado de la sala de voz", "warning");
+    },
+    onConnectionError: (err: Error) => {
+      console.error("Error de LiveKit Room:", err);
+      setAppError('livekit', `Error de LiveKit: ${err.message}`);
+      setConnectionState(LiveKitConnectionState.Disconnected);
+    },
+    onTrackSubscribed: handleTrackSubscribed,
+    onTrackUnsubscribed: handleTrackUnsubscribed,
+    onParticipantDisconnected: handleParticipantDisconnected,
+    onDataReceived: (payload, participant, kind, topic, room) => {
+      if (kind === DataPacket_Kind.RELIABLE && participant && participant.identity === AGENT_IDENTITY) {
+        try {
+          const event = JSON.parse(new TextDecoder().decode(payload));
+          switch (event.type) {
+            case 'initial_greeting_message':
+              if (event.payload && event.payload.text) {
+                const greetingMsg: Message = {
+                  id: event.payload.id || `greeting-${Date.now()}`,
+                  text: event.payload.text,
+                  isUser: false,
+                  timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
+                };
+                setMessages([greetingMsg]);
+                setGreetingMessageId(greetingMsg.id);
+              }
+              break;
+            case 'user_transcription_result':
+              if (event.payload && event.payload.transcript) {
+                const userMessage: Message = { id: `user-${Date.now()}`, text: event.payload.transcript, isUser: true, timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }) };
+                setMessages(prev => [...prev, userMessage]);
+              }
+              break;
+            case 'ai_response_generated':
+              if (event.payload && event.payload.text) {
+                const aiMessage: Message = { 
+                    id: event.payload.id || `ai-${Date.now()}`, 
+                    text: event.payload.text, 
+                    isUser: false, 
+                    timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }), 
+                    suggestedVideo: event.payload.suggestedVideo || undefined 
+                };
+                setMessages(prev => [...prev, aiMessage]);
+                setIsThinking(false);
+              }
+              break;
+            case 'tts_started':
+              if (event.payload && event.payload.messageId) {
+                setCurrentSpeakingId(event.payload.messageId);
+                setIsSpeaking(true);
+                setIsThinking(false);
+                if (event.payload.messageId === greetingMessageId && !conversationActive) {
+                  setIsReadyToStart(true);
+                }
+              }
+              break;
+            case 'tts_ended':
+              if (event.payload && event.payload.messageId) {
+                if (currentSpeakingId === event.payload.messageId) {
+                  setIsSpeaking(false);
+                  setCurrentSpeakingId(null);
+                  if (event.payload.isClosing) {
+                    endSession(); 
+                  }
+                }
+              }
+              break;
+            case 'session_should_end_signal':
+               endSession(); 
+               break;
+            default:
+          }
+        } catch (e) {
+          console.error("[VCContainer] Error procesando DataChannel del agente Maria:", e);
+          setAppError('agent', 'Error procesando datos del agente.');
+        }
+      }
+    },
+  });
+
+  // Efecto para actualizar la referencia de la sala
+  useEffect(() => {
+    roomRef.current = room;
+  }, [room]);
+
+  const endSession = useCallback(async (notify = true, reason?: string) => {
+    if (isSessionClosed) {
+      console.log("La sesión ya está marcada como cerrada localmente. No se tomarán más acciones en endSession.");
       return;
     }
-    console.log("Función saveMessage en frontend NO está activa. El agente maneja el guardado.");
-  }, [activeSessionId]);
+    
+    console.log(`Finalizando sesión localmente... (ID Sesión API: ${activeSessionId})`);
+    setIsSessionClosed(true);
+    setConversationActive(false);
 
-  const handleTranscriptionResult = useCallback((finalTranscript: string) => {
-    console.log(`Procesando transcripción final DEL AGENTE: "${finalTranscript}"`);
-    if (finalTranscript.trim() && conversationActive && activeSessionId) {
-      // Lógica de manejo de transcripción (si es necesaria más allá del agente)
-    } else {
-      console.log("Transcripción (del agente) descartada localmente (vacía, no activa, o sin sesión ID).");
+    setIsListening(false);
+    setIsProcessing(false);
+    setIsSpeaking(false);
+    setCurrentSpeakingId(null);
+
+    if (roomRef.current && roomRef.current.localParticipant) {
+      try {
+        await roomRef.current.localParticipant.setMicrophoneEnabled(false);
+        console.log("Micrófono local deshabilitado al finalizar sesión.");
+      } catch (error) {
+        console.error("Error al deshabilitar micrófono al finalizar sesión:", error);
+         setAppError('livekit', "Error al deshabilitar micrófono.");
+      }
     }
-    if (isPushToTalkActive) {
-      setIsPushToTalkActive(false);
+    if (audioStreamRef.current) {
+      audioStreamRef.current.getTracks().forEach(track => track.stop());
+      audioStreamRef.current = null;
     }
-  }, [conversationActive, activeSessionId, isPushToTalkActive]);
+    
+    setSessionStartTime(null);
+    setIsFirstInteraction(true);
+    setPendingAiMessage(null);
+
+    if (roomRef.current && roomRef.current.state === 'connected') {
+      console.log("Desconectando de LiveKit para finalizar sesión...");
+      try {
+        await disconnectFromLiveKit();
+        console.log("Desconexión de LiveKit completada exitosamente.");
+      } catch (error) {
+        console.error("Error al desconectar de LiveKit:", error);
+        setAppError('livekit', "Error al desconectar de la sala.");
+      }
+    }
+    console.log("Proceso de finalización de sesión en frontend completado.");
+
+    if (notify) {
+      const message = reason
+        ? `Sesión terminada: ${reason}`
+        : "Sesión terminada.";
+      showNotification(message, "info");
+    }
+  }, [activeSessionId, isSessionClosed, disconnectFromLiveKit, setAppError, showNotification]);
 
   const handleStartListening = useCallback(async () => {
     if (isListening || isProcessing || isSpeaking || isSessionClosed || !conversationActive) return;
@@ -425,311 +514,25 @@ function VoiceChatContainer() {
     }
   }, [session, authStatus, conversationActive, isReadyToStart, messages, clearError, setAppError, showNotification]);
 
-  useEffect(() => {
-    // No ejecutar si no está autenticado, o si la conversación ya está activa/lista, o si ya hay mensajes (saludo previo)
-    if (authStatus !== 'authenticated' || isReadyToStart || conversationActive || messages.length > 0) {
-      // Si las condiciones iniciales no se cumplen, asegurarse de que no haya un saludo pendiente si se vuelve a este estado.
-      // Esto es una heurística, podría necesitar más lógica si el flujo es complejo.
-      if (messages.length > 0 && messages[0].id.startsWith('greeting-') && !isReadyToStart && !conversationActive) {
-        // No hacer nada aquí explícitamente, la condición de arriba previene la re-ejecución
-      }
+  const handleTranscriptionResult = useCallback((finalTranscript: string) => {
+    console.log(`Procesando transcripción final DEL AGENTE: "${finalTranscript}"`);
+    if (finalTranscript.trim() && conversationActive && activeSessionId) {
+      // Lógica de manejo de transcripción (si es necesaria más allá del agente)
+    } else {
+      console.log("Transcripción (del agente) descartada localmente (vacía, no activa, o sin sesión ID).");
+    }
+    if (isPushToTalkActive) {
+      setIsPushToTalkActive(false);
+    }
+  }, [conversationActive, activeSessionId, isPushToTalkActive]);
+
+  const saveMessage = useCallback(async (message: Message) => {
+    if (!activeSessionId) {
+      console.warn("Intento de guardar mensaje sin sesión activa (API).");
       return;
     }
-    console.log("Ejecutando useEffect para preparar saludo inicial y cargar datos...");
-
-    const controller = new AbortController();
-    const { signal } = controller;
-
-    const prepareInitialGreeting = () => {
-        let initialGreetingText = "";
-        let personalizedLog = false;
-
-        if (totalPreviousSessions === null || totalPreviousSessions === 0) {
-             initialGreetingText = "Hola";
-             let firstName = "";
-             if (userProfile?.username) {
-                 firstName = userProfile.username.split(' ')[0];
-             } else if (session?.user?.name) {
-                  firstName = session.user.name.split(' ')[0];
-             }
-             if (firstName) {
-                 initialGreetingText += `, ${firstName}`;
-             }
-             initialGreetingText += ". Soy María. Estoy aquí para escucharte y ofrecerte apoyo. ¿Cómo te sientes hoy?";
-        } else {
-            personalizedLog = true;
-            let greeting = "Hola";
-            let firstName = "";
-            if (userProfile?.username) {
-                firstName = userProfile.username.split(' ')[0];
-            } else if (session?.user?.name) {
-                 firstName = session.user.name.split(' ')[0];
-            }
-            if (firstName) {
-                greeting += `, ${firstName}`;
-            }
-            greeting += ". Soy María.";
-
-            if (initialContext) {
-                let feelingMention = "que estabas lidiando con ansiedad";
-                let situationMention = "";
-                 if (initialContext.toLowerCase().includes('trabajo') || initialContext.toLowerCase().includes('laboral')){
-                     situationMention = " relacionada con preocupaciones laborales";
-                } else if (initialContext.toLowerCase().includes('reuniones')) {
-                     situationMention = " relacionada con las reuniones";
-                } else if (initialContext.toLowerCase().includes('impostor')) {
-                     situationMention = " y sentimientos asociados al síndrome del impostor";
-                }
-                if (situationMention) {
-                    feelingMention += situationMention;
-                }
-
-                let techniquesMention = "";
-                const techniques = [];
-                if (initialContext.toLowerCase().includes('grounding') || initialContext.toLowerCase().includes('5-4-3-2-1')) techniques.push('la técnica de grounding 5-4-3-2-1');
-                if (initialContext.toLowerCase().includes('respiración') || initialContext.toLowerCase().includes('4-7-8')) techniques.push('ejercicios de respiración 4-7-8');
-                if (initialContext.toLowerCase().includes('mindfulness')) techniques.push('mindfulness');
-                if(techniques.length > 0){
-                     let techniquesString = techniques.join(techniques.length > 2 ? ', ' : ' y ');
-                     if (techniques.length > 2) {
-                        const lastCommaIndex = techniquesString.lastIndexOf(', ');
-                        techniquesString = techniquesString.substring(0, lastCommaIndex) + ' y ' + techniquesString.substring(lastCommaIndex + 2);
-                     }
-                    techniquesMention = ` y terminamos explorando ${techniquesString} para ayudarte`;
-                }
-
-                greeting += ` En nuestra sesión anterior me comentaste ${feelingMention}${techniquesMention}.`;
-                greeting += ` Cuéntame, ¿te sirvió ${techniques.length > 0 ? 'lo que exploramos' : 'hablar de ello'} y cómo has seguido con esas sensaciones?`;
-            } else {
-                 greeting += " Qué bueno tenerte de vuelta. ¿Cómo te has sentido desde nuestra última conversación?";
-            }
-            initialGreetingText = greeting;
-        }
-
-        const msgId = `greeting-${Date.now()}`;
-        setGreetingMessageId(msgId);
-
-        const initialMessage: Message = {
-            id: msgId,
-            text: initialGreetingText,
-            isUser: false,
-            timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
-        };
-        setMessages([initialMessage]);
-        console.log(`Generando audio para saludo inicial ${personalizedLog ? 'PERSONALIZADO' : '(Primera Sesión)'} (sin reproducir)...`);
-    };
-    
-    const fetchInitialData = async () => {
-        // Resetear solo si no tenemos datos, para evitar blanquear si es la primera carga real
-        // y totalPreviousSessions ya tenía un valor de una ejecución previa del efecto.
-        // La lógica de dependencias debería prevenir esto, pero es una salvaguarda.
-        if (totalPreviousSessions === null) {
-            setTotalPreviousSessions(null); // Mantiene el spinner si es la primera carga real
-        }
-        try {
-            console.log("Fetching initial data (profile, summary, and session count) with signal:", signal.aborted);
-            const [profileRes, summaryRes, historyRes] = await Promise.all([
-                fetch('/api/profile', { signal }),
-                fetch('/api/sessions/latest-summary', { signal }),
-                fetch('/api/chat-sessions/history?page=1&pageSize=1', { signal })
-            ]);
-
-            // Solo procesar si la señal no ha sido abortada
-            if (signal.aborted) {
-                console.log("fetchInitialData abortado después de Promise.all");
-                return;
-            }
-
-            if (profileRes.ok) {
-                const profileData: UserProfile = await profileRes.json();
-                if (!signal.aborted) setUserProfile(profileData);
-                 console.log("Perfil de usuario cargado:", profileData.username);
-            } else {
-                 console.warn(`Error al cargar el perfil: ${profileRes.status}`);
-                 if (!signal.aborted) setUserProfile(null);
-            }
-
-            if (summaryRes.ok) {
-                const summaryData = await summaryRes.json();
-                if (!signal.aborted) setInitialContext(summaryData.summary);
-                console.log(`Resumen de sesión anterior cargado: ${summaryData.summary ? summaryData.summary.substring(0, 50) + '...' : 'Ninguno'}`);
-            } else {
-                 console.warn(`Error al cargar resumen anterior: ${summaryRes.status}`);
-                 if (!signal.aborted) setInitialContext(null);
-            }
-
-            if (historyRes.ok) {
-                const historyData: { data: any[]; pagination: HistoryPagination } = await historyRes.json();
-                if (!signal.aborted) setTotalPreviousSessions(historyData.pagination.totalItems);
-                 console.log(`Total de sesiones previas cargado: ${historyData.pagination.totalItems}`);
-            } else {
-                 console.warn(`Error al cargar contador de sesiones: ${historyRes.status}`);
-                 if (!signal.aborted) setTotalPreviousSessions(0); // Asumir 0 si falla la carga
-            }
-            
-            if (!signal.aborted) {
-              prepareInitialGreeting(); // Llamar solo si no se ha abortado y los datos están listos
-            }
-
-        } catch (error) {
-            if (error instanceof Error && error.name === 'AbortError') {
-                console.log("Operaciones fetch en fetchInitialData canceladas.");
-            } else {
-                console.error("Error de red al obtener datos iniciales (perfil/resumen/contador):", error);
-                if (!signal.aborted) {
-                    setAppError(null, "Error de red al cargar datos iniciales.");
-                    setTotalPreviousSessions(0); // Asumir 0 en caso de error de red
-                    prepareInitialGreeting(); // Intentar preparar saludo con datos por defecto
-                }
-            }
-        }
-    };
-
-    // Solo llamar a fetchInitialData si las dependencias clave (userProfile, initialContext, totalPreviousSessions) son null/undefined
-    // Esto es para evitar recargar si el efecto se dispara por otra razón (ej. cambio en setAppError)
-    // y los datos ya existen. Las dependencias del useEffect ya controlan cuándo se vuelve a ejecutar.
-    // El estado inicial de estas variables es null/undefined.
-    if (userProfile === null || initialContext === null || totalPreviousSessions === null) {
-        fetchInitialData();
-    } else {
-        // Si los datos ya están, pero el efecto se disparó (ej. por cambio en `authStatus` a `authenticated`
-        // y las otras condiciones de guarda iniciales se cumplen),
-        // simplemente preparar el saludo con los datos existentes.
-        console.log("Datos iniciales ya existen, preparando saludo directamente.");
-        prepareInitialGreeting();
-    }
-
-    return () => {
-      console.log("Limpiando efecto de datos iniciales y saludo.");
-      controller.abort();
-    };
-    // Dependencias: authStatus (para saber si está autenticado),
-    // isReadyToStart, conversationActive, messages.length (para las guardas iniciales),
-    // setAppError (usado en catch),
-    // Y las variables que fetchInitialData y prepareInitialGreeting leen para determinar su comportamiento:
-    // session?.user?.name (leído en prepareInitialGreeting),
-    // userProfile (leído en prepareInitialGreeting, y condición para fetch),
-    // initialContext (leído en prepareInitialGreeting, y condición para fetch),
-    // totalPreviousSessions (leído en prepareInitialGreeting, y condición para fetch).
-    // Las funciones setState (setUserProfile, setInitialContext, setTotalPreviousSessions, setGreetingMessageId, setMessages)
-    // son estables y no necesitan estar en el array.
-  }, [authStatus, isReadyToStart, conversationActive, messages.length, setAppError, session?.user?.name, userProfile, initialContext, totalPreviousSessions]);
-
-  const { room, connect: connectToLiveKit, disconnect: disconnectFromLiveKit } = useLiveKitRoom({
-    token: liveKitToken,
-    serverUrl: process.env.NEXT_PUBLIC_LIVEKIT_WS_URL,
-    onConnected: () => {
-      console.log("Conectado a LiveKit exitosamente.");
-      setConnectionState(LiveKitConnectionState.Connected);
-      setAppError('livekit', null);
-      showNotification("Conectado a la sala de voz", "success");
-      
-      if (conversationActive && roomRef.current?.localParticipant) {
-        roomRef.current.localParticipant.setMicrophoneEnabled(true);
-        setIsListening(true);
-        console.log("Micrófono reactivado al reconectar con conversación activa.");
-      }
-    },
-    onDisconnected: () => {
-      console.log("Desconectado de LiveKit.");
-      setConnectionState(LiveKitConnectionState.Disconnected);
-      showNotification("Desconectado de la sala de voz", "warning");
-    },
-    onError: (err: Error) => {
-      console.error("Error de LiveKit Room:", err);
-      setAppError('livekit', `Error de LiveKit: ${err.message}`);
-      setConnectionState(LiveKitConnectionState.Disconnected);
-    },
-    onTrackSubscribed: handleTrackSubscribed,
-    onTrackUnsubscribed: handleTrackUnsubscribed,
-    onDataReceived: (payload, participant, kind, topic, room) => {
-      if (kind === DataPacket_Kind.RELIABLE && participant && participant.identity === AGENT_IDENTITY) {
-        try {
-          const event = JSON.parse(new TextDecoder().decode(payload));
-          switch (event.type) {
-            case 'initial_greeting_message':
-              if (event.payload && event.payload.text) {
-                const greetingMsg: Message = {
-                  id: event.payload.id || `greeting-${Date.now()}`,
-                  text: event.payload.text,
-                  isUser: false,
-                  timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
-                };
-                setMessages([greetingMsg]);
-                setGreetingMessageId(greetingMsg.id);
-              }
-              break;
-            case 'user_transcription_result':
-              if (event.payload && event.payload.transcript) {
-                const userMessage: Message = { id: `user-${Date.now()}`, text: event.payload.transcript, isUser: true, timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }) };
-                setMessages(prev => [...prev, userMessage]);
-              }
-              break;
-            case 'ai_response_generated':
-              if (event.payload && event.payload.text) {
-                const aiMessage: Message = { 
-                    id: event.payload.id || `ai-${Date.now()}`, 
-                    text: event.payload.text, 
-                    isUser: false, 
-                    timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }), 
-                    suggestedVideo: event.payload.suggestedVideo || undefined 
-                };
-                setMessages(prev => [...prev, aiMessage]);
-                setIsThinking(false);
-              }
-              break;
-            case 'tts_started':
-              if (event.payload && event.payload.messageId) {
-                setCurrentSpeakingId(event.payload.messageId);
-                setIsSpeaking(true);
-                setIsThinking(false);
-                if (event.payload.messageId === greetingMessageId && !conversationActive) {
-                  setIsReadyToStart(true);
-                }
-              }
-              break;
-            case 'tts_ended':
-              if (event.payload && event.payload.messageId) {
-                if (currentSpeakingId === event.payload.messageId) {
-                  setIsSpeaking(false);
-                  setCurrentSpeakingId(null);
-                  if (event.payload.isClosing) {
-                    endSession(); 
-                  }
-                }
-              }
-              break;
-            case 'session_should_end_signal':
-               endSession(); 
-               break;
-            default:
-          }
-        } catch (e) {
-          console.error("[VCContainer] Error procesando DataChannel del agente Maria:", e);
-          setAppError('agent', 'Error procesando datos del agente.');
-        }
-      }
-    },
-    onConnectionStateChanged: (state: LiveKitConnectionState) => {
-      console.log("Estado de conexión de LiveKit cambiado a:", state);
-      setConnectionState(state);
-      if (state === LiveKitConnectionState.Failed) {
-        setAppError('livekit', "Falló la conexión a LiveKit.");
-      }
-    },
-    onParticipantDisconnected: handleParticipantDisconnected,
-  });
-
-  useEffect(() => {
-    roomRef.current = room;
-  }, [room]);
-
-  useEffect(() => {
-    if (authStatus === "authenticated" && session?.user?.name && !liveKitToken && !roomRef.current && connectionState === LiveKitConnectionState.Disconnected) {
-      console.log("Usuario autenticado, intentando conectar a LiveKit...");
-      initializeConnection();
-    }
-  }, [authStatus, session, liveKitToken, initializeConnection, connectionState, session?.user?.name]);
+    console.log("Función saveMessage en frontend NO está activa. El agente maneja el guardado.");
+  }, [activeSessionId]);
 
   // Hook para Push-to-Talk
   usePushToTalk({
@@ -805,16 +608,25 @@ function VoiceChatContainer() {
     clearError();
   }, []);
 
-  // Conexión inicial y obtención de token al montar y cuando el usuario está autenticado
+  // UseEffects...
   useEffect(() => {
     const controller = new AbortController();
     const { signal } = controller;
 
     const initializeConnection = async () => {
-      if (authStatus === 'authenticated' && session?.user?.id && userProfile !== undefined && initialContext !== undefined && !liveKitToken && connectionState === LiveKitConnectionState.Disconnected) {
-        const participantIdentifier = session.user.id;
-        const participantDisplayName = userProfile?.username || session.user.name || 'Usuario Invitado';
-        await getLiveKitToken(`${participantDisplayName}_${participantIdentifier.substring(0,8)}`, signal);
+      if (
+        authStatus === 'authenticated' &&
+        session?.user?.id &&
+        !liveKitToken &&
+        connectionState === LiveKitConnectionState.Disconnected
+      ) {
+        console.log("Inicializando conexión con LiveKit...");
+        const participantName = `${session.user.name || 'user'}_${session.user.id.slice(0, 8)}`;
+        const token = await getLiveKitToken(participantName, signal);
+        if (token) {
+          console.log("Token obtenido, conectando con LiveKit manualmente...");
+          connectToLiveKit();
+        }
       }
     };
 
@@ -822,205 +634,21 @@ function VoiceChatContainer() {
 
     return () => {
       controller.abort();
-      // Limpieza adicional si es necesario cuando el componente se desmonta o las dependencias cambian
-      if (authStatus !== 'authenticated') {
-        // Quizás resetear liveKitToken u otros estados si el usuario cierra sesión
-        setLiveKitToken(null); 
-        // Podrías querer llamar a endSession() aquí si la sesión debe terminar al cerrar sesión.
+      if (roomRef.current?.state === 'connected') {
+        console.log("Desconectando LiveKit en la limpieza del efecto.");
+        disconnectFromLiveKit();
       }
     };
-  }, [authStatus, session?.user?.id, session?.user?.name, userProfile, initialContext, getLiveKitToken, liveKitToken, connectionState]);
-
-  // Refactor: Efecto para preparar el saludo inicial
-  useEffect(() => {
-    // No ejecutar si no está autenticado, o si la conversación ya está activa/lista, o si ya hay mensajes (saludo previo)
-    if (authStatus !== 'authenticated' || isReadyToStart || conversationActive || messages.length > 0) {
-      // Si las condiciones iniciales no se cumplen, asegurarse de que no haya un saludo pendiente si se vuelve a este estado.
-      // Esto es una heurística, podría necesitar más lógica si el flujo es complejo.
-      if (messages.length > 0 && messages[0].id.startsWith('greeting-') && !isReadyToStart && !conversationActive) {
-        // No hacer nada aquí explícitamente, la condición de arriba previene la re-ejecución
-      }
-      return;
-    }
-    console.log("Ejecutando useEffect para preparar saludo inicial y cargar datos...");
-
-    const controller = new AbortController();
-    const { signal } = controller;
-
-    const prepareInitialGreeting = () => {
-        let initialGreetingText = "";
-        let personalizedLog = false;
-
-        if (totalPreviousSessions === null || totalPreviousSessions === 0) {
-             initialGreetingText = "Hola";
-             let firstName = "";
-             if (userProfile?.username) {
-                 firstName = userProfile.username.split(' ')[0];
-             } else if (session?.user?.name) {
-                  firstName = session.user.name.split(' ')[0];
-             }
-             if (firstName) {
-                 initialGreetingText += `, ${firstName}`;
-             }
-             initialGreetingText += ". Soy María. Estoy aquí para escucharte y ofrecerte apoyo. ¿Cómo te sientes hoy?";
-        } else {
-            personalizedLog = true;
-            let greeting = "Hola";
-            let firstName = "";
-            if (userProfile?.username) {
-                firstName = userProfile.username.split(' ')[0];
-            } else if (session?.user?.name) {
-                 firstName = session.user.name.split(' ')[0];
-            }
-            if (firstName) {
-                greeting += `, ${firstName}`;
-            }
-            greeting += ". Soy María.";
-
-            if (initialContext) {
-                let feelingMention = "que estabas lidiando con ansiedad";
-                let situationMention = "";
-                 if (initialContext.toLowerCase().includes('trabajo') || initialContext.toLowerCase().includes('laboral')){
-                     situationMention = " relacionada con preocupaciones laborales";
-                } else if (initialContext.toLowerCase().includes('reuniones')) {
-                     situationMention = " relacionada con las reuniones";
-                } else if (initialContext.toLowerCase().includes('impostor')) {
-                     situationMention = " y sentimientos asociados al síndrome del impostor";
-                }
-                if (situationMention) {
-                    feelingMention += situationMention;
-                }
-
-                let techniquesMention = "";
-                const techniques = [];
-                if (initialContext.toLowerCase().includes('grounding') || initialContext.toLowerCase().includes('5-4-3-2-1')) techniques.push('la técnica de grounding 5-4-3-2-1');
-                if (initialContext.toLowerCase().includes('respiración') || initialContext.toLowerCase().includes('4-7-8')) techniques.push('ejercicios de respiración 4-7-8');
-                if (initialContext.toLowerCase().includes('mindfulness')) techniques.push('mindfulness');
-                if(techniques.length > 0){
-                     let techniquesString = techniques.join(techniques.length > 2 ? ', ' : ' y ');
-                     if (techniques.length > 2) {
-                        const lastCommaIndex = techniquesString.lastIndexOf(', ');
-                        techniquesString = techniquesString.substring(0, lastCommaIndex) + ' y ' + techniquesString.substring(lastCommaIndex + 2);
-                     }
-                    techniquesMention = ` y terminamos explorando ${techniquesString} para ayudarte`;
-                }
-
-                greeting += ` En nuestra sesión anterior me comentaste ${feelingMention}${techniquesMention}.`;
-                greeting += ` Cuéntame, ¿te sirvió ${techniques.length > 0 ? 'lo que exploramos' : 'hablar de ello'} y cómo has seguido con esas sensaciones?`;
-            } else {
-                 greeting += " Qué bueno tenerte de vuelta. ¿Cómo te has sentido desde nuestra última conversación?";
-            }
-            initialGreetingText = greeting;
-        }
-
-        const msgId = `greeting-${Date.now()}`;
-        setGreetingMessageId(msgId);
-
-        const initialMessage: Message = {
-            id: msgId,
-            text: initialGreetingText,
-            isUser: false,
-            timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
-        };
-        setMessages([initialMessage]);
-        console.log(`Generando audio para saludo inicial ${personalizedLog ? 'PERSONALIZADO' : '(Primera Sesión)'} (sin reproducir)...`);
-    };
-    
-    const fetchInitialData = async () => {
-        // Resetear solo si no tenemos datos, para evitar blanquear si es la primera carga real
-        // y totalPreviousSessions ya tenía un valor de una ejecución previa del efecto.
-        // La lógica de dependencias debería prevenir esto, pero es una salvaguarda.
-        if (totalPreviousSessions === null) {
-            setTotalPreviousSessions(null); // Mantiene el spinner si es la primera carga real
-        }
-        try {
-            console.log("Fetching initial data (profile, summary, and session count) with signal:", signal.aborted);
-            const [profileRes, summaryRes, historyRes] = await Promise.all([
-                fetch('/api/profile', { signal }),
-                fetch('/api/sessions/latest-summary', { signal }),
-                fetch('/api/chat-sessions/history?page=1&pageSize=1', { signal })
-            ]);
-
-            // Solo procesar si la señal no ha sido abortada
-            if (signal.aborted) {
-                console.log("fetchInitialData abortado después de Promise.all");
-                return;
-            }
-
-            if (profileRes.ok) {
-                const profileData: UserProfile = await profileRes.json();
-                if (!signal.aborted) setUserProfile(profileData);
-                 console.log("Perfil de usuario cargado:", profileData.username);
-            } else {
-                 console.warn(`Error al cargar el perfil: ${profileRes.status}`);
-                 if (!signal.aborted) setUserProfile(null);
-            }
-
-            if (summaryRes.ok) {
-                const summaryData = await summaryRes.json();
-                if (!signal.aborted) setInitialContext(summaryData.summary);
-                console.log(`Resumen de sesión anterior cargado: ${summaryData.summary ? summaryData.summary.substring(0, 50) + '...' : 'Ninguno'}`);
-            } else {
-                 console.warn(`Error al cargar resumen anterior: ${summaryRes.status}`);
-                 if (!signal.aborted) setInitialContext(null);
-            }
-
-            if (historyRes.ok) {
-                const historyData: { data: any[]; pagination: HistoryPagination } = await historyRes.json();
-                if (!signal.aborted) setTotalPreviousSessions(historyData.pagination.totalItems);
-                 console.log(`Total de sesiones previas cargado: ${historyData.pagination.totalItems}`);
-            } else {
-                 console.warn(`Error al cargar contador de sesiones: ${historyRes.status}`);
-                 if (!signal.aborted) setTotalPreviousSessions(0); // Asumir 0 si falla la carga
-            }
-            
-            if (!signal.aborted) {
-              prepareInitialGreeting(); // Llamar solo si no se ha abortado y los datos están listos
-            }
-
-        } catch (error) {
-            if (error instanceof Error && error.name === 'AbortError') {
-                console.log("Operaciones fetch en fetchInitialData canceladas.");
-            } else {
-                console.error("Error de red al obtener datos iniciales (perfil/resumen/contador):", error);
-                if (!signal.aborted) {
-                    setAppError(null, "Error de red al cargar datos iniciales.");
-                    setTotalPreviousSessions(0); // Asumir 0 en caso de error de red
-                    prepareInitialGreeting(); // Intentar preparar saludo con datos por defecto
-                }
-            }
-        }
-    };
-
-    // Solo llamar a fetchInitialData si las dependencias clave (userProfile, initialContext, totalPreviousSessions) son null/undefined
-    // Esto es para evitar recargar si el efecto se dispara por otra razón (ej. cambio en setAppError)
-    // y los datos ya existen. Las dependencias del useEffect ya controlan cuándo se vuelve a ejecutar.
-    // El estado inicial de estas variables es null/undefined.
-    if (userProfile === null || initialContext === null || totalPreviousSessions === null) {
-        fetchInitialData();
-    } else {
-        // Si los datos ya están, pero el efecto se disparó (ej. por cambio en `authStatus` a `authenticated`
-        // y las otras condiciones de guarda iniciales se cumplen),
-        // simplemente preparar el saludo con los datos existentes.
-        console.log("Datos iniciales ya existen, preparando saludo directamente.");
-        prepareInitialGreeting();
-    }
-
-    return () => {
-      console.log("Limpiando efecto de datos iniciales y saludo.");
-      controller.abort();
-    };
-    // Dependencias: authStatus (para saber si está autenticado),
-    // isReadyToStart, conversationActive, messages.length (para las guardas iniciales),
-    // setAppError (usado en catch),
-    // Y las variables que fetchInitialData y prepareInitialGreeting leen para determinar su comportamiento:
-    // session?.user?.name (leído en prepareInitialGreeting),
-    // userProfile (leído en prepareInitialGreeting, y condición para fetch),
-    // initialContext (leído en prepareInitialGreeting, y condición para fetch),
-    // totalPreviousSessions (leído en prepareInitialGreeting, y condición para fetch).
-    // Las funciones setState (setUserProfile, setInitialContext, setTotalPreviousSessions, setGreetingMessageId, setMessages)
-    // son estables y no necesitan estar en el array.
-  }, [authStatus, isReadyToStart, conversationActive, messages.length, setAppError, session?.user?.name, userProfile, initialContext, totalPreviousSessions]);
+  }, [
+    authStatus,
+    session?.user?.id,
+    session?.user?.name,
+    liveKitToken,
+    connectionState,
+    connectToLiveKit,
+    disconnectFromLiveKit,
+    getLiveKitToken
+  ]);
 
   // --- Renderizado ---
   return (
