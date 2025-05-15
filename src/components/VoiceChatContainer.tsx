@@ -220,7 +220,8 @@ function VoiceChatContainer() {
       if (initialContext) queryParams.append('latestSummary', initialContext);
       if (activeSessionId) queryParams.append('chatSessionId', activeSessionId);
 
-      const response = await fetch(`/api/livekit-token?${queryParams.toString()}`, {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const response = await fetch(`${apiBase}/api/livekit-token?${queryParams.toString()}`, {
         method: 'GET',
         signal,
       });
