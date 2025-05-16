@@ -366,12 +366,14 @@ function VoiceChatContainer() {
   }, [clearError]);
 
   useEffect(() => {
+    const currentThinkingTimeout = thinkingTimeoutRef.current;
+    const currentProcessingTimeout = processingTimeoutRef.current;
     return () => {
-      if (thinkingTimeoutRef.current) {
-        clearTimeout(thinkingTimeoutRef.current);
+      if (currentThinkingTimeout) {
+        clearTimeout(currentThinkingTimeout);
       }
-      if (processingTimeoutRef.current) {
-        clearTimeout(processingTimeoutRef.current);
+      if (currentProcessingTimeout) {
+        clearTimeout(currentProcessingTimeout);
       }
     };
   }, []);

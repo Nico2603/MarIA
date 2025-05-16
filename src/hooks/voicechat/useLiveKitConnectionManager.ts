@@ -289,6 +289,7 @@ export function useLiveKitConnectionManager({
   }, [
     authStatus, 
     session?.user?.id,
+    session?.user?.name,
     userProfile,
     activeSessionId, 
     initialContext,   

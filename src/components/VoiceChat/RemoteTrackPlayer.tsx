@@ -35,9 +35,10 @@ const RemoteTrackPlayer: React.FC<RemoteTrackPlayerProps> = ({
   // o mediante configuración directa si es necesario (requeriría modificar useMediaAttachment).
 
   useEffect(() => {
-    if (containerRef.current) {
+    const currentContainer = containerRef.current;
+    if (currentContainer) {
       // El elemento multimedia ahora es el único hijo del containerRef gracias a useMediaAttachment
-      const mediaElement = containerRef.current.firstChild as HTMLMediaElement | null;
+      const mediaElement = currentContainer.firstChild as HTMLMediaElement | null;
       if (mediaElement) {
         mediaElement.autoplay = autoPlay;
         mediaElement.muted = muted;
@@ -54,8 +55,8 @@ const RemoteTrackPlayer: React.FC<RemoteTrackPlayerProps> = ({
     }
     // Limpieza de onloadeddata
     return () => {
-        if (containerRef.current) {
-            const mediaElement = containerRef.current.firstChild as HTMLMediaElement | null;
+        if (currentContainer) {
+            const mediaElement = currentContainer.firstChild as HTMLMediaElement | null;
             if (mediaElement && onLoadedData) { // Solo limpiar si onLoadedData estaba presente
                 mediaElement.onloadeddata = null;
             }

@@ -61,7 +61,7 @@ export function useSpeechToTextControls({
             });
     }
     setIsListening(false);
-  }, [isListening, clearError, setAppError, roomRef, setIsListening]); // clearError no estaba en las dependencias originales, pero es bueno incluirlo si se usa
+  }, [isListening, setAppError, roomRef, setIsListening]);
 
   return {
     handleStartListening,

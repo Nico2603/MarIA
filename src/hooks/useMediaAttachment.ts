@@ -87,20 +87,22 @@ export function useMediaAttachment({
     track.on('unmuted', handleUnmuted);
     if (elementRef.current) elementRef.current.muted = track.isMuted; // Estado inicial
 
+    const currentVideoRef = videoRef?.current;
+    const currentAudioRef = audioRef?.current;
 
     return () => {
       track.off('muted', handleMuted);
       track.off('unmuted', handleUnmuted);
-      if (elementRef.current && (containerId || (!videoRef && !audioRef)) ) {
+      if (elementRef.current && (containerId || (!currentVideoRef && !currentAudioRef)) ) {
         // Solo desadjuntar y remover el elemento que este efecto creó y adjuntó.
         // No el elemento de videoRef/audioRef que es gestionado externamente.
-        if (elementRef.current !== videoRef?.current && elementRef.current !== audioRef?.current) {
+        if (elementRef.current !== currentVideoRef && elementRef.current !== currentAudioRef) {
             track.detach(elementRef.current);
             elementRef.current.remove();
         }
       }
       // Resetear elementRef solo si no es un ref externo que todavía podría ser usado.
-      if (elementRef.current !== videoRef?.current && elementRef.current !== audioRef?.current) {
+      if (elementRef.current !== currentVideoRef && elementRef.current !== currentAudioRef) {
         elementRef.current = null;
       }
     };
