@@ -10,13 +10,13 @@ import {
   Participant,
   TrackPublication,
 } from 'livekit-client';
-import { TrackReference } from './useMediaAttachment';
 
 const AGENT_IDENTITY = "Maria-TTS-Bot";
 
 export interface ActiveTrackInfo {
   id: string;
-  trackRef: TrackReference;
+  participant: Participant;
+  publication: TrackPublication;
   kind: Track.Kind;
   identity: string;
   isAgent: boolean;
@@ -36,11 +36,8 @@ export function useLiveKitTrackManagement({
     const isAgent = participant.identity === AGENT_IDENTITY;
     const newTrackInfo: ActiveTrackInfo = {
       id: `${participant.sid}-${publication.trackSid}`,
-      trackRef: {
-        participant: participant as Participant,
-        publication: publication as TrackPublication,
-        source: publication.source,
-      },
+      participant: participant as Participant,
+      publication: publication as TrackPublication,
       kind: track.kind,
       identity: participant.identity,
       isAgent,
@@ -56,7 +53,7 @@ export function useLiveKitTrackManagement({
   }, []);
 
   const removeTrack = useCallback((trackSid: string, participantIdentity: string, trackKind: Track.Kind) => {
-    setActiveTracks((prevTracks) => prevTracks.filter(t => !(t.trackRef.publication?.trackSid === trackSid && t.identity === participantIdentity)));
+    setActiveTracks((prevTracks) => prevTracks.filter(t => !(t.publication?.trackSid === trackSid && t.identity === participantIdentity)));
   }, []);
 
   const handleTrackSubscribed = useCallback((track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
