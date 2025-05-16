@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Loader2 } from 'lucide-react';
 import TranscribedResponse from './TranscribedResponse';
 import ThinkingIndicator from './ThinkingIndicator';
-import type { ExtendedUserProfile } from '@/reducers/voiceChatReducer';
 
 interface Message {
   id: string;
@@ -22,8 +21,8 @@ interface ChatPanelProps {
   isSpeaking: boolean;
   currentSpeakingId: string | null;
   greetingMessageId: string | null;
-  userProfile: ExtendedUserProfile | null;
-  sessionUserImage: string | null | undefined;
+  userName?: string | null;
+  userImage?: string | null;
   chatContainerRef: React.RefObject<HTMLDivElement>;
   chatEndRef: React.RefObject<HTMLDivElement>;
   authStatus: string;
@@ -40,8 +39,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   isSpeaking,
   currentSpeakingId,
   greetingMessageId,
-  userProfile,
-  sessionUserImage,
+  userName,
+  userImage,
   chatContainerRef,
   chatEndRef,
   authStatus,
@@ -66,7 +65,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
         >
           <MessageSquare className="w-12 h-12 mb-4 text-neutral-400 dark:text-neutral-500" />
           <h2 className="text-lg font-medium text-neutral-700 dark:text-neutral-200 mb-2">
-            {authStatus === 'authenticated' ? 'Esperando para comenzar...' : 'Inicia sesión para empezar.'}
+            {authStatus === 'authenticated' ? (
+              userName ? `Hola ${userName}, esperando para comenzar...` : 'Esperando para comenzar...') 
+              : 'Inicia sesión para empezar.'}
           </h2>
           {authStatus === 'authenticated' && (
             <div className="mb-4">
@@ -106,7 +107,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             timestamp={msg.timestamp}
             isHighlighted={currentSpeakingId === msg.id}
             suggestedVideo={msg.suggestedVideo}
-            avatarUrl={msg.isUser ? (sessionUserImage || '/default-avatar.png') : undefined}
+            avatarUrl={msg.isUser ? (userImage || '/default-avatar.png') : undefined}
           />
         ))
       )}

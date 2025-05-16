@@ -457,14 +457,14 @@ function VoiceChatContainer() {
                 isSpeaking={isSpeaking}
                 currentSpeakingId={currentSpeakingId}
                 greetingMessageId={greetingMessageId}
+                userName={session?.user?.name}
+                userImage={session?.user?.image}
                 chatContainerRef={chatContainerRef}
                 chatEndRef={chatEndRef}
                 activeSessionId={activeSessionId}
                 currentSessionTitle={currentSessionTitle}
-                userProfile={userProfile}
-                initialContext={initialContext}
-                sessionUserImage={session?.user?.image}
                 authStatus={authStatus}
+                initialContext={initialContext}
               />
               <ChatInput
                 textInput={textInput}
@@ -497,8 +497,7 @@ function VoiceChatContainer() {
             handleStartConversation={handleStartConversation}
             isReadyToStart={isReadyToStart}
             authStatus={authStatus}
-            userProfile={userProfile}
-            sessionUserName={session?.user?.name}
+            userName={session?.user?.name}
             isSessionClosed={isSessionClosed}
             connectionState={connectionState}
          />

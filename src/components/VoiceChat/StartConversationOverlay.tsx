@@ -3,28 +3,29 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, AlertCircle } from 'lucide-react';
-// import type { UserProfile } from '@/types/profile'; // Ya no se usa el UserProfile de Prisma aquí
-import type { ExtendedUserProfile } from '@/reducers/voiceChatReducer'; // Importar el tipo simplificado
+// Eliminado: import type { ExtendedUserProfile } from '@/reducers/voiceChatReducer'; 
 import { ConnectionState as LiveKitConnectionState } from 'livekit-client';
 
 interface StartConversationOverlayProps {
   authStatus: 'loading' | 'authenticated' | 'unauthenticated';
-  userProfile: ExtendedUserProfile | null; // Cambiado a ExtendedUserProfile
-  sessionUserName: string | null | undefined;
+  // userProfile: ExtendedUserProfile | null; // Reemplazado
+  userName?: string | null; // Nueva prop simplificada (reemplaza sessionUserName y userProfile.username)
   isReadyToStart: boolean;
   handleStartConversation: () => void;
   isSessionClosed: boolean;
   connectionState: LiveKitConnectionState;
+  // sessionUserName ya no es necesaria, se pasa como userName
 }
 
 const StartConversationOverlay: React.FC<StartConversationOverlayProps> = ({
   authStatus,
-  userProfile, // userProfile ahora es ExtendedUserProfile | null
-  sessionUserName,
+  // userProfile, // Ya no se usa
+  userName, // Usar directamente
   isReadyToStart,
   handleStartConversation,
   isSessionClosed,
   connectionState
+  // sessionUserName, // Ya no se usa
 }) => {
   return (
     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/50 backdrop-blur-md text-white">
@@ -36,14 +37,14 @@ const StartConversationOverlay: React.FC<StartConversationOverlayProps> = ({
       >
         <h2 className="text-3xl md:text-4xl font-bold mb-4">
           Bienvenido
-          {authStatus === 'authenticated' && (userProfile?.username || sessionUserName) && (
+          {authStatus === 'authenticated' && userName && (
              <motion.span 
                initial={{ opacity: 0, x: -10 }}
                animate={{ opacity: 1, x: 0 }}
                transition={{ delay: 0.3, duration: 0.5 }}
                className="ml-2"
              >
-               , {userProfile?.username || sessionUserName}
+               , {userName}
              </motion.span>
            )}
         </h2> 
