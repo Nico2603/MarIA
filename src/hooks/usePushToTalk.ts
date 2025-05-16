@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, Dispatch, SetStateAction } from 'react';
 
 interface UsePushToTalkProps {
   isListening: boolean;

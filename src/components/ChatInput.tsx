@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 interface ChatInputProps {
   textInput: string;
   setTextInput: (text: string) => void;
-  handleSendTextMessage: (event: FormEvent) => void;
+  handleSendTextMessage: (text: string) => void;
   handleStartListening: () => void;
   handleStopListening: () => void;
   isListening: boolean;
@@ -38,7 +38,12 @@ const ChatInput: React.FC<ChatInputProps> = ({
 }) => {
   return (
     <div className="p-4 bg-white dark:bg-neutral-800 border-t border-neutral-200 dark:border-neutral-700">
-      <form onSubmit={handleSendTextMessage} className="flex items-center space-x-3">
+      <form onSubmit={(e) => { 
+        e.preventDefault(); 
+        if (textInput.trim()) { 
+          handleSendTextMessage(textInput);
+        }
+      }} className="flex items-center space-x-3">
         <textarea
           ref={textAreaRef}
           value={textInput}
@@ -57,7 +62,9 @@ const ChatInput: React.FC<ChatInputProps> = ({
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
-              handleSendTextMessage(e as unknown as FormEvent);
+              if (textInput.trim()) {
+                handleSendTextMessage(textInput);
+              }
             }
             if (e.code === 'Space') {
               e.stopPropagation();

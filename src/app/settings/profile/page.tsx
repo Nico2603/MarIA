@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, FormEvent, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -48,19 +49,45 @@ interface PaginatedHistoryResponse {
 }
 
 export default function ProfilePage() {
-  const { data: session, status } = useSession();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [username, setUsername] = useState('');
-  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
-  const [isUpdating, setIsUpdating] = useState(false);
+  const { data: session, status: authStatus } = useSession();
+  const queryClient = useQueryClient();
+
+  const [usernameForm, setUsernameForm] = useState('');
+
+  const { data: profile, isLoading: isLoadingProfile, error: profileError, refetch: refetchProfile } = useQuery<UserProfile, Error>({
+    queryKey: ['profile', session?.user?.email],
+    queryFn: async () => {
+      if (!session?.user?.email) throw new Error('Usuario no autenticado'); // Asegurar que la sesión exista
+      const response = await fetch(API_PROFILE_URL);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Error al obtener el perfil.');
+      }
+      return response.json();
+    },
+    enabled: authStatus === 'authenticated',
+  });
+
+  // Efecto para manejar el éxito o error de la carga del perfil
+  useEffect(() => {
+    if (profile) {
+      setUsernameForm(profile.username || session?.user?.name || '');
+    }
+  }, [profile, session]);
+
+  useEffect(() => {
+    if (profileError) {
+      toast.error(profileError.message || 'Error al cargar el perfil.');
+    }
+  }, [profileError]);
+
   const [history, setHistory] = useState<PaginatedHistoryResponse | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [error, setError] = useState<string | null>(null);
+  const [historyApiError, setHistoryApiError] = useState<string | null>(null);
   const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Refs para animaciones
   const containerRef = useRef<HTMLDivElement>(null);
   const profileCardRef = useRef<HTMLDivElement>(null);
   const historyCardRef = useRef<HTMLDivElement>(null);
@@ -69,29 +96,9 @@ export default function ProfilePage() {
   const decorativeElementRef = useRef<HTMLDivElement>(null);
   const avatarRef = useRef<HTMLDivElement>(null);
 
-  const fetchProfile = useCallback(async () => {
-    setIsLoadingProfile(true);
-    setError(null);
-    try {
-      const response = await fetch(API_PROFILE_URL);
-      if (!response.ok) {
-        throw new Error('Error al obtener el perfil.');
-      }
-      const data: UserProfile = await response.json();
-      setProfile(data);
-      setUsername(data.username || session?.user?.name || '');
-    } catch (err) {
-      console.error("Error fetching profile:", err);
-      setError(err instanceof Error ? err.message : 'Error desconocido al obtener el perfil.');
-      toast.error('Error al cargar el perfil.');
-    } finally {
-      setIsLoadingProfile(false);
-    }
-  }, [session]);
-
   const fetchHistory = useCallback(async (page: number) => {
     setIsLoadingHistory(true);
-    setError(null);
+    setHistoryApiError(null);
     try {
       const response = await fetch(`${API_HISTORY_URL}?page=${page}&pageSize=${ITEMS_PER_PAGE}`);
       if (!response.ok) {
@@ -101,7 +108,7 @@ export default function ProfilePage() {
       setHistory(data);
     } catch (err) {
       console.error("Error fetching history:", err);
-      setError(err instanceof Error ? err.message : 'Error desconocido al obtener el historial.');
+      setHistoryApiError(err instanceof Error ? err.message : 'Error desconocido al obtener el historial.');
       toast.error('Error al cargar el historial.');
     } finally {
       setIsLoadingHistory(false);
@@ -109,14 +116,14 @@ export default function ProfilePage() {
   }, []);
 
   useEffect(() => {
-    if (status === 'authenticated') {
-      fetchProfile();
+    if (authStatus === 'authenticated') {
+      // fetchProfile ya es manejado por useQuery
       fetchHistory(currentPage);
-    } else if (status === 'unauthenticated') {
-      setIsLoadingProfile(false);
+    } else if (authStatus === 'unauthenticated') {
+      // setIsLoadingProfile ya es manejado por useQuery
       setIsLoadingHistory(false);
     }
-  }, [status, fetchProfile, fetchHistory, currentPage]);
+  }, [authStatus, fetchHistory, currentPage]);
 
   // Preparar el array de refs cuando el historial cambia
   useEffect(() => {
@@ -129,7 +136,7 @@ export default function ProfilePage() {
   // Efecto para animaciones con GSAP
   useEffect(() => {
     // Iniciar animaciones solo cuando el contenido está cargado
-    if (!isLoadingProfile && !isLoadingHistory) {
+    if (!isLoadingProfile && !isLoadingHistory && profile) {
       const ctx = gsap.context(() => {
         // Animación para el contenedor principal con un efecto sutil
         if (containerRef.current) {
@@ -211,46 +218,40 @@ export default function ProfilePage() {
       // Limpiar contexto al desmontar
       return () => ctx.revert();
     }
-  }, [isLoadingProfile, isLoadingHistory, history]);
+  }, [isLoadingProfile, isLoadingHistory, history, profile]);
 
-  const handleUpdateProfile = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!profile) return;
-    setIsUpdating(true);
-    setError(null);
-
-    try {
+  const { mutate: updateProfile, isPending: isUpdatingProfile } = useMutation<UserProfile, Error, { username: string }>({
+    mutationFn: async (newProfileData) => {
       const response = await fetch(API_PROFILE_URL, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username }),
+        body: JSON.stringify(newProfileData),
       });
-
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || 'Error al actualizar el perfil.');
       }
-
-      const updatedProfile: UserProfile = await response.json();
-      setProfile(updatedProfile);
-      setUsername(updatedProfile.username || updatedProfile.user?.name || '');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['profile', session?.user?.email] });
       toast.success('Perfil actualizado correctamente.');
-
-      // Animación sutil al actualizar (pequeño "pop")
       if (profileCardRef.current) {
         gsap.fromTo(profileCardRef.current,
           { scale: 1 },
           { scale: 1.01, duration: 0.15, ease: "power1.out", yoyo: true, repeat: 1 }
         );
       }
+    },
+    onError: (err) => {
+      toast.error(err.message || 'Error al actualizar el perfil.');
+    },
+  });
 
-    } catch (err) {
-      console.error("Error updating profile:", err);
-      setError(err instanceof Error ? err.message : 'Error desconocido al actualizar.');
-      toast.error('Error al actualizar el perfil.');
-    } finally {
-      setIsUpdating(false);
-    }
+  const handleFormSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!profile) return;
+    updateProfile({ username: usernameForm });
   };
 
   const handlePreviousPage = () => {
@@ -317,17 +318,26 @@ export default function ProfilePage() {
         <Skeleton className="h-10 w-full bg-muted/40" />
         <Skeleton className="h-10 w-28 bg-muted/40" />
       </div>
+    ) : profileError ? (
+      <Alert variant="destructive" className="my-5 w-full">
+        <Terminal className="h-4 w-4" />
+        <AlertTitle>Error al Cargar Perfil</AlertTitle>
+        <AlertDescription>
+          {profileError.message || "No se pudo cargar la información del perfil."}
+          <Button onClick={() => refetchProfile()} variant="outline" size="sm" className="ml-4">Reintentar</Button>
+        </AlertDescription>
+      </Alert>
     ) : profile ? (
-      <form onSubmit={handleUpdateProfile} className="space-y-8">
+      <form onSubmit={handleFormSubmit} className="space-y-8">
         <div className="flex flex-col sm:flex-row items-center space-y-6 sm:space-y-0 sm:space-x-8 pb-8 border-b border-border/20">
           <div ref={avatarRef} className="relative group">
             <Avatar className="h-36 w-36 text-5xl flex-shrink-0 ring-4 ring-primary/30 dark:ring-primary/25 p-1.5 shadow-xl group-hover:ring-primary/50 transition-all duration-300">
               <AvatarImage
                  src={profile.avatarUrl || session?.user?.image || ''}
-                 alt={username || session?.user?.name || 'Usuario'}
+                 alt={profile.username || session?.user?.name || 'Usuario'}
                  className="object-cover rounded-full"
               />
-              <AvatarFallback className="bg-gradient-to-br from-primary/90 to-secondary/70 text-primary-foreground">{username ? username.charAt(0).toUpperCase() : session?.user?.name?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+              <AvatarFallback className="bg-gradient-to-br from-primary/90 to-secondary/70 text-primary-foreground">{profile.username ? profile.username.charAt(0).toUpperCase() : session?.user?.name?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
             </Avatar>
             {/* Potential Upload Button Overlay - Example */}
             {/* <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer">
@@ -336,7 +346,7 @@ export default function ProfilePage() {
           </div>
 
           <div className="flex-grow space-y-1.5 text-center sm:text-left">
-             <h2 className="text-3xl font-bold tracking-tight">{username || session?.user?.name || 'Usuario'}</h2>
+             <h2 className="text-3xl font-bold tracking-tight">{profile.username || session?.user?.name || 'Usuario'}</h2>
              <p className="text-base text-muted-foreground flex items-center justify-center sm:justify-start gap-1.5">
                <Mail className="h-4 w-4 text-primary/80"/> {session?.user?.email}
              </p>
@@ -365,10 +375,10 @@ export default function ProfilePage() {
               <Label htmlFor="username" className="text-sm font-medium text-foreground/90">Nombre de usuario</Label>
               <Input
                 id="username"
-                value={username}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
+                value={usernameForm}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUsernameForm(e.target.value)}
                 placeholder="Elige un nombre visible"
-                disabled={isUpdating}
+                disabled={isUpdatingProfile}
                 className="border-border/40 focus-visible:ring-primary/40 focus-visible:border-primary/60 transition-colors duration-200 placeholder:text-muted-foreground/70"
                 aria-describedby="username-description"
               />
@@ -379,26 +389,19 @@ export default function ProfilePage() {
         </div>
 
        <div className="pt-5 flex flex-col items-start">
-          {error && (
-              <Alert variant="destructive" className="mb-5 w-full">
-                <Terminal className="h-4 w-4" />
-                <AlertTitle>Error de Actualización</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
           <Button
             type="submit"
-            disabled={isUpdating}
+            disabled={isUpdatingProfile}
             className="transition-all duration-300 ease-in-out bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground shadow-lg hover:shadow-primary/30 px-6 py-2.5 font-semibold text-sm tracking-wide disabled:opacity-70 disabled:cursor-not-allowed"
             aria-live="polite"
           >
-            {isUpdating ? 'Actualizando...' : 'Guardar Cambios'}
+            {isUpdatingProfile ? 'Actualizando...' : 'Guardar Cambios'}
           </Button>
         </div>
 
       </form>
     ) : (
-       <p className="text-center text-muted-foreground py-10">No se pudo cargar la información del perfil.</p>
+       <p className="text-center text-muted-foreground py-10">No se pudo cargar la información del perfil. Intenta recargar la página.</p>
     )
   );
 
@@ -427,6 +430,15 @@ export default function ProfilePage() {
               <Skeleton key={i} className="h-56 w-full rounded-xl bg-muted/40" />
             )}
           </div>
+        ) : historyApiError ? (
+          <Alert variant="destructive" className="my-5 w-full">
+            <Terminal className="h-4 w-4" />
+            <AlertTitle>Error al Cargar Historial</AlertTitle>
+            <AlertDescription>
+              {historyApiError}
+              <Button onClick={() => fetchHistory(currentPage)} variant="outline" size="sm" className="ml-4">Reintentar</Button>
+            </AlertDescription>
+          </Alert>
         ) : history?.data && history.data.length > 0 ? (
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
             <div
@@ -554,20 +566,13 @@ export default function ProfilePage() {
         ) : (
           <p className="text-center text-muted-foreground py-12 italic">No se encontró historial de conversaciones.</p>
         )}
-         {error && !isLoadingHistory && (
-              <Alert variant="destructive" className="mt-6">
-                <Terminal className="h-4 w-4" />
-                <AlertTitle>Error al Cargar Historial</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-          )}
       </CardContent>
     </Card>
   );
 
   // --- Renderizado Principal ---
 
-  if (status === 'loading') {
+  if (authStatus === 'loading') {
     return renderSkeletonState();
   }
 

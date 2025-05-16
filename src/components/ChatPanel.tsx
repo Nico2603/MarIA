@@ -18,20 +18,28 @@ interface Message {
 interface ChatPanelProps {
   messages: Message[];
   isThinking: boolean;
+  isProcessing?: boolean;
+  isSpeaking: boolean;
   currentSpeakingId: string | null;
+  greetingMessageId: string | null;
   userProfile: UserProfile | null;
   sessionUserImage: string | null | undefined;
   chatContainerRef: React.RefObject<HTMLDivElement>;
   chatEndRef: React.RefObject<HTMLDivElement>;
   authStatus: string;
-  totalPreviousSessions: number | null;
+  totalPreviousSessions?: number | null;
   initialContext: string | null;
+  activeSessionId: string | null;
+  currentSessionTitle: string | null;
 }
 
 const ChatPanel: React.FC<ChatPanelProps> = ({
   messages,
   isThinking,
+  isProcessing,
+  isSpeaking,
   currentSpeakingId,
+  greetingMessageId,
   userProfile,
   sessionUserImage,
   chatContainerRef,
@@ -39,11 +47,15 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   authStatus,
   totalPreviousSessions,
   initialContext,
+  activeSessionId,
+  currentSessionTitle,
 }) => {
   return (
     <div
       ref={chatContainerRef}
       className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 scroll-smooth bg-white dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 relative"
+      aria-live="polite"
+      aria-relevant="additions text"
     >
       {messages.length === 0 && !isThinking ? (
         <motion.div
@@ -58,7 +70,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
           </h2>
           {authStatus === 'authenticated' && (
             <div className="mb-4">
-              {totalPreviousSessions !== null ? (
+              {totalPreviousSessions !== null && totalPreviousSessions !== undefined ? (
                 <>
                   <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-1">
                     Has completado {totalPreviousSessions} {totalPreviousSessions === 1 ? 'sesión previa' : 'sesiones previas'}.
@@ -68,8 +80,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                   </p>
                 </>
               ) : (
-                <p className="text-sm flex items-center justify-center">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Cargando historial...
+                <p className="text-sm flex items-center justify-center text-neutral-600 dark:text-neutral-400">
+                  Iniciando una nueva aventura conversacional.
                 </p>
               )}
               {initialContext && (
