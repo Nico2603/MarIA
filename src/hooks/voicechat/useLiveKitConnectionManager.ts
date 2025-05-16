@@ -19,7 +19,7 @@ export interface UseLiveKitConnectionManagerResult {
 interface UseLiveKitConnectionManagerProps {
   initialContext: string | null;
   activeSessionId: string | null;
-  userProfile: { username?: string | null } | null;
+  userProfile: { id?: string; username?: string | null; email?: string | null } | null;
   onConnected?: (room: Room) => void;
   onDisconnected?: () => void;
   onConnectionError?: (error: Error) => void;
@@ -47,18 +47,16 @@ export function useLiveKitConnectionManager({
   const [connectionState, setConnectionState] = useState<LiveKitConnectionState>(LiveKitConnectionState.Disconnected);
   const roomRef = useRef<Room | null>(null);
 
-  const getLiveKitToken = useCallback(async (participantName: string, signal: AbortSignal) => {
+  const getLiveKitToken = useCallback(async (participantIdentity: string, signal: AbortSignal) => {
     clearError();
     try {
       const roomName = 'ai-mental-health-chat';
       const queryParams = new URLSearchParams({
         room: roomName,
-        participant: participantName,
+        participant: participantIdentity,
       });
 
       if (session?.user?.id) queryParams.append('userId', session.user.id);
-      const currentUsername = userProfile?.username || session?.user?.name || 'Usuario Invitado';
-      queryParams.append('username', currentUsername);
       if (initialContext) queryParams.append('latestSummary', initialContext);
       if (activeSessionId) queryParams.append('chatSessionId', activeSessionId);
 
@@ -72,7 +70,6 @@ export function useLiveKitConnectionManager({
         const errorData = await response.json().catch(() => ({}));
         const errorMessage = errorData.error || `Error del servidor al obtener token: ${response.statusText}`;
         setAppError('livekit', errorMessage);
-        setConnectionState(LiveKitConnectionState.Disconnected);
         return null;
       }
       const data = await response.json();
@@ -80,56 +77,107 @@ export function useLiveKitConnectionManager({
         setAppError('livekit', "Token no recibido del servidor.");
         return null;
       }
-      setLiveKitToken(data.token);
       return data.token;
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log("Solicitud de token de LiveKit cancelada.");
         return null;
       }
-      console.error("Error fetching LiveKit token:", error);
-      setConnectionState(LiveKitConnectionState.Disconnected);
+      console.error("[LKCM] Error fetching LiveKit token:", error);
       setAppError('livekit', error instanceof Error ? error.message : 'Error desconocido al obtener token.');
       return null;
     }
-  }, [session?.user?.id, userProfile?.username, session?.user?.name, initialContext, activeSessionId, clearError, setAppError]);
+  }, [session?.user?.id, initialContext, activeSessionId, clearError, setAppError]);
 
-  const { room, connect: connectToLiveKit, disconnect: disconnectFromLiveKit } = useLiveKitRoom({
-    token: liveKitToken,
+  useEffect(() => {
+    if (authStatus !== 'authenticated' || !session?.user?.id || liveKitToken) {
+      if (authStatus !== 'authenticated' && liveKitToken) {
+        console.log('[LKCM] No autenticado o token ya existe, limpiando token de LiveKit si existe y no auth.');
+        setLiveKitToken(null);
+      }
+      return;
+    }
+    
+    if (connectionState !== LiveKitConnectionState.Disconnected) {
+      return;
+    }
+
+    const controller = new AbortController();
+    const { signal } = controller;
+
+    console.log('[LKCM] Efecto de conexión: Intentando inicializar conexión LiveKit...');
+
+    const participantDisplayName = session.user.name || 'Usuario';
+    const participantIdentifier = `${participantDisplayName}_${session.user.id.substring(0, 8)}`;
+
+    console.log(`[LKCM] Obteniendo token para la identidad: ${participantIdentifier}`);
+
+    getLiveKitToken(participantIdentifier, signal)
+      .then(token => {
+        if (token && !signal.aborted) {
+          console.log('[LKCM] Token obtenido. Estableciendo token para useLiveKitRoom.');
+          setLiveKitToken(token);
+        } else if (signal.aborted) {
+          console.log('[LKCM] Obtención de token abortada (después de la llamada).');
+        } else {
+          console.log('[LKCM] No se obtuvo token (respuesta nula o vacía de getLiveKitToken).');
+        }
+      })
+      .catch(error => {
+        if (!(error instanceof Error && error.name === 'AbortError')) {
+          console.error('[LKCM] Error en la cadena de promesa de getLiveKitToken (catch del efecto):', error);
+        }
+      });
+
+    return () => {
+      console.log('[LKCM] Efecto de conexión: Limpieza - Abortando operaciones pendientes.');
+      controller.abort();
+    };
+  }, [
+    authStatus, 
+    session?.user?.id, 
+    getLiveKitToken, 
+    liveKitToken, 
+    connectionState
+  ]);
+
+  const { room, connect, disconnect } = useLiveKitRoom({
+    token: liveKitToken, 
     liveKitUrl: process.env.NEXT_PUBLIC_LIVEKIT_URL || '',
     onConnected: (connectedRoom) => {
-      console.log("Conectado a LiveKit exitosamente (desde hook manager).");
+      console.log("[LKCM] Conectado a LiveKit exitosamente.");
       roomRef.current = connectedRoom;
       setConnectionState(LiveKitConnectionState.Connected);
-      setAppError('livekit', null);
       if (onConnected) onConnected(connectedRoom);
     },
     onDisconnected: () => {
-      console.log("Desconectado de LiveKit (desde hook manager).");
+      console.log("[LKCM] Desconectado de LiveKit.");
       roomRef.current = null;
+      setLiveKitToken(null);
       setConnectionState(LiveKitConnectionState.Disconnected);
       if (onDisconnected) onDisconnected();
     },
     onConnectionError: (err: Error) => {
-      console.error("Error de LiveKit Room (desde hook manager):", err);
-      setAppError('livekit', `Error de LiveKit: ${err.message}`);
-      setConnectionState(LiveKitConnectionState.Disconnected);
+      console.error("[LKCM] Error de conexión de LiveKit Room:", err);
+      setAppError('livekit', `Error de LiveKit Room: ${err.message}`);
+      setLiveKitToken(null);
+      setConnectionState(LiveKitConnectionState.Disconnected); 
       if (onConnectionError) onConnectionError(err);
     },
     onDataReceived,
   });
 
   useEffect(() => {
-    roomRef.current = room;
+    if (room !== roomRef.current) {
+      roomRef.current = room;
+    }
   }, [room]);
 
   useEffect(() => {
     const currentRoom = roomRef.current;
-    if (!currentRoom) {
-      console.log("useLiveKitConnectionManager: No hay room para adjuntar listeners de track/participante.");
+    if (!currentRoom || connectionState !== LiveKitConnectionState.Connected) {
       return;
     }
-    console.log("useLiveKitConnectionManager: Adjuntando listeners de track/participante a la room:", currentRoom.name);
+    console.log("[LKCM] Adjuntando listeners de track/participante a la room:", currentRoom.name);
 
     const typedHandleTrackSubscribed = (
         track: RemoteTrack, 
@@ -154,76 +202,22 @@ export function useLiveKitConnectionManager({
 
     return () => {
       if (currentRoom) {
-        console.log("useLiveKitConnectionManager: Limpiando listeners de track/participante de la room:", currentRoom.name);
+        console.log("[LKCM] Limpiando listeners de track/participante de la room:", currentRoom.name);
         currentRoom
           .off(RoomEvent.TrackSubscribed, typedHandleTrackSubscribed)
           .off(RoomEvent.TrackUnsubscribed, typedHandleTrackUnsubscribed)
           .off(RoomEvent.ParticipantDisconnected, typedHandleParticipantDisconnected);
       }
     };
-  }, [roomRef.current, handleTrackSubscribed, handleTrackUnsubscribed, handleParticipantDisconnected]);
+  }, [roomRef.current, connectionState, handleTrackSubscribed, handleTrackUnsubscribed, handleParticipantDisconnected]);
 
-  useEffect(() => {
-    if (
-      authStatus !== "authenticated" ||
-      !session?.user?.id ||
-      connectionState !== LiveKitConnectionState.Disconnected ||
-      liveKitToken
-    ) {
-      return;
-    }
-
-    const controller = new AbortController();
-    const { signal } = controller;
-
-    (async () => {
-      if (authStatus !== "authenticated" || !session || !session.user || !session.user.id) {
-        return;
-      }
-      const currentUser = session.user;
-      try {
-        console.log("LiveKit Connection Manager: Intentando inicializar conexión...");
-        const userName = currentUser.name || "Usuario";
-        const identity = `${userName}_${currentUser.id.slice(0, 8)}`;
-        
-        console.log(`LiveKit Connection Manager: Obteniendo token para la identidad: ${identity}`);
-        const token = await getLiveKitToken(identity, signal);
-
-        if (token && !signal.aborted) {
-          console.log("LiveKit Connection Manager: Token obtenido. useLiveKitRoom debería conectarse.");
-        } else if (signal.aborted) {
-          console.log("LiveKit Connection Manager: La obtención del token fue abortada.");
-        } else {
-          console.log("LiveKit Connection Manager: No se obtuvo token, no se conectará.");
-        }
-      } catch (e) {
-        if (e instanceof Error && e.name === 'AbortError') {
-          console.log("LiveKit Connection Manager: Fallo al conectar (AbortError)", e);
-        } else {
-          console.error("LiveKit Connection Manager: Fallo al conectar:", e);
-        }
-      }
-    })();
-
-    return () => {
-      console.log("LiveKit Connection Manager: Limpiando efecto - Abortando controlador.");
-      controller.abort();
-    };
-  }, [
-    authStatus,
-    session?.user?.id,
-    getLiveKitToken,   
-    connectionState,
-    liveKitToken
-  ]);
-
-  return {
-    room: roomRef.current,
-    liveKitToken,
-    connectionState,
-    connectToLiveKit,
-    disconnectFromLiveKit,
-    setLiveKitToken,
-    setConnectionState
+  return { 
+    room: roomRef.current, 
+    liveKitToken, 
+    connectionState, 
+    connectToLiveKit: connect, 
+    disconnectFromLiveKit: disconnect, 
+    setLiveKitToken, 
+    setConnectionState 
   };
 } 
