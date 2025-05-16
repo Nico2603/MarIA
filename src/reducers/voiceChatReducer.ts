@@ -1,12 +1,18 @@
 import type { Message } from "@/types/message";
-import type { UserProfile } from '@/types/profile';
+// Eliminamos la dependencia de UserProfile de Prisma si ya no es necesaria para este tipo simplificado
+// import type { UserProfile as PrismaUserProfile } from '@/types/profile';
 
-export interface ExtendedUserProfile extends UserProfile {
-  tavus_api_key?: string | null;
-  openai_api_key?: string | null;
-  elevenlabs_api_key?: string | null;
-  elevenlabs_voice_id?: string | null;
-  initial_context?: string | null;
+// Perfil de usuario simplificado para el chat de voz
+export interface ExtendedUserProfile {
+  id?: string; // ID del usuario de la sesión
+  username?: string | null;
+  email?: string | null; // Email del usuario de la sesión
+  // Ya no se necesitan las claves API aquí
+  // tavus_api_key?: string | null;
+  // openai_api_key?: string | null;
+  // elevenlabs_api_key?: string | null;
+  // elevenlabs_voice_id?: string | null;
+  initial_context?: string | null; // Se mantiene si initial_context sigue siendo parte del perfil de alguna manera
 }
 
 export interface VoiceChatState {

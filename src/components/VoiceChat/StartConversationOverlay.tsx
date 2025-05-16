@@ -3,12 +3,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, AlertCircle } from 'lucide-react';
-import type { UserProfile } from '@/types/profile';
+// import type { UserProfile } from '@/types/profile'; // Ya no se usa el UserProfile de Prisma aquí
+import type { ExtendedUserProfile } from '@/reducers/voiceChatReducer'; // Importar el tipo simplificado
 import { ConnectionState as LiveKitConnectionState } from 'livekit-client';
 
 interface StartConversationOverlayProps {
   authStatus: 'loading' | 'authenticated' | 'unauthenticated';
-  userProfile: UserProfile | null;
+  userProfile: ExtendedUserProfile | null; // Cambiado a ExtendedUserProfile
   sessionUserName: string | null | undefined;
   isReadyToStart: boolean;
   handleStartConversation: () => void;
@@ -18,7 +19,7 @@ interface StartConversationOverlayProps {
 
 const StartConversationOverlay: React.FC<StartConversationOverlayProps> = ({
   authStatus,
-  userProfile,
+  userProfile, // userProfile ahora es ExtendedUserProfile | null
   sessionUserName,
   isReadyToStart,
   handleStartConversation,

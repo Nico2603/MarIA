@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Loader2 } from 'lucide-react';
 import TranscribedResponse from './TranscribedResponse';
 import ThinkingIndicator from './ThinkingIndicator';
-import type { UserProfile } from '@/types/profile';
+import type { ExtendedUserProfile } from '@/reducers/voiceChatReducer';
 
 interface Message {
   id: string;
@@ -22,7 +22,7 @@ interface ChatPanelProps {
   isSpeaking: boolean;
   currentSpeakingId: string | null;
   greetingMessageId: string | null;
-  userProfile: UserProfile | null;
+  userProfile: ExtendedUserProfile | null;
   sessionUserImage: string | null | undefined;
   chatContainerRef: React.RefObject<HTMLDivElement>;
   chatEndRef: React.RefObject<HTMLDivElement>;
@@ -106,7 +106,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             timestamp={msg.timestamp}
             isHighlighted={currentSpeakingId === msg.id}
             suggestedVideo={msg.suggestedVideo}
-            avatarUrl={msg.isUser ? (userProfile?.avatarUrl || sessionUserImage || '/default-avatar.png') : undefined}
+            avatarUrl={msg.isUser ? (sessionUserImage || '/default-avatar.png') : undefined}
           />
         ))
       )}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useCallback, FormEvent, useReducer, useMemo } from 'react';
+import React, { useEffect, useRef, useCallback, useReducer, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Room, 
@@ -20,8 +20,6 @@ import dynamic from 'next/dynamic';
 import ChatInput from '../ChatInput';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import type { UserProfile as BaseUserProfile } from '@/types/profile';
-// import type { ChatSession } from '@prisma/client'; // No se usa directamente
 import { Button } from '@/components/ui/button';
 import { useLiveKitConnectionManager } from '@/hooks/voicechat/useLiveKitConnectionManager';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
@@ -39,12 +37,10 @@ import RemoteTrackPlayer from './RemoteTrackPlayer';
 import { useLiveKitDataChannelEvents } from '@/hooks/voicechat/useLiveKitDataChannelEvents';
 import { useSpeechToTextControls } from '@/hooks/voicechat/useSpeechToTextControls';
 import { useConversationSessionManager } from '@/hooks/voicechat/useConversationSessionManager';
-import { voiceChatReducer, initialState, ExtendedUserProfile } from '@/reducers/voiceChatReducer';
-import { useQuery } from '@tanstack/react-query';
+import { voiceChatReducer, initialState } from '@/reducers/voiceChatReducer';
 
 const HISTORY_LENGTH = 12;
 const AGENT_IDENTITY = "Maria-TTS-Bot";
-const API_PROFILE_URL = '/api/profile';
 
 const DynamicChatPanel = dynamic(() => import('../ChatPanel'), { 
   ssr: false, 
@@ -55,7 +51,6 @@ const DynamicChatPanel = dynamic(() => import('../ChatPanel'), {
   )
 });
 
-// Carga dinámica para VideoPanel
 const DynamicVideoPanel = dynamic(() => import('./VideoPanel'), {
   ssr: false,
   loading: () => <VideoPanelSkeleton />,
@@ -115,7 +110,7 @@ function VoiceChatContainer() {
   const tavusVideoTrack = activeTracks.find(t => t.isAgent && t.kind === Track.Kind.Video && t.source === Track.Source.Camera);
   const audioTracks = activeTracks
     .filter(t => t.kind === Track.Kind.Audio && t.publication && t.publication.track)
-    .map(t => t.publication.track!); // Ahora audioTracks es Track[]
+    .map(t => t.publication.track!);
 
   const onConnectedCallback = useCallback((connectedRoom: Room) => {
     roomRef.current = connectedRoom;
@@ -147,9 +142,9 @@ function VoiceChatContainer() {
     connectionState,
     disconnectFromLiveKit,
   } = useLiveKitConnectionManager({
-    initialContext: state.initialContext,
-    activeSessionId: state.activeSessionId,
-    userProfile: state.userProfile,
+    userProfile: userProfile,
+    initialContext: initialContext,
+    activeSessionId: activeSessionId,
     onConnected: onConnectedCallback,
     onDisconnected: onDisconnectedCallback,
     onConnectionError: onConnectionErrorCallback,
@@ -159,7 +154,6 @@ function VoiceChatContainer() {
     onDataReceived: onDataReceivedLiveKitCallback,
   });
 
-  // Props memoizadas para useConversationSessionManager
   const conversationManagerProps = useMemo(() => ({
     session,
     authStatus,
@@ -168,18 +162,17 @@ function VoiceChatContainer() {
     messages: state.messages,
     activeSessionId: state.activeSessionId,
     isSessionClosed: state.isSessionClosed,
-    roomRef, // ref es estable
-    audioStreamRef, // ref es estable
-    disconnectFromLiveKit, // Asumiendo estable desde useLiveKitConnectionManager
-    setAppError, // Asumiendo estable desde useError
-    showNotification, // Asumiendo estable desde useNotifications
-    dispatch, // dispatch es estable y se pasa como prop
+    roomRef,
+    audioStreamRef,
+    disconnectFromLiveKit,
+    setAppError,
+    showNotification,
+    dispatch,
   }), [
     session, authStatus, 
     state.conversationActive, state.isReadyToStart, state.messages, 
     state.activeSessionId, state.isSessionClosed,
     disconnectFromLiveKit, setAppError, showNotification 
-    // dispatch no es necesario aquí porque es estable
   ]);
 
   const {
@@ -187,28 +180,24 @@ function VoiceChatContainer() {
     endSession
   } = useConversationSessionManager(conversationManagerProps);
 
-  // Props memoizadas para useLiveKitDataChannelEvents
-  // endSession es devuelta por useConversationSessionManager, por lo que debe ser una dependencia para dataChannelEventsProps
   const memoizedEndSession = useCallback(endSession, [endSession]);
 
   const dataChannelEventsProps = useMemo(() => ({
-    dispatch, // dispatch es estable y se pasa como prop
+    dispatch,
     conversationActive: state.conversationActive,
     greetingMessageId: state.greetingMessageId,
     currentSpeakingId: state.currentSpeakingId,
-    endSession: memoizedEndSession, // Usar la versión memoizada
+    endSession: memoizedEndSession,
     isProcessing: state.isProcessing,
     isListening: state.isListening,
     isSpeaking: state.isSpeaking,
     isSessionClosed: state.isSessionClosed,
     activeSessionId: state.activeSessionId,
-    roomRef, // ref es estable
+    roomRef,
   }), [
     state.conversationActive, state.greetingMessageId, state.currentSpeakingId,
     memoizedEndSession, state.isProcessing, state.isListening, state.isSpeaking,
     state.isSessionClosed, state.activeSessionId
-    // dispatch no es necesario aquí porque es estable
-    // roomRef no necesita estar aquí si es estable
   ]);
 
   const { handleDataReceived, handleSendTextMessage } = useLiveKitDataChannelEvents(dataChannelEventsProps);
@@ -223,26 +212,23 @@ function VoiceChatContainer() {
     }
   }, [room]);
 
-  // Callback memoizado para useSpeechToTextControls
   const setIsListeningCallback = useCallback(
     (value: boolean) => dispatch({ type: 'SET_LISTENING', payload: value }),
     []
   );
 
-  // Props memoizadas para useSpeechToTextControls
   const speechToTextControlsProps = useMemo(() => ({
     isListening: state.isListening,
     isProcessing: state.isProcessing,
     isSpeaking: state.isSpeaking,
     isSessionClosed: state.isSessionClosed,
     conversationActive: state.conversationActive,
-    roomRef, // ref es estable
+    roomRef,
     setIsListening: setIsListeningCallback,
   }), [
     state.isListening, state.isProcessing, state.isSpeaking, 
     state.isSessionClosed, state.conversationActive, 
     setIsListeningCallback,
-    // roomRef no necesita estar aquí si es estable
   ]);
 
   const {
@@ -292,52 +278,37 @@ function VoiceChatContainer() {
     }
   }, [isTimeRunningOut, state.isTimeRunningOutState]);
 
-  // Carga del perfil del usuario con TanStack Query
-  const { 
-    data: fetchedUserProfile, 
-    isLoading: isLoadingProfile, 
-    error: profileError, 
-    refetch: refetchProfile 
-  } = useQuery<ExtendedUserProfile, Error>({
-    queryKey: ['userProfileForChat', session?.user?.id], // Clave de query única para este contexto
-    queryFn: async () => {
-      if (!session?.user?.id) throw new Error('Usuario no autenticado para cargar perfil en chat.');
-      // La API route es /api/profile, no necesita el ID en la URL según el código de route.ts
-      const response = await fetch(API_PROFILE_URL); 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: `Error del servidor: ${response.status}` }));
-        throw new Error(errorData.message || `Error del servidor al cargar el perfil: ${response.status} ${response.statusText}`);
-      }
-      return response.json();
-    },
-    enabled: authStatus === 'authenticated' && !!session?.user?.id, // Solo ejecutar si está autenticado y hay ID de usuario
-    staleTime: 1000 * 60 * 15, // Ejemplo: Perfil puede ser stale después de 15 minutos
-  });
-
-  // Efecto para actualizar el estado del reducer cuando el perfil se carga o cambia
   useEffect(() => {
-    if (authStatus === 'authenticated' && fetchedUserProfile) {
-      dispatch({ type: 'SET_USER_PROFILE', payload: fetchedUserProfile });
-      
-      // Si fetchedUserProfile existe, asumimos que el backend ha proporcionado
-      // las claves API necesarias desde process.env y el perfil es válido.
-      // Ya no se validan las claves individuales aquí en el frontend para este dispatch.
-      dispatch({ type: 'SET_READY_TO_START', payload: true });
-
-      const initialContextData = fetchedUserProfile.initial_context || "";
-      dispatch({ type: 'SET_INITIAL_CONTEXT', payload: initialContextData });
-      
-      // Se elimina el setAppError específico por falta de claves aquí,
-      // ya que ahora confiamos en que el perfil cargado es suficiente.
-      // El manejo de errores generales de la query (profileError) ya cubre si el perfil no se carga.
-
-    } else if (authStatus === 'authenticated' && profileError) {
-      console.error("Error fetching user profile with useQuery:", profileError);
-      const errorMessage = profileError.message || "Ocurrió un error desconocido al cargar el perfil.";
-      setAppError('api', `Error al cargar perfil: ${errorMessage}`);
-      dispatch({ type: 'SET_READY_TO_START', payload: false }); // Aquí sí es false porque el perfil falló en cargar.
+    if (authStatus === 'authenticated' && session?.user) {
+      dispatch({ 
+        type: 'SET_USER_PROFILE', 
+        payload: { 
+          id: session.user.id || undefined,
+          email: session.user.email || null,
+          username: session.user.name || null,
+        } 
+      });
+    } else if (authStatus === 'unauthenticated') {
+      dispatch({ type: 'SET_USER_PROFILE', payload: null });
     }
-  }, [authStatus, fetchedUserProfile, profileError, setAppError, dispatch, session]);
+  }, [authStatus, session, dispatch]);
+
+  useEffect(() => {
+    const greetingHasPlayed = greetingMessageId && !currentSpeakingId && !isSpeaking;
+    const livekitConnected = connectionState === LiveKitConnectionState.Connected;
+    const userAuthenticated = authStatus === 'authenticated';
+
+    if (userAuthenticated && livekitConnected && greetingHasPlayed) {
+      if (!isReadyToStart) { 
+         dispatch({ type: 'SET_READY_TO_START', payload: true });
+         showNotification("María está lista para conversar.", "success");
+      }
+    } else if (!userAuthenticated || !livekitConnected) {
+      if (isReadyToStart) {
+        dispatch({ type: 'SET_READY_TO_START', payload: false });
+      }
+    }
+  }, [greetingMessageId, currentSpeakingId, isSpeaking, connectionState, authStatus, dispatch, isReadyToStart, showNotification]);
 
   const handleKeyPress = useCallback((event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -346,7 +317,7 @@ function VoiceChatContainer() {
         handleSendTextMessage(state.textInput.trim());
       }
     }
-  }, [state.textInput, state.conversationActive, state.isProcessing, state.isSpeaking, state.isListening, state.isThinking, handleSendTextMessage]); // Asegurar que las dependencias sean del estado del reducer
+  }, [state.textInput, state.conversationActive, state.isProcessing, state.isSpeaking, state.isListening, state.isThinking, handleSendTextMessage]);
   
   const scrollToBottom = useCallback(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -394,7 +365,6 @@ function VoiceChatContainer() {
     };
   }, [clearError]);
 
-  // Efecto dedicado para limpiar timeouts al desmontar
   useEffect(() => {
     return () => {
       if (thinkingTimeoutRef.current) {
@@ -432,59 +402,19 @@ function VoiceChatContainer() {
     );
   }
 
-  if (appError?.type === 'profile' || appError?.type === 'permissions') {
+  if (appError && appError.type !== 'permissions' && appError.type !== 'profile') {
     return <ErrorDisplay error={appError} onClose={clearError} />;
   }
 
-  const hasRequiredApiKeys =
-    state.userProfile?.tavus_api_key &&
-    state.userProfile?.openai_api_key &&
-    state.userProfile?.elevenlabs_api_key &&
-    state.userProfile?.elevenlabs_voice_id;
-
-  if (!hasRequiredApiKeys && !state.conversationActive) {
+  if (authStatus === 'authenticated' && connectionState !== LiveKitConnectionState.Connected && !state.conversationActive) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-gray-900 text-white p-4">
-        <AlertCircle className="h-16 w-16 text-yellow-500" />
-        <h1 className="mt-6 text-2xl md:text-3xl font-semibold text-center">Configuración Incompleta</h1>
-        <p className="mt-2 text-md md:text-lg text-center text-gray-300">
-          Faltan una o más claves API necesarias para iniciar la conversación.
-        </p>
-        <p className="mt-1 text-sm text-gray-400 text-center">
-          (Tavus API Key, OpenAI API Key, ElevenLabs API Key, ElevenLabs Voice ID)
-        </p>
-        <Link href="/profile" legacyBehavior>
-          <a className="mt-6 px-6 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md text-lg font-medium transition-colors">
-            Ir a Mi Perfil para Configurar
-          </a>
-        </Link>
-      </div>
-    );
-  }
-
-  if (!isReadyToStart && !state.conversationActive && authStatus === 'authenticated' && !isLoadingProfile) {
-    // Este bloque se activa si, después de cargar el perfil, isReadyToStart es false.
-    // Esto ya incluye el caso de !hasRequiredApiKeys porque el useEffect que usa fetchedUserProfile actualiza isReadyToStart.
-    return (
-      <div className="flex flex-col items-center justify-center h-screen bg-gray-900 text-white p-4">
-        <AlertCircle className="h-16 w-16 text-yellow-500" />
-        <h1 className="mt-6 text-2xl md:text-3xl font-semibold text-center">Configuración Incompleta</h1>
-        <p className="mt-2 text-md md:text-lg text-center text-gray-300">
-          {appError?.message || "Faltan una o más claves API necesarias o hay un problema con tu perfil."}
-        </p>
-        <p className="mt-1 text-sm text-gray-400 text-center">
-          (Revisa Tavus API Key, OpenAI API Key, ElevenLabs API Key, ElevenLabs Voice ID)
-        </p>
-        <Button onClick={() => refetchProfile()} className="mt-4" variant="outline">
-          Reintentar Cargar Perfil
-        </Button>
-        <Link href="/settings/profile" legacyBehavior>
-          <a className="mt-6 px-6 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md text-lg font-medium transition-colors">
-            Ir a Mi Perfil para Configurar
-          </a>
-        </Link>
-      </div>
-    );
+        <div className="flex flex-col items-center justify-center h-screen bg-gray-900 text-white p-4">
+          <Loader2 className="h-16 w-16 animate-spin text-blue-400" />
+          <h1 className="mt-6 text-2xl md:text-3xl font-semibold text-center">
+            {connectionState === LiveKitConnectionState.Connecting ? "Conectando a la sala de voz..." : "Preparando conexión..."}
+          </h1>
+        </div>
+      );
   }
 
   return (
@@ -531,9 +461,8 @@ function VoiceChatContainer() {
                 chatEndRef={chatEndRef}
                 activeSessionId={activeSessionId}
                 currentSessionTitle={currentSessionTitle}
-                userProfile={userProfile as ExtendedUserProfile}
+                userProfile={userProfile}
                 initialContext={initialContext}
-                totalPreviousSessions={userProfile?.sessions?.length}
                 sessionUserImage={session?.user?.image}
                 authStatus={authStatus}
               />
@@ -577,8 +506,8 @@ function VoiceChatContainer() {
 
       {audioTracks.map(track => (
         <RemoteTrackPlayer 
-          key={track.sid} // Usar track.sid ya que ahora track es un objeto Track
-          track={track}   // Pasar el objeto Track directamente
+          key={track.sid}
+          track={track}
           autoPlay 
         />
       ))}
