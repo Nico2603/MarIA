@@ -254,7 +254,7 @@ function VoiceChatContainer() {
 
   const { room, connect: connectToLiveKit, disconnect: disconnectFromLiveKit } = useLiveKitRoom({
     token: liveKitToken,
-    liveKitUrl: process.env.NEXT_PUBLIC_LIVEKIT_WS_URL || '',
+    liveKitUrl: process.env.NEXT_PUBLIC_LIVEKIT_URL || '',
     onConnected: () => {
       console.log("Conectado a LiveKit exitosamente.");
       setConnectionState(LiveKitConnectionState.Connected);
