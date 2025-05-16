@@ -96,3 +96,5 @@ ENV/
 .ENV/
 **/venv/
 livekit_agent_maria/venv/
+
+gen-lang-client-0670046560-c3396247785f.json
