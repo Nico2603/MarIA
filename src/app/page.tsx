@@ -95,6 +95,16 @@ const faqItems = [
     question: "¿Cómo puedo empezar a hablar con María?",
     answer: "¡Es muy fácil! Simplemente haz clic en el botón 'Hablar con María' o 'Comenzar Ahora' en esta página. No necesitas registrarte ni crear una cuenta para iniciar tu primera conversación.",
     value: "item-5"
+  },
+  {
+    question: "¿Cómo controlar la ansiedad por celos con MarIA?",
+    answer: "MarIA puede ayudarte a explorar los pensamientos y emociones que contribuyen a los celos, ofreciéndote un espacio para reflexionar y estrategias para manejar estos sentimientos. Sin embargo, para situaciones complejas, siempre recomendamos el apoyo de un profesional.",
+    value: "item-6"
+  },
+  {
+    question: "¿MarIA es un psicólogo en línea barato en México?",
+    answer: "MarIA ofrece sesiones de terapia virtual a un costo accesible, desde $50.000 pesos, lo que la convierte en una opción económica en México en comparación con algunas alternativas tradicionales. Aunque MarIA es una IA avanzada, no es un psicólogo humano licenciado, sino una herramienta de apoyo terapéutico.",
+    value: "item-7"
   }
 ];
 
@@ -336,12 +346,11 @@ export default function LandingPage() {
           
           <div ref={heroRef} className="relative z-10 opacity-100">
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold font-display text-neutral-900 dark:text-white mb-6 leading-tight text-shadow-subtle dark:dark:text-shadow-subtle">
-              {/* Aplicar gradient-text */}
-              Tu Compañera de <span className="green-blue-gradient">Bienestar Mental</span> con IA
+              MarIA: Terapia virtual para la ansiedad desde $50 mil pesos
             </h1>
-            <p className="text-lg md:text-xl text-neutral-600 dark:text-neutral-300 mb-10 max-w-3xl mx-auto text-shadow-subtle dark:dark:text-shadow-subtle">
-              María te escucha, te comprende y te guía en tu camino hacia una mejor salud mental, utilizando inteligencia artificial avanzada para ofrecerte apoyo personalizado y empático.
-            </p>
+            <h2 className="text-lg md:text-xl font-medium text-neutral-600 dark:text-neutral-300 mb-10 max-w-3xl mx-auto text-shadow-subtle dark:dark:text-shadow-subtle">
+              Obtén ayuda psicológica en línea y atención profesional para la ansiedad. María te escucha, te comprende y te guía en tu camino hacia una mejor salud mental.
+            </h2>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               {/* << MODIFICADO: Usar onClick, añadir ref al array, quitar clases de transform y hover >> */}
               <button
@@ -566,6 +575,24 @@ export default function LandingPage() {
                 </AccordionItem>
               ))}
             </Accordion>
+            {/* JSON-LD FAQPage para rich snippets */}
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{
+                __html: JSON.stringify({
+                  "@context": "https://schema.org",
+                  "@type": "FAQPage",
+                  "mainEntity": faqItems.map(q => ({
+                    "@type": "Question",
+                    "name": q.question,
+                    "acceptedAnswer": {
+                      "@type": "Answer",
+                      "text": q.answer
+                    }
+                  }))
+                })
+              }}
+            />
           </div>
         </section>
 
@@ -584,6 +611,10 @@ export default function LandingPage() {
             <p className="text-lg md:text-xl mb-10 max-w-2xl mx-auto text-neutral-600 dark:text-neutral-300">
               Da el primer paso hacia una mente más tranquila y resiliente. María está aquí para acompañarte en cada paso, ofreciéndote un espacio seguro y de apoyo.
             </p>
+            {/* Beneficio adicional junto al CTA */}
+            <div className="mb-8 text-center text-sm italic text-neutral-300 dark:text-neutral-400">
+              Sesión sin compromiso: paga después de la sesión y sólo si te ayuda.
+            </div>
             {/* << MODIFICADO: Usar onClick, añadir ref, quitar hover de Tailwind >> */}
             <button
               ref={ctaButtonRef} // << AÑADIDO: Ref
