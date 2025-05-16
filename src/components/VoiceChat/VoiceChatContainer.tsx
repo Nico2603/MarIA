@@ -319,7 +319,10 @@ function VoiceChatContainer() {
     if (authStatus === 'authenticated' && fetchedUserProfile) {
       dispatch({ type: 'SET_USER_PROFILE', payload: fetchedUserProfile });
       
-      if (fetchedUserProfile.tavus_api_key && fetchedUserProfile.elevenlabs_api_key && fetchedUserProfile.elevenlabs_voice_id) {
+      if (fetchedUserProfile.tavus_api_key && 
+          fetchedUserProfile.openai_api_key &&
+          fetchedUserProfile.elevenlabs_api_key && 
+          fetchedUserProfile.elevenlabs_voice_id) {
         dispatch({ type: 'SET_READY_TO_START', payload: true });
       } else {
         setAppError('permissions', "Faltan configuraciones de API en tu perfil para iniciar una conversación de voz.");
