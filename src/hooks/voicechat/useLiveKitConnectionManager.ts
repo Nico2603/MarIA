@@ -211,7 +211,7 @@ export function useLiveKitConnectionManager({
     };
   }, [
     authStatus,
-    session,
+    session?.user?.id,
     getLiveKitToken,   
     connectionState,
     liveKitToken
