@@ -95,16 +95,6 @@ const faqItems = [
     question: "¿Cómo puedo empezar a hablar con María?",
     answer: "¡Es muy fácil! Simplemente haz clic en el botón 'Hablar con María' o 'Comenzar Ahora' en esta página. No necesitas registrarte ni crear una cuenta para iniciar tu primera conversación.",
     value: "item-5"
-  },
-  {
-    question: "¿Cómo controlar la ansiedad por celos con MarIA?",
-    answer: "MarIA puede ayudarte a explorar los pensamientos y emociones que contribuyen a los celos, ofreciéndote un espacio para reflexionar y estrategias para manejar estos sentimientos. Sin embargo, para situaciones complejas, siempre recomendamos el apoyo de un profesional.",
-    value: "item-6"
-  },
-  {
-    question: "¿MarIA es un psicólogo en línea barato en México?",
-    answer: "MarIA ofrece sesiones de terapia virtual a un costo accesible, desde $50.000 pesos, lo que la convierte en una opción económica en México en comparación con algunas alternativas tradicionales. Aunque MarIA es una IA avanzada, no es un psicólogo humano licenciado, sino una herramienta de apoyo terapéutico.",
-    value: "item-7"
   }
 ];
 
