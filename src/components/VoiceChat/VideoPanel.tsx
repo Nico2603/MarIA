@@ -63,10 +63,10 @@ const VideoPanel: React.FC<VideoPanelProps> = ({
   return (
     <div className={`relative flex flex-col items-center justify-center flex-1 h-full bg-white dark:bg-neutral-800 transition-all duration-300 ease-in-out p-4 md:p-6 ${isChatVisible ? 'md:w-2/3' : 'w-full'}`}>
       <div className="relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-black">
-        {tavusTrackInfo && tavusTrackInfo.kind === Track.Kind.Video ? (
+        {tavusTrackInfo && tavusTrackInfo.kind === Track.Kind.Video && tavusTrackInfo.publication && tavusTrackInfo.publication.track ? (
           <RemoteTrackPlayer
             key={tavusTrackInfo.id}
-            track={tavusTrackInfo.trackRef}
+            track={tavusTrackInfo.publication.track}
             className="w-full h-full object-contain"
             autoPlay
             playsInline
