@@ -113,7 +113,9 @@ function VoiceChatContainer() {
   });
 
   const tavusVideoTrack = activeTracks.find(t => t.isAgent && t.kind === Track.Kind.Video && t.source === Track.Source.Camera);
-  const audioTracks = activeTracks.filter(t => t.kind === Track.Kind.Audio);
+  const audioTracks = activeTracks
+    .filter(t => t.kind === Track.Kind.Audio && t.publication && t.publication.track)
+    .map(t => t.publication.track!); // Ahora audioTracks es Track[]
 
   const onConnectedCallback = useCallback((connectedRoom: Room) => {
     roomRef.current = connectedRoom;
@@ -570,10 +572,10 @@ function VoiceChatContainer() {
          />
       )}
 
-      {audioTracks.map(trackInfo => (
+      {audioTracks.map(track => (
         <RemoteTrackPlayer 
-          key={trackInfo.id} 
-          track={trackInfo.trackRef}
+          key={track.sid} // Usar track.sid ya que ahora track es un objeto Track
+          track={track}   // Pasar el objeto Track directamente
           autoPlay 
         />
       ))}
