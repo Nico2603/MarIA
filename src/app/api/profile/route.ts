@@ -62,6 +62,14 @@ export async function GET(request: Request) {
     };
 
     // Devuelve los datos del perfil con las claves API directamente de process.env
+    console.log("MarIA_LOG: /api/profile - Variables de entorno (desde process.env):");
+    console.log("MarIA_LOG: OPENAI_API_KEY:", process.env.OPENAI_API_KEY ? 'Presente' : 'Ausente');
+    console.log("MarIA_LOG: TAVUS_API_KEY:", process.env.TAVUS_API_KEY ? 'Presente' : 'Ausente');
+    console.log("MarIA_LOG: ELEVENLABS_API_KEY:", process.env.ELEVENLABS_API_KEY ? 'Presente' : 'Ausente');
+    console.log("MarIA_LOG: ELEVENLABS_VOICE_ID:", process.env.ELEVENLABS_VOICE_ID ? 'Presente' : 'Ausente');
+    console.log("MarIA_LOG: INITIAL_CONTEXT:", process.env.INITIAL_CONTEXT ? 'Presente' : 'Ausente');
+    console.log("MarIA_LOG: Enviando profileData:", JSON.stringify(profileData)); // Convertir a string para mejor visualización de objetos complejos
+
     return NextResponse.json(profileData);
   } catch (error) {
     console.error("Error al obtener perfil:", error);

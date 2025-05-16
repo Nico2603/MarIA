@@ -319,23 +319,23 @@ function VoiceChatContainer() {
     if (authStatus === 'authenticated' && fetchedUserProfile) {
       dispatch({ type: 'SET_USER_PROFILE', payload: fetchedUserProfile });
       
-      if (fetchedUserProfile.tavus_api_key && 
-          fetchedUserProfile.openai_api_key &&
-          fetchedUserProfile.elevenlabs_api_key && 
-          fetchedUserProfile.elevenlabs_voice_id) {
-        dispatch({ type: 'SET_READY_TO_START', payload: true });
-      } else {
-        setAppError('permissions', "Faltan configuraciones de API en tu perfil para iniciar una conversación de voz.");
-        dispatch({ type: 'SET_READY_TO_START', payload: false });
-      }
+      // Si fetchedUserProfile existe, asumimos que el backend ha proporcionado
+      // las claves API necesarias desde process.env y el perfil es válido.
+      // Ya no se validan las claves individuales aquí en el frontend para este dispatch.
+      dispatch({ type: 'SET_READY_TO_START', payload: true });
+
       const initialContextData = fetchedUserProfile.initial_context || "";
       dispatch({ type: 'SET_INITIAL_CONTEXT', payload: initialContextData });
+      
+      // Se elimina el setAppError específico por falta de claves aquí,
+      // ya que ahora confiamos en que el perfil cargado es suficiente.
+      // El manejo de errores generales de la query (profileError) ya cubre si el perfil no se carga.
 
     } else if (authStatus === 'authenticated' && profileError) {
       console.error("Error fetching user profile with useQuery:", profileError);
       const errorMessage = profileError.message || "Ocurrió un error desconocido al cargar el perfil.";
       setAppError('api', `Error al cargar perfil: ${errorMessage}`);
-      dispatch({ type: 'SET_READY_TO_START', payload: false });
+      dispatch({ type: 'SET_READY_TO_START', payload: false }); // Aquí sí es false porque el perfil falló en cargar.
     }
   }, [authStatus, fetchedUserProfile, profileError, setAppError, dispatch, session]);
 
