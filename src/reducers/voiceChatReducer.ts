@@ -157,7 +157,7 @@ export function voiceChatReducer(state: VoiceChatState, action: VoiceChatAction)
         sessionStartTime: action.payload.startTime,
         messages: action.payload.initialMessages,
         isFirstInteraction: false,
-        isListening: true, 
+        isListening: false,
         isProcessing: false,
         isSpeaking: false,
         isThinking: false,
@@ -172,6 +172,12 @@ export function voiceChatReducer(state: VoiceChatState, action: VoiceChatAction)
         isPushToTalkActive: false,
         conversationActive: false,
         isTimeRunningOutState: false,
+        currentSpeakingId: null,
+        greetingMessageId: null,
+        isReadyToStart: false,
+        activeSessionId: null,
+        sessionStartTime: null,
+        currentSessionTitle: null,
       };
     default:
       return state;

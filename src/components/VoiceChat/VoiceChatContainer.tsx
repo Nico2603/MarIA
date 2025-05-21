@@ -195,11 +195,13 @@ function VoiceChatContainer() {
     activeSessionId: state.activeSessionId,
     room: room,
     roomRef: roomRef,
+    isReadyToStart: state.isReadyToStart,
   }), [
     dispatch,
     state.conversationActive, state.greetingMessageId, state.currentSpeakingId,
     memoizedEndSession, state.isProcessing, state.isListening, state.isSpeaking,
-    state.isSessionClosed, state.activeSessionId, room, roomRef
+    state.isSessionClosed, state.activeSessionId, room, roomRef,
+    state.isReadyToStart,
   ]);
 
   const { handleDataReceived, handleSendTextMessage } = useLiveKitDataChannelEvents(dataChannelEventsProps);
@@ -304,10 +306,6 @@ function VoiceChatContainer() {
       if (!isReadyToStart) { 
          dispatch({ type: 'SET_READY_TO_START', payload: true });
          showNotification("María está lista para conversar.", "success");
-      }
-    } else if (!userAuthenticated || !livekitConnected) {
-      if (isReadyToStart) {
-        dispatch({ type: 'SET_READY_TO_START', payload: false });
       }
     }
   }, [greetingMessageId, currentSpeakingId, isSpeaking, connectionState, authStatus, dispatch, isReadyToStart, showNotification]);

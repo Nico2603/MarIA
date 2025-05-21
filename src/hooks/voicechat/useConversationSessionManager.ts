@@ -59,7 +59,6 @@ export function useConversationSessionManager({
     const initialMessages = messages.length > 0 && messages[0].id.startsWith('greeting-') 
       ? [messages[0]] 
       : [];
-    dispatch({ type: 'SET_MESSAGES', payload: initialMessages });
     
     try {
       console.log("Llamando a API para crear nueva sesión de chat...");

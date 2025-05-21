@@ -21,6 +21,7 @@ interface UseLiveKitDataChannelEventsProps {
   activeSessionId: string | null;
   roomRef: RefObject<Room | null>;
   room: Room | null; // Añadido room como prop para el useEffect
+  isReadyToStart: boolean; // <--- Añadido
 }
 
 export function useLiveKitDataChannelEvents({
@@ -36,6 +37,7 @@ export function useLiveKitDataChannelEvents({
   activeSessionId,
   roomRef,
   room, // Recibir room
+  isReadyToStart, // <--- Añadido
 }: UseLiveKitDataChannelEventsProps) {
   const { setError: setAppError } = useError();
 
@@ -102,8 +104,11 @@ export function useLiveKitDataChannelEvents({
               dispatch({ type: 'SET_CURRENT_SPEAKING_ID', payload: event.payload.messageId });
               dispatch({ type: 'SET_SPEAKING', payload: true });
               dispatch({ type: 'SET_THINKING', payload: false });
-              if (event.payload.messageId === greetingMessageId && !conversationActive) {
+              // Si este TTS que inicia es el del mensaje de saludo,
+              // y aún no estamos listos para empezar, entonces nos marcamos como listos.
+              if (event.payload.messageId === greetingMessageId && !isReadyToStart) {
                 dispatch({ type: 'SET_READY_TO_START', payload: true });
+                console.log('[LiveKit] Saludo inicial TTS iniciado, marcando como listo para empezar.');
               }
             }
             break;
@@ -114,15 +119,19 @@ export function useLiveKitDataChannelEvents({
               if (currentSpeakingId === event.payload.messageId) {
                 dispatch({ type: 'SET_SPEAKING', payload: false });
                 dispatch({ type: 'SET_CURRENT_SPEAKING_ID', payload: null });
+
+                // Activar la escucha si el saludo inicial ha terminado
+                if (event.payload.messageId === greetingMessageId && conversationActive) {
+                  dispatch({ type: 'SET_LISTENING', payload: true });
+                  console.log('[LiveKit] Saludo inicial terminado, activando escucha.');
+                }
+
                 if (event.payload.isClosing) {
                   endSession(); 
                 }
               }
             }
             break;
-          case 'session_should_end_signal':
-             endSession(); 
-             break;
           default:
             // console.log("[DataChannel] Evento no manejado:", event.type);
         }
@@ -138,6 +147,7 @@ export function useLiveKitDataChannelEvents({
     currentSpeakingId, 
     endSession, 
     setAppError,
+    isReadyToStart, // <--- Añadido a las dependencias
     // room // No es necesario aquí ya que el useEffect lo maneja y handleDataReceived se pasa a los listeners de la sala
   ]);
 

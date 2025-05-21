@@ -176,7 +176,7 @@ export function useLiveKitConnectionManager({
       setConnectionState(LiveKitConnectionState.Connecting);
       console.log('[LKCM] connectToRoom: Iniciando conexión...');
 
-      if (!sessionRef.current?.user?.id) {
+      if (!session?.user?.id) {
         console.error('[LKCM] connectToRoom: ID de usuario no disponible en sesión.');
         setIsConnecting(false);
         setConnectionState(LiveKitConnectionState.Disconnected);
@@ -186,8 +186,8 @@ export function useLiveKitConnectionManager({
         return;
       }
 
-      const participantName = userProfileRef.current?.username || sessionRef.current.user.name || 'Usuario';
-      const participantIdentity = `${participantName}_${sessionRef.current.user.id.substring(0, 8)}`;
+      const participantName = userProfileRef.current?.username || session?.user?.name || 'Usuario';
+      const participantIdentity = `${participantName}_${session.user.id.substring(0, 8)}`;
       
       console.log(`[LKCM] connectToRoom: Identidad del participante: ${participantIdentity}`);
 
@@ -317,13 +317,13 @@ export function useLiveKitConnectionManager({
       }
     };
 
-    if (sessionRef.current?.user?.id && !currentRoomRef.current && connectionState === LiveKitConnectionState.Disconnected && !isConnecting) {
+    if (session?.user?.id && !currentRoomRef.current && connectionState === LiveKitConnectionState.Disconnected && !isConnecting) {
       console.log("[LKCM] useEffect Principal: Condiciones cumplidas, llamando a connectToRoom.");
       connectToRoom();
     } else {
       console.log("[LKCM] useEffect Principal: Condiciones NO cumplidas, no se llama a connectToRoom.", 
         {
-          userId: !!sessionRef.current?.user?.id,
+          userId: !!session?.user?.id,
           currentRoom: !!currentRoomRef.current,
           connectionState,
           isConnecting
@@ -345,7 +345,7 @@ export function useLiveKitConnectionManager({
         console.log("[LKCM] useEffect Principal: No se requiere desconexión explícita en la limpieza, estado de la sala:", currentRoomRef.current?.state);
       }
     };
-  }, [session?.user?.id, connectionState, isConnecting, getLiveKitToken, disconnectFromLiveKit, setAppError]);
+  }, [session?.user?.id, getLiveKitToken, disconnectFromLiveKit, setAppError]);
 
   return { room, connectionState, disconnectFromLiveKit };
 } 
