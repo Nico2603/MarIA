@@ -143,7 +143,7 @@ export function useLiveKitConnectionManager({
       setAppError('api', error instanceof Error ? error.message : 'Error desconocido al obtener token.');
       return null;
     }
-  }, [session?.user?.id, initialContext, activeSessionId, clearError, setAppError]);
+  }, [clearError, setAppError]);
 
   const disconnectFromLiveKit = useCallback(async () => {
     console.log('[LKCM] disconnectFromLiveKit: Intentando desconectar...');
@@ -195,8 +195,6 @@ export function useLiveKitConnectionManager({
 
       if (signal.aborted) {
         console.log('[LKCM] connectToRoom: Operación abortada (getLiveKitToken o antes).');
-        // setIsConnecting(false); // No es necesario si la limpieza del efecto principal lo maneja
-        // setConnectionState(LiveKitConnectionState.Disconnected);
         return;
       }
 
@@ -204,7 +202,6 @@ export function useLiveKitConnectionManager({
         console.error('[LKCM] connectToRoom: No se pudo obtener el token. No se puede conectar.');
         setIsConnecting(false);
         setConnectionState(LiveKitConnectionState.Disconnected);
-        // setAppError ya se llamaría dentro de getLiveKitToken
         return;
       }
 
@@ -212,7 +209,6 @@ export function useLiveKitConnectionManager({
       
       const roomOptions: RoomOptions = {
         // Opciones de sala si son necesarias
-        // Ejemplo: enableDynacast: true, adaptiveStream: true
       };
       const newRoomInstance = new Room(roomOptions);
 
@@ -223,18 +219,18 @@ export function useLiveKitConnectionManager({
             return;
           }
           console.log('[LKCM] RoomEvent.ConnectionStateChanged:', state);
-          setConnectionState(state); // Actualiza el estado de conexión general
+          setConnectionState(state); 
           if (state === LiveKitConnectionState.Connected) {
             console.log('[LKCM] Conectado exitosamente a la sala:', newRoomInstance.name);
-            currentRoomRef.current = newRoomInstance; // Actualiza el ref primero
-            setRoom(newRoomInstance); // Luego el estado
+            currentRoomRef.current = newRoomInstance; 
+            setRoom(newRoomInstance); 
             setIsConnecting(false);
             if (onConnectedRef.current) onConnectedRef.current(newRoomInstance);
           } else if (state === LiveKitConnectionState.Disconnected) {
             console.log('[LKCM] Desconectado de la sala (evento ConnectionStateChanged).');
             currentRoomRef.current = null;
             setRoom(null);
-            setIsConnecting(false); // Asegurarse de resetear isConnecting
+            setIsConnecting(false); 
             if (onDisconnectedRef.current) onDisconnectedRef.current();
           }
         })
@@ -263,8 +259,6 @@ export function useLiveKitConnectionManager({
             console.log('[LKCM] RoomEvent.SignalConnected: Conexión de señal establecida.');
         })
         .on(RoomEvent.Disconnected, (reason) => {
-            // Este evento puede ser redundante si ConnectionStateChanged ya maneja Disconnected
-            // Pero es bueno tenerlo por si acaso y para logging específico de la razón.
             console.log('[LKCM] RoomEvent.Disconnected - Razón:', reason);
             if (!signal.aborted) {
               currentRoomRef.current = null;
@@ -273,6 +267,23 @@ export function useLiveKitConnectionManager({
               setConnectionState(LiveKitConnectionState.Disconnected);
               if (onDisconnectedRef.current) onDisconnectedRef.current();
             }
+        })
+        .on(RoomEvent.LocalTrackUnpublished, (publication, participant) => {
+            if (signal.aborted) return;
+            console.log('[LKCM] RoomEvent.LocalTrackUnpublished:', publication.trackInfo?.name, 'por', participant.identity);
+        })
+        .on(RoomEvent.ConnectionQualityChanged, (quality, participant) => {
+            if (signal.aborted) return;
+            console.log('[LKCM] RoomEvent.ConnectionQualityChanged para', participant.identity, ':', quality);
+        })
+        .on(RoomEvent.MediaDevicesError, (error) => {
+            if (signal.aborted) return;
+            console.error('[LKCM] RoomEvent.MediaDevicesError:', error.message);
+            setAppError('livekit', `Error de dispositivos multimedia: ${error.message}`);
+        })
+        .on(RoomEvent.RoomMetadataChanged, (metadata) => {
+            if (signal.aborted) return;
+            console.log("[LKCM] RoomEvent.RoomMetadataChanged:", metadata);
         })
         .on(RoomEvent.Reconnecting, () => {
             if (signal.aborted) return;
@@ -283,26 +294,21 @@ export function useLiveKitConnectionManager({
             if (signal.aborted) return;
             console.log('[LKCM] RoomEvent.Reconnected: Reconectado exitosamente.');
             setConnectionState(LiveKitConnectionState.Connected);
-            // No es necesario llamar a setRoom aquí si la instancia de la sala no cambió.
-            // Y onConnectedRef.current ya se habría llamado la primera vez.
         });
 
       try {
         console.log('[LKCM] connectToRoom: Conectando con URL:', liveKitUrlRef.current, 'y token.');
         await newRoomInstance.connect(liveKitUrlRef.current, token, { autoSubscribe: true });
         console.log('[LKCM] connectToRoom: newRoomInstance.connect() PROMESA RESUELTA.');
-        // El estado 'Connected' se maneja en el evento ConnectionStateChanged
       } catch (error) {
         if (signal.aborted) {
           console.log('[LKCM] connectToRoom: Conexión abortada durante el intento de conexión.');
-          // La limpieza se encargará de los estados
           return;
         }
         console.error('[LKCM] connectToRoom: Error al conectar a la sala de LiveKit:', error);
         if (onConnectionErrorRef.current) {
             onConnectionErrorRef.current(error instanceof Error ? error : new Error('Error desconocido al conectar'));
         }
-        // Asegurar la limpieza del estado si la conexión falla
         currentRoomRef.current = null;
         setRoom(null);
         setIsConnecting(false);
@@ -311,55 +317,35 @@ export function useLiveKitConnectionManager({
       }
     };
 
-    // Lógica principal del efecto
-    if (!liveKitUrlRef.current) {
-        console.error("[LKCM] FATAL: NEXT_PUBLIC_LIVEKIT_URL no está configurado. La conexión no es posible.");
-        if (!signal.aborted) {
-          setAppError('livekit', 'NEXT_PUBLIC_LIVEKIT_URL no está configurado.');
-        }
-        return;
+    if (sessionRef.current?.user?.id && !currentRoomRef.current && connectionState === LiveKitConnectionState.Disconnected && !isConnecting) {
+      console.log("[LKCM] useEffect Principal: Condiciones cumplidas, llamando a connectToRoom.");
+      connectToRoom();
     } else {
-        // console.log('[LKCM] LiveKit URL configurada:', liveKitUrlRef.current); // Log menos verboso
-    }
-
-    if (authStatus === 'authenticated' && sessionRef.current?.user?.id) {
-      if (!currentRoomRef.current && !isConnecting && connectionState === LiveKitConnectionState.Disconnected) {
-        console.log('[LKCM] Efecto principal: Autenticado, sin sala, no conectando y desconectado. Intentando conectar...');
-        connectToRoom();
-      } else if (currentRoomRef.current && connectionState !== LiveKitConnectionState.Connected && !isConnecting) {
-        // Esto podría ser una condición donde estamos desconectados inesperadamente pero aún tenemos una referencia a la sala.
-        // O un estado inconsistente.
-        console.warn('[LKCM] Efecto principal: Sala existe pero no está conectada y no está conectando. Estado:', connectionState);
-        // Considerar una acción aquí, como intentar reconectar o limpiar.
-        // Por ahora, solo lo logueamos para observar.
-      }
-    } else if (authStatus !== 'authenticated' && currentRoomRef.current) {
-      console.log('[LKCM] Efecto principal: No autenticado pero hay una sala. Desconectando...');
-      disconnectFromLiveKit();
-    } else if (authStatus === 'loading') {
-      console.log('[LKCM] Efecto principal: Sesión cargando, esperando...');
+      console.log("[LKCM] useEffect Principal: Condiciones NO cumplidas, no se llama a connectToRoom.", 
+        {
+          userId: !!sessionRef.current?.user?.id,
+          currentRoom: !!currentRoomRef.current,
+          connectionState,
+          isConnecting
+        }
+      );
     }
 
     return () => {
-      console.log('[LKCM] Efecto principal: Limpieza.');
-      abortController.abort(); // Aborta cualquier fetch o proceso en curso
-      setIsConnecting(false); // Asegurar que isConnecting se resetee en la limpieza
-      if (currentRoomRef.current) {
-        console.log('[LKCM] Efecto principal: Limpieza - Desconectando de la sala existente.');
-        // Llamar a disconnect directamente en la instancia de la sala sin esperar
-        // ya que el componente podría desmontarse.
-        currentRoomRef.current.disconnect();
-        currentRoomRef.current = null; 
-        setRoom(null);
-        setConnectionState(LiveKitConnectionState.Disconnected);
+      console.log("[LKCM] useEffect Principal: Limpieza. Abortando operaciones y desconectando si es necesario.");
+      abortController.abort();
+      if (currentRoomRef.current && 
+         (currentRoomRef.current.state === LiveKitConnectionState.Connected || 
+          currentRoomRef.current.state === LiveKitConnectionState.Reconnecting)) {
+        console.log("[LKCM] useEffect Principal: Desconectando de la sala en la limpieza.");
+        disconnectFromLiveKit().catch(error => 
+          console.error("[LKCM] useEffect Principal: Error al desconectar durante la limpieza:", error)
+        );
+      } else {
+        console.log("[LKCM] useEffect Principal: No se requiere desconexión explícita en la limpieza, estado de la sala:", currentRoomRef.current?.state);
       }
     };
-  // Reducir las dependencias para evitar bucles. 
-  // Las dependencias que cambian muy a menudo (session, userProfile, etc.) se manejan con refs.
-  // authStatus es importante para reaccionar a cambios de login/logout.
-  // connectionState e isConnecting son importantes para la lógica de control de conexión/desconexión.
-  // room se usa indirectamente a través de currentRoomRef para la condición de si ya hay una sala.
-  }, [authStatus, session?.user?.id]); 
+  }, [session?.user?.id, connectionState, isConnecting, getLiveKitToken, disconnectFromLiveKit, setAppError]);
 
   return { room, connectionState, disconnectFromLiveKit };
 } 

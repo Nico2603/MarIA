@@ -193,11 +193,13 @@ function VoiceChatContainer() {
     isSpeaking: state.isSpeaking,
     isSessionClosed: state.isSessionClosed,
     activeSessionId: state.activeSessionId,
-    roomRef,
+    room: room,
+    roomRef: roomRef,
   }), [
+    dispatch,
     state.conversationActive, state.greetingMessageId, state.currentSpeakingId,
     memoizedEndSession, state.isProcessing, state.isListening, state.isSpeaking,
-    state.isSessionClosed, state.activeSessionId
+    state.isSessionClosed, state.activeSessionId, room, roomRef
   ]);
 
   const { handleDataReceived, handleSendTextMessage } = useLiveKitDataChannelEvents(dataChannelEventsProps);
