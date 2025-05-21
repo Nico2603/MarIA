@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, Dispatch, FormEvent, RefObject } from 'react';
-import { DataPacket_Kind, RemoteParticipant, Room } from 'livekit-client';
+import { useCallback, Dispatch, FormEvent, RefObject, useEffect } from 'react';
+import { DataPacket_Kind, RemoteParticipant, Room, LocalParticipant, Track, TrackPublication } from 'livekit-client';
 import type { Message } from '@/types/message'; // Asegúrate que la ruta es correcta
 import { useError } from '@/contexts/ErrorContext'; // Asegúrate que la ruta es correcta
 import type { VoiceChatAction } from '@/reducers/voiceChatReducer'; // Importar VoiceChatAction
@@ -20,6 +20,7 @@ interface UseLiveKitDataChannelEventsProps {
   isSessionClosed: boolean;
   activeSessionId: string | null;
   roomRef: RefObject<Room | null>;
+  room: Room | null; // Añadido room como prop para el useEffect
 }
 
 export function useLiveKitDataChannelEvents({
@@ -34,15 +35,29 @@ export function useLiveKitDataChannelEvents({
   isSessionClosed,
   activeSessionId,
   roomRef,
+  room, // Recibir room
 }: UseLiveKitDataChannelEventsProps) {
   const { setError: setAppError } = useError();
+
+  useEffect(() => {
+    if (room && room.localParticipant) {
+      const localTrackPublications = Array.from(room.localParticipant.trackPublications.values());
+      console.log('[LiveKit] LocalParticipant track publications (all types):', localTrackPublications);
+      
+      const remoteParticipantIdentities = Array.from(room.remoteParticipants.values()).map((p: RemoteParticipant) => p.identity);
+      console.log('[LiveKit] Remote participants identities:', remoteParticipantIdentities);
+    }
+  }, [room]); // Ejecutar cuando room cambie
 
   const handleDataReceived = useCallback((payload: Uint8Array, participant?: RemoteParticipant, kind?: DataPacket_Kind) => {
     if (kind === DataPacket_Kind.RELIABLE && participant && participant.identity === AGENT_IDENTITY) {
       try {
         const event = JSON.parse(new TextDecoder().decode(payload));
+        console.log('[handleDataReceived]> Raw event:', event); // Log general para todos los eventos recibidos del agente
         switch (event.type) {
           case 'initial_greeting_message':
+            console.log('[LiveKit] initial_greeting_message payload:', event.payload);
+            console.log('→ greetingMessageId before dispatch:', greetingMessageId);
             if (event.payload && event.payload.text) {
               const greetingMsg: Message = {
                 id: event.payload.id || `greeting-${Date.now()}`,
@@ -50,8 +65,9 @@ export function useLiveKitDataChannelEvents({
                 isUser: false,
                 timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
               };
-              dispatch({ type: 'SET_MESSAGES', payload: [greetingMsg] }); // Usar SET_MESSAGES para asegurar que es un array
+              dispatch({ type: 'SET_MESSAGES', payload: [greetingMsg] });
               dispatch({ type: 'SET_GREETING_MESSAGE_ID', payload: greetingMsg.id });
+              console.log('→ greetingMessageId after dispatch:', greetingMsg.id);
             }
             break;
           case 'user_transcription_result':
@@ -79,6 +95,9 @@ export function useLiveKitDataChannelEvents({
             }
             break;
           case 'tts_started':
+            console.log('[LiveKit] tts_started messageId:', event.payload.messageId);
+            console.log(' current greetingMessageId:', greetingMessageId);
+            console.log(' conversationActive flag:', conversationActive);
             if (event.payload && event.payload.messageId) {
               dispatch({ type: 'SET_CURRENT_SPEAKING_ID', payload: event.payload.messageId });
               dispatch({ type: 'SET_SPEAKING', payload: true });
@@ -89,6 +108,8 @@ export function useLiveKitDataChannelEvents({
             }
             break;
           case 'tts_ended':
+            console.log('[LiveKit] tts_ended messageId:', event.payload.messageId, 'isClosing:', event.payload.isClosing);
+            console.log(' currentSpeakingId before clear:', currentSpeakingId);
             if (event.payload && event.payload.messageId) {
               if (currentSpeakingId === event.payload.messageId) {
                 dispatch({ type: 'SET_SPEAKING', payload: false });
@@ -116,7 +137,8 @@ export function useLiveKitDataChannelEvents({
     greetingMessageId, 
     currentSpeakingId, 
     endSession, 
-    setAppError
+    setAppError,
+    // room // No es necesario aquí ya que el useEffect lo maneja y handleDataReceived se pasa a los listeners de la sala
   ]);
 
   const handleSendTextMessage = useCallback(async (messageText: string) => {
