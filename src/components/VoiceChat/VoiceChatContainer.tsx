@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useCallback, useReducer, useMemo } from 'react';
+import React, { useEffect, useRef, useCallback, useReducer, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Room, 
@@ -62,6 +62,7 @@ function VoiceChatContainer() {
   const { notification, showNotification } = useNotifications();
 
   const [state, dispatch] = useReducer(voiceChatReducer, initialState);
+  const [discoveredTargetParticipant, setDiscoveredTargetParticipant] = useState<RemoteParticipant | null>(null);
   const dataReceivedHandlerRef = useRef<((...args: any[]) => void) | null>(null);
   const {
     isListening,
@@ -153,6 +154,48 @@ function VoiceChatContainer() {
     handleParticipantDisconnected,
     onDataReceived: onDataReceivedLiveKitCallback,
   });
+
+  useEffect(() => {
+    if (!room) {
+      setDiscoveredTargetParticipant(null);
+      return;
+    }
+
+    let found = false;
+    for (const p of Array.from(room.remoteParticipants.values())) {
+      if (p.identity !== AGENT_IDENTITY) {
+        console.log(`[VoiceChatContainer] Auto-discovered target participant: ${p.identity}`);
+        setDiscoveredTargetParticipant(p);
+        found = true;
+        break;
+      }
+    }
+
+    if (found) return;
+
+    console.log("[VoiceChatContainer] No target participant found initially. Listening for new connections...");
+    const handleNewParticipantConnected = (participant: RemoteParticipant) => {
+      if (participant.identity !== AGENT_IDENTITY) {
+        console.log(`[VoiceChatContainer] New target participant connected: ${participant.identity}`);
+        setDiscoveredTargetParticipant(participant);
+        room.off(RoomEvent.ParticipantConnected, handleNewParticipantConnected);
+      }
+    };
+
+    room.on(RoomEvent.ParticipantConnected, handleNewParticipantConnected);
+
+    return () => {
+      room.off(RoomEvent.ParticipantConnected, handleNewParticipantConnected);
+    };
+  }, [room]);
+
+  useEffect(() => {
+    if (discoveredTargetParticipant) {
+      console.log(`VoiceChatContainer: Discovered target participant ${discoveredTargetParticipant.identity} is available.`);
+    } else {
+      console.log(`VoiceChatContainer: Waiting for target participant to be auto-discovered.`);
+    }
+  }, [discoveredTargetParticipant]);
 
   const conversationManagerProps = useMemo(() => ({
     session,

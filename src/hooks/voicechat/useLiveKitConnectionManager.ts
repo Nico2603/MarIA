@@ -21,15 +21,18 @@ export interface UseLiveKitConnectionManagerResult {
   room: Room | null;
   connectionState: LiveKitConnectionState;
   disconnectFromLiveKit: () => Promise<void>;
+  targetParticipant: RemoteParticipant | null;
 }
 
 interface UseLiveKitConnectionManagerProps {
   initialContext: string | null;
   activeSessionId: string | null;
   userProfile: { id?: string; username?: string | null; email?: string | null } | null;
+  targetParticipantIdentity?: string;
   onConnected?: (room: Room) => void;
   onDisconnected?: () => void;
   onConnectionError?: (error: Error) => void;
+  onTargetParticipantFound?: (participant: RemoteParticipant) => void;
   handleTrackSubscribed: (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => void;
   handleTrackUnsubscribed: (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => void;
   handleParticipantDisconnected: (participant: RemoteParticipant) => void;
@@ -42,9 +45,11 @@ export function useLiveKitConnectionManager({
   initialContext,
   activeSessionId,
   userProfile,
+  targetParticipantIdentity,
   onConnected,
   onDisconnected,
   onConnectionError,
+  onTargetParticipantFound,
   handleTrackSubscribed,
   handleTrackUnsubscribed,
   handleParticipantDisconnected,
@@ -56,6 +61,7 @@ export function useLiveKitConnectionManager({
   const [room, setRoom] = useState<Room | null>(null);
   const [connectionState, setConnectionState] = useState<LiveKitConnectionState>(LiveKitConnectionState.Disconnected);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [targetParticipant, setTargetParticipant] = useState<RemoteParticipant | null>(null);
   
   const liveKitUrlRef = useRef(process.env.NEXT_PUBLIC_LIVEKIT_URL || '');
 
@@ -79,6 +85,7 @@ export function useLiveKitConnectionManager({
   const onConnectedRef = useRef(onConnected);
   const onDisconnectedRef = useRef(onDisconnected);
   const onConnectionErrorRef = useRef(onConnectionError);
+  const onTargetParticipantFoundRef = useRef(onTargetParticipantFound);
   const handleTrackSubscribedRef = useRef(handleTrackSubscribed);
   const handleTrackUnsubscribedRef = useRef(handleTrackUnsubscribed);
   const handleParticipantDisconnectedRef = useRef(handleParticipantDisconnected);
@@ -88,11 +95,12 @@ export function useLiveKitConnectionManager({
     onConnectedRef.current = onConnected;
     onDisconnectedRef.current = onDisconnected;
     onConnectionErrorRef.current = onConnectionError;
+    onTargetParticipantFoundRef.current = onTargetParticipantFound;
     handleTrackSubscribedRef.current = handleTrackSubscribed;
     handleTrackUnsubscribedRef.current = handleTrackUnsubscribed;
     handleParticipantDisconnectedRef.current = handleParticipantDisconnected;
     onDataReceivedRef.current = onDataReceived;
-  }, [onConnected, onDisconnected, onConnectionError, handleTrackSubscribed, handleTrackUnsubscribed, handleParticipantDisconnected, onDataReceived]);
+  }, [onConnected, onDisconnected, onConnectionError, handleTrackSubscribed, handleTrackUnsubscribed, handleParticipantDisconnected, onDataReceived, onTargetParticipantFound]);
 
   const getLiveKitToken = useCallback(async (participantIdentity: string, signal: AbortSignal) => {
     clearError();
@@ -226,6 +234,40 @@ export function useLiveKitConnectionManager({
             setRoom(newRoomInstance); 
             setIsConnecting(false);
             if (onConnectedRef.current) onConnectedRef.current(newRoomInstance);
+
+            // Buscar el RemoteParticipant objetivo
+            if (targetParticipantIdentity && newRoomInstance) {
+              let foundParticipant: RemoteParticipant | undefined = undefined;
+              for (const p of Array.from(newRoomInstance.remoteParticipants.values())) { 
+                if (p.identity === targetParticipantIdentity) {
+                  foundParticipant = p;
+                  break;
+                }
+              }
+              if (foundParticipant) {
+                console.log(`[LKCM] Target participant ${targetParticipantIdentity} found.`);
+                setTargetParticipant(foundParticipant);
+                if (onTargetParticipantFoundRef.current) {
+                  onTargetParticipantFoundRef.current(foundParticipant);
+                }
+              } else {
+                console.warn(`[LKCM] Target participant ${targetParticipantIdentity} not found in the room. Listening for connections...`);
+                // Escuchar si se conecta más tarde
+                const handleNewParticipant = (newP: Participant) => {
+                  if (newP instanceof RemoteParticipant && newP.identity === targetParticipantIdentity) {
+                    console.log(`[LKCM] Target participant ${targetParticipantIdentity} connected later.`);
+                    setTargetParticipant(newP);
+                    if (onTargetParticipantFoundRef.current) {
+                      onTargetParticipantFoundRef.current(newP);
+                    }
+                    newRoomInstance.off(RoomEvent.ParticipantConnected, handleNewParticipant); // Limpiar listener
+                  }
+                };
+                newRoomInstance.on(RoomEvent.ParticipantConnected, handleNewParticipant);
+              }
+            }
+            // Fin de la búsqueda del RemoteParticipant
+
           } else if (state === LiveKitConnectionState.Disconnected) {
             console.log('[LKCM] Desconectado de la sala (evento ConnectionStateChanged).');
             currentRoomRef.current = null;
@@ -347,5 +389,5 @@ export function useLiveKitConnectionManager({
     };
   }, [session?.user?.id, getLiveKitToken, disconnectFromLiveKit, setAppError]);
 
-  return { room, connectionState, disconnectFromLiveKit };
+  return { room, connectionState, disconnectFromLiveKit, targetParticipant };
 } 
