@@ -36,17 +36,19 @@ const ChatInput: React.FC<ChatInputProps> = ({
   isPushToTalkActive,
   textAreaRef,
 }) => {
+  const safeTextInput = textInput ?? '';
+
   return (
     <div className="p-4 bg-white dark:bg-neutral-800 border-t border-neutral-200 dark:border-neutral-700">
       <form onSubmit={(e) => { 
         e.preventDefault(); 
-        if (textInput.trim()) { 
-          handleSendTextMessage(textInput);
+        if (safeTextInput.trim()) {
+          handleSendTextMessage(safeTextInput);
         }
       }} className="flex items-center space-x-3">
         <textarea
           ref={textAreaRef}
-          value={textInput}
+          value={safeTextInput}
           onChange={(e) => setTextInput(e.target.value)}
           placeholder={
             !conversationActive ? "Inicia una conversación..." :
@@ -62,8 +64,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
-              if (textInput.trim()) {
-                handleSendTextMessage(textInput);
+              if (safeTextInput.trim()) {
+                handleSendTextMessage(safeTextInput);
               }
             }
             if (e.code === 'Space') {
@@ -91,7 +93,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
         </button>
         <button
           type="submit"
-          disabled={!textInput.trim() || !conversationActive || isListening || isProcessing || isSpeaking || isSessionClosed || isThinking}
+          disabled={!safeTextInput.trim() || !conversationActive || isListening || isProcessing || isSpeaking || isSessionClosed || isThinking}
           className="w-10 h-10 rounded-full flex items-center justify-center bg-primary-600 text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
           aria-label="Enviar mensaje"
         >

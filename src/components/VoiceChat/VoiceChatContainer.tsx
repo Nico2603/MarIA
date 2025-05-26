@@ -561,6 +561,8 @@ function VoiceChatContainer() {
       userProfile={userProfile}
       currentSessionTitle={currentSessionTitle}
       sessionStartTime={sessionStartTime}
+      textInput={textInput}
+      setTextInput={(value: string) => dispatch({ type: 'SET_TEXT_INPUT', payload: value })}
       clearError={clearError}
       toggleChatVisibility={toggleChatVisibility}
       handleStartConversation={handleStartConversation}

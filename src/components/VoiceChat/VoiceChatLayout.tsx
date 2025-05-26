@@ -54,6 +54,8 @@ interface VoiceChatLayoutProps {
   userProfile: any | null; // Cambiado a any temporalmente
   currentSessionTitle: string | null;
   sessionStartTime: number | null;
+  textInput: string;
+  setTextInput: (value: string) => void;
 
   // Callbacks y refs
   clearError: (type?: string) => void;
@@ -88,6 +90,8 @@ export default function VoiceChatLayout({
   userProfile,
   currentSessionTitle,
   sessionStartTime,
+  textInput,
+  setTextInput,
   clearError,
   toggleChatVisibility,
   handleStartConversation,
@@ -206,6 +210,8 @@ export default function VoiceChatLayout({
                 userName={userProfile?.name}
                 userImage={userProfile?.image}
                 conversationActive={conversationActive}
+                textInput={textInput}
+                setTextInput={setTextInput}
               />
             </motion.aside>
           )}
