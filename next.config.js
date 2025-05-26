@@ -8,8 +8,8 @@ const nextConfig = {
   
   // Optimizaciones para HTTP/2
   experimental: {
-    optimizeCss: true,
-    optimizeServerReact: true,
+    // optimizeCss: true,
+    // optimizeServerReact: true,
   },
   
   // Configuración para manejo de imágenes

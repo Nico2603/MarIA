@@ -6,7 +6,7 @@ import { ErrorProvider } from '@/contexts/ErrorContext';
 
 export default function ChatPage() {
   return (
-    <div className="h-full">
+    <div className="min-h-screen flex flex-col">
       <ErrorProvider>
         <VoiceChatContainer />
       </ErrorProvider>

@@ -3,29 +3,29 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, AlertCircle } from 'lucide-react';
-// Eliminado: import type { ExtendedUserProfile } from '@/reducers/voiceChatReducer'; 
+
 import { ConnectionState as LiveKitConnectionState } from 'livekit-client';
 
 interface StartConversationOverlayProps {
   authStatus: 'loading' | 'authenticated' | 'unauthenticated';
-  // userProfile: ExtendedUserProfile | null; // Reemplazado
-  userName?: string | null; // Nueva prop simplificada (reemplaza sessionUserName y userProfile.username)
+
+  userName?: string | null; 
   isReadyToStart: boolean;
   handleStartConversation: () => void;
   isSessionClosed: boolean;
   connectionState: LiveKitConnectionState;
-  // sessionUserName ya no es necesaria, se pasa como userName
+
 }
 
 const StartConversationOverlay: React.FC<StartConversationOverlayProps> = ({
   authStatus,
-  // userProfile, // Ya no se usa
-  userName, // Usar directamente
+
+  userName,
   isReadyToStart,
   handleStartConversation,
   isSessionClosed,
   connectionState
-  // sessionUserName, // Ya no se usa
+
 }) => {
   return (
     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/50 backdrop-blur-md text-white">
