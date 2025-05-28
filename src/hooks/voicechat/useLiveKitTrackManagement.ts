@@ -57,25 +57,24 @@ export function useLiveKitTrackManagement({
   }, []);
 
   const handleTrackSubscribed = useCallback((track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
-    console.log(`Track Subscribed: ${track.kind} from ${participant.identity} (Source: ${publication.source})`);
-    const isAgent = participant.identity === AGENT_IDENTITY;
-    const isLocalParticipant = roomRef.current && participant.identity === roomRef.current.localParticipant.identity;
+    console.log(`[LiveKitTrackMgmt] Track Subscribed: ${track.kind} from ${participant.identity} (Source: ${publication.source}, SID: ${publication.trackSid})`);
+    
+    const localParticipant = roomRef.current?.localParticipant;
 
-    if (isAgent && track.kind === Track.Kind.Audio) {
-      addTrack(track, publication, participant);
-      console.log(`Audio del agente ${participant.identity} añadido a activeTracks.`);
+    if (
+      localParticipant &&
+      publication.kind === Track.Kind.Video &&
+      participant.identity === localParticipant.identity
+    ) {
+      console.log(
+        `[LiveKitTrackMgmt] Ignorando vídeo local: Identity=${participant.identity}`
+      );
+      return;
     }
-    else if (isAgent && track.kind === Track.Kind.Video) {
-      addTrack(track, publication, participant);
-      console.log(`Video del agente ${participant.identity} añadido a activeTracks.`);
-    }
-    else if (!isAgent && !isLocalParticipant && track.kind === Track.Kind.Audio) {
-      addTrack(track, publication, participant);
-      console.log(`Audio remoto de ${participant.identity} añadido a activeTracks.`);
-    }
-    else {
-      console.log(`Ignorando pista suscrita: Local=${isLocalParticipant}, Kind=${track.kind}, Identity=${participant.identity}, Source=${publication.source}`);
-    }
+
+    addTrack(track, publication, participant);
+    console.log(`[LiveKitTrackMgmt] Pista añadida a activeTracks: Kind=${track.kind}, Identity=${participant.identity}, Source=${publication.source}`);
+
   }, [addTrack, roomRef]);
 
   const handleTrackUnsubscribed = useCallback((track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {

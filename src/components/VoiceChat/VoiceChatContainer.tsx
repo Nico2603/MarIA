@@ -113,7 +113,11 @@ function VoiceChatContainer() {
     roomRef
   });
 
-  const tavusVideoTrack = activeTracks.find(t => t.isAgent && t.kind === Track.Kind.Video && t.source === Track.Source.Camera);
+  const tavusVideoTrack = activeTracks.find(t => 
+    t.kind === Track.Kind.Video && 
+    t.identity === 'tavus-avatar-agent' && 
+    t.source === Track.Source.Camera
+  );
   const audioTracks = activeTracks
     .filter(t => t.kind === Track.Kind.Audio && t.publication && t.publication.track)
     .map(t => t.publication.track!);
@@ -509,17 +513,19 @@ function VoiceChatContainer() {
   if (!state.conversationActive && state.userProfile) {
     console.log('[VoiceChatContainer] Displaying StartConversationOverlay because conversation is not active and user profile exists.');
     return (
-      <StartConversationOverlay
-        authStatus={authStatus}
-        userName={state.userProfile?.username}
-        isReadyToStart={state.isReadyToStart}
-        handleStartConversation={() => {
-          console.log('[VoiceChatContainer] StartConversationOverlay: handleStartConversation triggered.');
-          handleStartConversation();
-        }}
-        isSessionClosed={state.isSessionClosed}
-        connectionState={connectionState}
-      />
+      <div className="flex-1 flex flex-col relative">
+        <StartConversationOverlay
+          authStatus={authStatus}
+          userName={state.userProfile?.username}
+          isReadyToStart={state.isReadyToStart}
+          handleStartConversation={() => {
+            console.log('[VoiceChatContainer] StartConversationOverlay: handleStartConversation triggered.');
+            handleStartConversation();
+          }}
+          isSessionClosed={state.isSessionClosed}
+          connectionState={connectionState}
+        />
+      </div>
     );
   }
 

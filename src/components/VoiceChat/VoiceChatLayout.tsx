@@ -108,7 +108,7 @@ export default function VoiceChatLayout({
   // o se manejan mejor en el contenedor principal.
 
   return (
-    <div className="relative flex flex-col h-full max-h-screen overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+    <div className="relative flex flex-col flex-1 max-h-screen overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 text-white">
       <AnimatePresence>
         {appError && appError.type === 'livekit' && (
           <motion.div
@@ -124,8 +124,13 @@ export default function VoiceChatLayout({
       </AnimatePresence>
       <NotificationDisplay notification={notification} />
 
-      <div className="flex flex-1 overflow-hidden">
-        <div className={`relative flex-1 flex flex-col items-center justify-center transition-all duration-300 ease-in-out ${isChatVisible ? 'md:w-2/3' : 'w-full'}`}>
+      <div className="flex flex-row-reverse flex-1 overflow-hidden">
+        <div className={`relative flex-1 flex flex-col items-center justify-center transition-all duration-300 ease-in-out`}>
+          <ChatToggle
+            isChatVisible={isChatVisible}
+            toggleChatVisibility={toggleChatVisibility}
+            conversationActive={conversationActive}
+          />
           {tavusVideoTrackPublication ? (
             <VideoTrack
               trackRef={{
@@ -193,11 +198,11 @@ export default function VoiceChatLayout({
           {isChatVisible && (
             <motion.aside
               ref={chatContainerRef}
-              initial={{ x: '100%' }}
+              initial={{ x: '-100%' }}
               animate={{ x: 0 }}
-              exit={{ x: '100%' }}
+              exit={{ x: '-100%' }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="flex-none w-full md:w-1/3 max-w-md bg-gray-850 h-full border-l border-gray-700 flex flex-col"
+              className="flex-none w-1/3 bg-white h-full border-r border-gray-300 flex flex-col"
             >
               {/* @ts-ignore ChatPanelProps pendiente de revisión para onSendMessage */}
               <DynamicChatPanel
@@ -216,12 +221,6 @@ export default function VoiceChatLayout({
             </motion.aside>
           )}
         </AnimatePresence>
-
-        <ChatToggle
-          isChatVisible={isChatVisible}
-          toggleChatVisibility={toggleChatVisibility}
-          conversationActive={conversationActive}
-        />
       </div>
 
       <footer className="bg-gray-850 p-3 border-t border-gray-700 flex items-center justify-between text-xs text-gray-400">

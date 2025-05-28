@@ -3,9 +3,8 @@
 import React, { useRef, useEffect } from 'react';
 import { Mic, Loader2 } from 'lucide-react';
 import StatusIndicator from './StatusIndicator';
-import RemoteTrackPlayer from './RemoteTrackPlayer';
+import { VideoTrack } from '@livekit/components-react';
 import type { ActiveTrackInfo } from '@/hooks/voicechat/useLiveKitTrackManagement';
-import { Track } from 'livekit-client';
 
 interface VideoPanelProps {
   isChatVisible: boolean;
@@ -34,55 +33,22 @@ const VideoPanel: React.FC<VideoPanelProps> = ({
   handleStopListening,
   isPushToTalkActive,
 }) => {
-  const fallbackVideoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    if (fallbackVideoRef.current) {
-      if (!tavusTrackInfo) {
-        const newSrc = '/videos/mute.mp4';
-        const currentBaseSrc = fallbackVideoRef.current.currentSrc 
-          ? fallbackVideoRef.current.currentSrc.substring(fallbackVideoRef.current.currentSrc.lastIndexOf('/') + 1) 
-          : "";
-        if (currentBaseSrc !== 'mute.mp4' || fallbackVideoRef.current.paused) {
-          fallbackVideoRef.current.src = newSrc;
-          fallbackVideoRef.current.load();
-          fallbackVideoRef.current.play().catch(e => {
-            if (e.name !== 'AbortError') {
-              console.error("Error playing fallback video:", e);
-            }
-          });
-        }
-      } else {
-        if (!fallbackVideoRef.current.paused) {
-            fallbackVideoRef.current.pause();
-        }
-      }
-    }
-  }, [tavusTrackInfo]);
-
   return (
-    <div className={`relative flex flex-col items-center justify-center flex-1 h-full bg-white dark:bg-neutral-800 transition-all duration-300 ease-in-out p-4 md:p-6 ${isChatVisible ? 'md:w-2/3' : 'w-full'}`}>
+    <div className={`relative flex flex-col items-center justify-center flex-1 h-full bg-white dark:bg-neutral-800 transition-all duration-300 ease-in-out ${isChatVisible ? 'md:w-2/3' : 'w-full'}`}>
       <div className="relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-black">
-        {tavusTrackInfo && tavusTrackInfo.kind === Track.Kind.Video && tavusTrackInfo.publication && tavusTrackInfo.publication.track ? (
-          <RemoteTrackPlayer
-            key={tavusTrackInfo.id}
-            track={tavusTrackInfo.publication.track}
-            className="w-full h-full object-contain"
-            autoPlay
-            playsInline
+        {tavusTrackInfo?.participant && tavusTrackInfo.publication?.track && tavusTrackInfo.source ? (
+          <VideoTrack
+            trackRef={{
+              participant: tavusTrackInfo.participant,
+              publication: tavusTrackInfo.publication,
+              source: tavusTrackInfo.source,
+            }}
+            className="w-full h-full object-cover"
           />
         ) : (
-          <video
-            ref={fallbackVideoRef}
-            key={isSpeaking && !tavusTrackInfo ? 'speaking-fallback' : 'idle-fallback'}
-            autoPlay
-            loop
-            muted
-            playsInline
-            className={`w-full h-full transition-all duration-300 ease-in-out ${isChatVisible || !conversationActive ? 'object-cover' : 'object-contain'}`}
-          >
-            Tu navegador no soporta el elemento de video.
-          </video>
+          <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+            <span className="text-gray-500">Esperando vídeo del avatar…</span>
+          </div>
         )}
         <StatusIndicator 
             isListening={isListening}
