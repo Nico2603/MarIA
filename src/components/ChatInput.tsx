@@ -19,6 +19,8 @@ interface ChatInputProps {
   conversationActive: boolean;
   isPushToTalkActive: boolean;
   textAreaRef: React.RefObject<HTMLTextAreaElement>;
+  onSpeechStart?: () => void;
+  onSpeechEnd?: () => void;
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({
@@ -35,6 +37,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
   conversationActive,
   isPushToTalkActive,
   textAreaRef,
+  onSpeechStart,
+  onSpeechEnd,
 }) => {
   const safeTextInput = textInput ?? '';
 
@@ -43,6 +47,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
       <form onSubmit={(e) => { 
         e.preventDefault(); 
         if (safeTextInput.trim()) {
+          console.log('[ChatInput] Enviando texto al bot:', safeTextInput);
           handleSendTextMessage(safeTextInput);
         }
       }} className="flex items-center space-x-3">
@@ -88,6 +93,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
             (!conversationActive || isProcessing || isSpeaking || isSessionClosed || isThinking) ? 'opacity-50 cursor-not-allowed' : ''
           }`}
           aria-label={isListening ? "Detener micrófono" : "Activar micrófono"}
+          onMouseDown={() => { console.log('Botón mic: mouse down'); onSpeechStart?.(); }}
+          onMouseUp={() =>   { console.log('Botón mic: mouse up');   onSpeechEnd?.(); }}
+          onTouchStart={() => { console.log('Botón mic: touch start'); onSpeechStart?.(); }}
+          onTouchEnd={() =>   { console.log('Botón mic: touch end');   onSpeechEnd?.(); }}
         >
           {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mic className="h-5 w-5" />}
         </button>

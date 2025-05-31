@@ -38,11 +38,11 @@ const UserDropdown = ({ theme }: { theme: string }) => {
         aria-haspopup="true"
       >
         <Image
-          src={user.image ?? '/default-avatar.png'}
-          alt={user.name ?? 'Avatar del usuario'}
+          className="h-8 w-8 rounded-full"
+          src={user.image ?? '/img/MarIA.png'}
+          alt={user.name ?? 'User Avatar'}
           width={32}
           height={32}
-          className="rounded-full"
         />
       </button>
 

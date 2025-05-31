@@ -34,8 +34,8 @@ const VideoPanel: React.FC<VideoPanelProps> = ({
   isPushToTalkActive,
 }) => {
   return (
-    <div className={`relative flex flex-col items-center justify-center flex-1 h-full bg-white dark:bg-neutral-800 transition-all duration-300 ease-in-out ${isChatVisible ? 'md:w-2/3' : 'w-full'}`}>
-      <div className="relative w-full h-full rounded-lg overflow-hidden shadow-lg bg-black">
+    <div className={`relative flex flex-col items-center justify-center flex-1 min-h-0 bg-white dark:bg-neutral-800 transition-all duration-300 ease-in-out ${isChatVisible ? 'md:w-2/3' : 'w-full'}`}>
+      <div className="relative w-full h-full overflow-hidden shadow-lg bg-black">
         {tavusTrackInfo?.participant && tavusTrackInfo.publication?.track && tavusTrackInfo.source ? (
           <VideoTrack
             trackRef={{
@@ -43,7 +43,7 @@ const VideoPanel: React.FC<VideoPanelProps> = ({
               publication: tavusTrackInfo.publication,
               source: tavusTrackInfo.source,
             }}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain"
           />
         ) : (
           <div className="w-full h-full bg-gray-800 flex items-center justify-center">

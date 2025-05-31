@@ -108,7 +108,7 @@ export default function VoiceChatLayout({
   // o se manejan mejor en el contenedor principal.
 
   return (
-    <div className="relative flex flex-col flex-1 max-h-screen overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+    <div className="relative flex flex-col h-full overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 text-white">
       <AnimatePresence>
         {appError && appError.type === 'livekit' && (
           <motion.div

@@ -73,11 +73,11 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   return (
     <div
       ref={chatContainerRef}
-      className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 scroll-smooth bg-white dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 relative flex flex-col"
+      className="flex-1 flex flex-col bg-white dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 relative"
       aria-live="polite"
       aria-relevant="additions text"
     >
-      <div className="flex-grow overflow-y-auto space-y-4 p-0 m-0">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 scroll-smooth">
         {messages.length === 0 && !isThinking ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -121,7 +121,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             </p>
           </motion.div>
         ) : (
-          messages.map((msg) => (
+          messages.map((msg, index) => (
             <TranscribedResponse
               key={msg.id}
               text={msg.text}
@@ -129,7 +129,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               timestamp={msg.timestamp}
               isHighlighted={currentSpeakingId === msg.id}
               suggestedVideo={msg.suggestedVideo}
-              avatarUrl={msg.isUser ? (userImage || '/default-avatar.png') : undefined}
+              avatarUrl={msg.isUser ? (userImage || '/img/MarIA.png') : undefined}
             />
           ))
         )}
@@ -137,7 +137,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
         <div ref={chatEndRef} />
       </div>
       
-      <div className="mt-auto sticky bottom-0 z-10">
+      <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60">
         <ChatInput 
           textInput={textInput}
           setTextInput={setTextInput}
