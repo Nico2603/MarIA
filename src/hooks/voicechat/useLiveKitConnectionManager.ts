@@ -15,7 +15,7 @@ import {
     VideoPresets,
 } from 'livekit-client';
 import { useSession } from 'next-auth/react';
-import { useError, AppError } from '@/contexts/ErrorContext';
+import { useError } from '@/contexts/ErrorContext';
 
 export interface UseLiveKitConnectionManagerResult {
   room: Room | null;
@@ -112,8 +112,15 @@ export function useLiveKitConnectionManager({
       });
 
       if (sessionRef.current?.user?.id) queryParams.append('userId', sessionRef.current.user.id);
+      if (userProfileRef.current?.username) {
+        queryParams.append('username', userProfileRef.current.username);
+      } else if (sessionRef.current?.user?.name) {
+        queryParams.append('username', sessionRef.current.user.name);
+      }
       if (initialContextRef.current) queryParams.append('latestSummary', initialContextRef.current);
       if (activeSessionIdRef.current) queryParams.append('chatSessionId', activeSessionIdRef.current);
+
+      console.log('[LKCM] getLiveKitToken: Enviando parámetros:', Object.fromEntries(queryParams.entries()));
 
       const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
       if (!apiBase) {

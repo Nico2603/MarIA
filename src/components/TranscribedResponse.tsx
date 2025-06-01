@@ -121,14 +121,14 @@ const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
           
           {/* Timestamp */}
           <div className={`text-xs mt-2 ${
-            isUser ? 'text-blue-100' : 'text-neutral-400'
+            isUser ? 'text-blue-100' : 'text-neutral-500 dark:text-neutral-400'
           }`}>
             {timestamp}
           </div>
           
           {/* Disclaimer para mensajes del asistente */}
           {!isUser && (
-            <div className="mt-2 pt-2 border-t border-neutral-200 dark:border-neutral-600 text-xs text-neutral-500 dark:text-neutral-400 italic">
+            <div className="mt-2 pt-2 border-t border-neutral-200 dark:border-neutral-600 text-xs text-neutral-600 dark:text-neutral-400 italic">
               Este asistente está especializado en ansiedad para el contexto colombiano, pero no sustituye a un profesional.
             </div>
           )}

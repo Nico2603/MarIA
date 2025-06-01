@@ -1,13 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-
-// Definición del tipo de error (movido de VoiceChatContainer)
-type AppErrorType = 'livekit' | 'openai' | 'stt' | 'tts' | 'agent' | 'profile' | 'permissions' | 'api' | null;
-export interface AppError {
-  type: AppErrorType;
-  message: string | null;
-}
+import type { AppError, AppErrorType } from '@/types';
 
 interface ErrorContextType {
   error: AppError;

@@ -32,11 +32,23 @@ export function usePushToTalk({
       targetElement.closest('input, textarea, [contenteditable="true"]') !== null;
 
     if (event.code === 'Space' && !isInputFocused) {
+      console.log('[usePushToTalk] Space key down. Conditions:', {
+        isListening,
+        isProcessing,
+        isSpeaking,
+        isThinking,
+        conversationActive,
+        isSessionClosed
+      });
+      
       event.preventDefault(); // Prevenir scroll u otras acciones por defecto de la barra espaciadora
       if (!isListening && !isProcessing && !isSpeaking && !isThinking && conversationActive && !isSessionClosed) {
+        console.log('[usePushToTalk] Activating push-to-talk');
         setIsPushToTalkActive(true);
         onStartListening();
-      } 
+      } else {
+        console.log('[usePushToTalk] Space down: Conditions not met for push-to-talk');
+      }
     }
   }, [isListening, isProcessing, isSpeaking, isThinking, conversationActive, isSessionClosed, onStartListening, setIsPushToTalkActive]);
 
@@ -51,14 +63,11 @@ export function usePushToTalk({
     // Solo detener si se estaba escuchando (isListening es true) y PTT estaba activo
     // y la tecla liberada es Espacio, y no hay un input enfocado.
     if (event.code === 'Space' && isListening && !isInputFocused) { 
+      console.log('[usePushToTalk] Space key up. Stopping listening via push-to-talk');
       event.preventDefault();
-      // setIsPushToTalkActive(false); // Esto se podría manejar en onStopListening o aquí
       onStopListening(); 
-      // Es importante que onStopListening actualice isListening y que setIsPushToTalkActive(false) se llame
-      // ya sea dentro de onStopListening, o aquí inmediatamente después, o en un useEffect que dependa de isListening.
-      // Por simplicidad, el componente que usa el hook se encargará de setIsPushToTalkActive(false) cuando la escucha realmente se detenga.
     }
-  }, [isListening, onStopListening /*, setIsPushToTalkActive*/]); // Quitado setIsPushToTalkActive de aquí para evitar ciclos si se llama en onStopListening
+  }, [isListening, onStopListening]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown, true); // Usar capturing phase

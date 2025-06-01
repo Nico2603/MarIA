@@ -1,11 +1,11 @@
 'use client';
 
-import { useCallback, Dispatch, MutableRefObject } from 'react';
-import type { Session } from 'next-auth';
+import { useCallback, useRef, Dispatch } from 'react';
+import { Room, LocalParticipant } from 'livekit-client';
+import { Session } from 'next-auth';
 import { useError } from '@/contexts/ErrorContext';
-import { useNotifications } from '@/hooks/useNotifications';
-import type { Message } from '@/types/message';
-import type { VoiceChatAction } from '@/reducers/voiceChatReducer'; // Importar VoiceChatAction
+import { useNotifications } from '@/utils/notifications';
+import type { Message, VoiceChatAction } from '@/types';
 
 interface UseConversationSessionManagerProps {
   session: Session | null;
@@ -16,7 +16,7 @@ interface UseConversationSessionManagerProps {
   activeSessionId: string | null; 
   isSessionClosed: boolean;
   roomRef: React.RefObject<any>; 
-  audioStreamRef: MutableRefObject<MediaStream | null>; 
+  audioStreamRef: React.MutableRefObject<MediaStream | null>; 
   disconnectFromLiveKit?: () => Promise<void>; 
   
   setAppError: ReturnType<typeof useError>['setError'];
@@ -56,9 +56,13 @@ export function useConversationSessionManager({
     dispatch({ type: 'SET_FIRST_INTERACTION', payload: true });
     dispatch({ type: 'SET_TEXT_INPUT', payload: '' });
 
+    // Verificar si hay un mensaje de saludo inicial pendiente
     const initialMessages = messages.length > 0 && messages[0].id.startsWith('greeting-') 
       ? [messages[0]] 
       : [];
+    
+    console.log('[ConversationSessionManager] Iniciando conversación con mensajes iniciales:', initialMessages);
+    console.log('[ConversationSessionManager] Username para saludo:', session?.user?.name);
     
     try {
       console.log("Llamando a API para crear nueva sesión de chat...");
@@ -79,11 +83,16 @@ export function useConversationSessionManager({
         } 
       });
       
-      if (isReadyToStart) {
-          console.log("Conversación iniciada. El bot TTS debería reproducir el saludo inicial.");
-      } else {
-        console.warn("Intento de iniciar conversación, pero la preparación del saludo (bot TTS) podría no estar completa.");
-      }
+      // Añadir un delay para asegurar que el backend procese el saludo inicial
+      setTimeout(() => {
+        if (isReadyToStart) {
+          console.log("Conversación iniciada. El backend debería enviar el saludo inicial automáticamente.");
+          console.log("Si no aparece el saludo en 5 segundos, verificar configuración del backend.");
+        } else {
+          console.warn("Intento de iniciar conversación, pero la preparación del saludo (bot TTS) podría no estar completa.");
+        }
+      }, 1000);
+      
       showNotification("Iniciando nueva conversación...", "info");
     } catch (error: any) {
       console.error("Error en handleStartConversation:", error);

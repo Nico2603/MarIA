@@ -424,3 +424,32 @@ div[data-radix-dialog-overlay][data-state="open"] {
   background-color: rgba(37, 99, 235, 0.2) !important; /* Fondo azul semi-transparente */
   backdrop-filter: blur(3px) !important;        /* Desenfoque ligero */
 }
+
+/* Estilos para componentes de video LiveKit */
+/* Eliminar franjas negras y optimizar presentación del avatar */
+[data-lk-video-track] video,
+video[data-lk-video-track],
+.lk-video-track video,
+video.lk-video-track {
+  object-fit: cover !important;
+  object-position: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: transparent !important;
+}
+
+/* Contenedores de video de LiveKit */
+[data-lk-participant] > div,
+.lk-participant-video,
+.lk-video-container {
+  background: transparent !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Asegurar que no haya espacios extra en los videos */
+.lk-participant-placeholder,
+[data-lk-participant-placeholder] {
+  background: linear-gradient(135deg, #1f2937, #111827) !important;
+}

@@ -2,9 +2,9 @@
 
 import { useCallback, Dispatch, FormEvent, RefObject, useEffect } from 'react';
 import { DataPacket_Kind, RemoteParticipant, Room, LocalParticipant, Track, TrackPublication } from 'livekit-client';
-import type { Message } from '@/types/message'; // Asegúrate que la ruta es correcta
+import { Room as LiveKitRoom } from 'livekit-client';
+import type { Message, VoiceChatAction, VoiceChatState, ExtendedUserProfile } from '@/types'; // Actualizado para usar types consolidados
 import { useError } from '@/contexts/ErrorContext'; // Asegúrate que la ruta es correcta
-import type { VoiceChatAction } from '@/reducers/voiceChatReducer'; // Importar VoiceChatAction
 
 const AGENT_IDENTITY = "Maria-TTS-Bot"; // Considerar mover a un archivo de constantes compartido
 
@@ -58,8 +58,11 @@ export function useLiveKitDataChannelEvents({
         console.log('[handleDataReceived]> Raw event:', event); // Log general para todos los eventos recibidos del agente
         switch (event.type) {
           case 'initial_greeting_message':
-            console.log('[LiveKit] initial_greeting_message payload:', event.payload);
+            console.log('[LiveKit] ✅ initial_greeting_message recibido:', event.payload);
             console.log('→ greetingMessageId before dispatch:', greetingMessageId);
+            console.log('→ conversationActive:', conversationActive);
+            console.log('→ activeSessionId:', activeSessionId);
+            
             if (event.payload && event.payload.text) {
               const greetingMsg: Message = {
                 id: event.payload.id || `greeting-${Date.now()}`,
@@ -67,9 +70,14 @@ export function useLiveKitDataChannelEvents({
                 isUser: false,
                 timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
               };
+              
+              console.log('[LiveKit] Creando mensaje de saludo:', greetingMsg);
               dispatch({ type: 'SET_MESSAGES', payload: [greetingMsg] });
               dispatch({ type: 'SET_GREETING_MESSAGE_ID', payload: greetingMsg.id });
               console.log('→ greetingMessageId after dispatch:', greetingMsg.id);
+              console.log('✅ Saludo inicial configurado correctamente en el chat');
+            } else {
+              console.error('[LiveKit] ❌ initial_greeting_message recibido pero sin texto válido:', event.payload);
             }
             break;
           case 'user_transcription_result':
@@ -120,10 +128,18 @@ export function useLiveKitDataChannelEvents({
                 dispatch({ type: 'SET_SPEAKING', payload: false });
                 dispatch({ type: 'SET_CURRENT_SPEAKING_ID', payload: null });
 
-                // Activar la escucha si el saludo inicial ha terminado
-                if (event.payload.messageId === greetingMessageId && conversationActive) {
-                  dispatch({ type: 'SET_LISTENING', payload: true });
-                  console.log('[LiveKit] Saludo inicial terminado, activando escucha.');
+                // Solo activar la escucha automáticamente si el saludo inicial ha terminado
+                // y no estamos ya escuchando o procesando
+                if (event.payload.messageId === greetingMessageId && 
+                    conversationActive && 
+                    !isListening && 
+                    !isProcessing && 
+                    !isSessionClosed) {
+                  console.log('[LiveKit] Saludo inicial terminado, activando escucha automáticamente.');
+                  // Usar un pequeño delay para evitar conflictos de estado
+                  setTimeout(() => {
+                    dispatch({ type: 'SET_LISTENING', payload: true });
+                  }, 500);
                 }
 
                 if (event.payload.isClosing) {
@@ -147,7 +163,10 @@ export function useLiveKitDataChannelEvents({
     currentSpeakingId, 
     endSession, 
     setAppError,
-    isReadyToStart, // <--- Añadido a las dependencias
+    isReadyToStart,
+    isListening,
+    isProcessing,
+    isSessionClosed,
     // room // No es necesario aquí ya que el useEffect lo maneja y handleDataReceived se pasa a los listeners de la sala
   ]);
 

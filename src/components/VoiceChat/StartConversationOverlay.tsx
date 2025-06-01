@@ -2,9 +2,9 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, Wifi, Bot, Video, Volume2 } from 'lucide-react';
 
-import { ConnectionState as LiveKitConnectionState } from 'livekit-client';
+import { ConnectionState as LiveKitConnectionState, RemoteParticipant } from 'livekit-client';
 
 interface StartConversationOverlayProps {
   authStatus: 'loading' | 'authenticated' | 'unauthenticated';
@@ -14,7 +14,7 @@ interface StartConversationOverlayProps {
   handleStartConversation: () => void;
   isSessionClosed: boolean;
   connectionState: LiveKitConnectionState;
-
+  discoveredParticipant?: RemoteParticipant | null;
 }
 
 const StartConversationOverlay: React.FC<StartConversationOverlayProps> = ({
@@ -24,18 +24,73 @@ const StartConversationOverlay: React.FC<StartConversationOverlayProps> = ({
   isReadyToStart,
   handleStartConversation,
   isSessionClosed,
-  connectionState
+  connectionState,
+  discoveredParticipant,
 
 }) => {
+  // Estados de carga para mostrar progreso
+  const isAuthenticating = authStatus === 'loading';
+  const isConnectingToRoom = connectionState === LiveKitConnectionState.Connecting;
+  const isRoomConnected = connectionState === LiveKitConnectionState.Connected;
+  const hasDiscoveredAgent = !!discoveredParticipant;
+  const isTavusAgent = discoveredParticipant?.identity === 'tavus-avatar-agent';
+
+  const LoadingStep = ({ 
+    icon: Icon, 
+    label, 
+    isCompleted, 
+    isActive, 
+    description 
+  }: { 
+    icon: any, 
+    label: string, 
+    isCompleted: boolean, 
+    isActive: boolean, 
+    description?: string 
+  }) => (
+    <motion.div 
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      className={`flex items-center space-x-3 p-3 rounded-lg transition-all duration-300 ${
+        isCompleted ? 'bg-green-500/20 text-green-300' :
+        isActive ? 'bg-blue-500/20 text-blue-300' :
+        'bg-gray-500/20 text-gray-400'
+      }`}
+    >
+      {isCompleted ? (
+        <CheckCircle2 className="h-5 w-5 text-green-400" />
+      ) : isActive ? (
+        <Loader2 className="h-5 w-5 animate-spin text-blue-400" />
+      ) : (
+        <Icon className="h-5 w-5" />
+      )}
+      <div className="flex-1">
+        <div className="font-medium">{label}</div>
+        {description && (
+          <div className="text-xs opacity-75 mt-1">{description}</div>
+        )}
+      </div>
+    </motion.div>
+  );
+
+  const getMainMessage = () => {
+    if (isAuthenticating) return 'Verificando credenciales...';
+    if (isConnectingToRoom) return 'Estableciendo conexión segura...';
+    if (!hasDiscoveredAgent) return 'Localizando agente de IA...';
+    if (!isReadyToStart && isTavusAgent) return 'Inicializando avatar inteligente...';
+    if (isReadyToStart) return '¡Todo listo para comenzar!';
+    return 'Preparando el sistema...';
+  };
+
   return (
-    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/50 backdrop-blur-md text-white">
+    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-gradient-to-br from-black/60 to-black/40 backdrop-blur-md text-white">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="text-center p-8"
+        className="text-center p-8 max-w-md w-full mx-4"
       >
-        <h2 className="text-3xl md:text-4xl font-bold mb-4">
+        <h2 className="text-3xl md:text-4xl font-bold mb-2">
           Bienvenido
           {authStatus === 'authenticated' && userName && (
              <motion.span 
@@ -49,25 +104,81 @@ const StartConversationOverlay: React.FC<StartConversationOverlayProps> = ({
            )}
         </h2> 
         
+        <p className="text-lg text-neutral-300 mb-8">a tu sesión con María</p>
+        
         {(authStatus === 'loading' || !isReadyToStart) && authStatus !== 'unauthenticated' && (
-          <div className="mt-4 text-center">
-            <Loader2 className="h-8 w-8 mb-4 mx-auto animate-spin text-primary-400" />
-            <p className="text-neutral-300">{authStatus === 'loading' ? 'Cargando datos de sesión...' : 'Preparando IA...'}</p>
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-6 text-blue-300">
+              {getMainMessage()}
+            </h3>
+            
+            <div className="space-y-3 text-left">
+              <LoadingStep
+                icon={Wifi}
+                label="Conexión establecida"
+                isCompleted={isRoomConnected}
+                isActive={isConnectingToRoom}
+                description={isRoomConnected ? "Conectado de forma segura" : "Conectando a servidor..."}
+              />
+              
+              <LoadingStep
+                icon={Bot}
+                label="Agente de IA detectado"
+                isCompleted={hasDiscoveredAgent}
+                isActive={isRoomConnected && !hasDiscoveredAgent}
+                description={hasDiscoveredAgent ? `Agente ${discoveredParticipant?.identity} listo` : "Esperando agente..."}
+              />
+              
+              {isTavusAgent && (
+                <>
+                  <LoadingStep
+                    icon={Video}
+                    label="Sistema de video cargado"
+                    isCompleted={isReadyToStart}
+                    isActive={hasDiscoveredAgent && !isReadyToStart}
+                    description={isReadyToStart ? "Avatar visual listo" : "Cargando avatar..."}
+                  />
+                  
+                  <LoadingStep
+                    icon={Volume2}
+                    label="Sistema de audio configurado"
+                    isCompleted={isReadyToStart}
+                    isActive={hasDiscoveredAgent && !isReadyToStart}
+                    description={isReadyToStart ? "Audio sincronizado" : "Configurando audio..."}
+                  />
+                </>
+              )}
+            </div>
           </div>
         )}
         
         {authStatus === 'authenticated' && (
-           <button
+           <motion.button
              onClick={handleStartConversation}
-             disabled={!isReadyToStart || isSessionClosed || connectionState === LiveKitConnectionState.Connecting}
-             className="button-glow mt-8 inline-flex items-center justify-center whitespace-nowrap rounded-md text-lg font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 h-11 px-8 shadow-soft hover:shadow-soft-lg transform hover:-translate-y-1 bg-primary-600 hover:bg-primary-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+             disabled={!isReadyToStart || isSessionClosed}
+             className={`w-full inline-flex items-center justify-center whitespace-nowrap rounded-lg text-lg font-semibold transition-all duration-300 h-12 px-8 shadow-lg ${
+               isReadyToStart 
+                 ? 'bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white shadow-green-500/25 hover:shadow-green-500/40 transform hover:scale-105' 
+                 : 'bg-gray-600 text-gray-300 cursor-not-allowed opacity-50'
+             }`}
+             whileHover={isReadyToStart ? { scale: 1.02 } : {}}
+             whileTap={isReadyToStart ? { scale: 0.98 } : {}}
              aria-label="Comenzar sesión de conversación"
            >
-             {connectionState === LiveKitConnectionState.Connecting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Conectando...</> :
-              !isReadyToStart ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Preparando IA...</> : 
-              'Comenzar tu sesión'}
-            </button>
+             {!isReadyToStart ? (
+               <>
+                 <Loader2 className="mr-2 h-5 w-5 animate-spin" /> 
+                 Preparando sistema...
+               </>
+             ) : (
+               <>
+                 <CheckCircle2 className="mr-2 h-5 w-5" />
+                 ¡Comenzar conversación!
+               </>
+             )}
+           </motion.button>
         )}
+        
          {authStatus === 'unauthenticated' && (
             <div className="mt-6 text-center">
                 <AlertCircle className="h-8 w-8 mb-4 mx-auto text-yellow-400" />

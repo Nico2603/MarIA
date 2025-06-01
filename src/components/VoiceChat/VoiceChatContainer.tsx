@@ -25,12 +25,11 @@ import { useLiveKitConnectionManager } from '@/hooks/voicechat/useLiveKitConnect
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { usePushToTalk } from '@/hooks/usePushToTalk';
 import { useError } from '@/contexts/ErrorContext';
-import { useNotifications } from '@/hooks/useNotifications';
-import NotificationDisplay from '../NotificationDisplay';
-import ErrorDisplay from './ErrorDisplay';
-import VideoPanelSkeleton from './VideoPanelSkeleton';
-import type { Message } from "@/types/message";
-import ChatToggle from './ChatToggle';
+import { useNotifications } from '@/utils/notifications';
+import NotificationDisplay from '@/components/ui/NotificationDisplay';
+import ErrorDisplay from '@/components/ui/ErrorDisplay';
+import { VideoPanelSkeleton } from './VideoPanel';
+import type { Message } from "@/types";
 import StartConversationOverlay from './StartConversationOverlay';
 import { useLiveKitTrackManagement, ActiveTrackInfo } from '@/hooks/voicechat/useLiveKitTrackManagement';
 import RemoteTrackPlayer from './RemoteTrackPlayer';
@@ -123,18 +122,38 @@ function VoiceChatContainer() {
     .map(t => t.publication.track!);
 
   const handleStartListening = useCallback(() => {
-    if (!isSessionClosed && conversationActive && roomRef.current?.localParticipant && !isListening && !isSpeaking && !isProcessing) {
+    console.log('[VoiceChatContainer] handleStartListening called. Conditions:', {
+      isSessionClosed: state.isSessionClosed,
+      conversationActive: state.conversationActive,
+      roomExists: !!roomRef.current?.localParticipant,
+      isListening: state.isListening,
+      isSpeaking: state.isSpeaking,
+      isProcessing: state.isProcessing
+    });
+    
+    if (!state.isSessionClosed && 
+        state.conversationActive && 
+        roomRef.current?.localParticipant && 
+        !state.isListening && 
+        !state.isSpeaking && 
+        !state.isProcessing) {
       console.log('[VoiceChatContainer] Iniciando escucha STT');
       dispatch({ type: 'SET_LISTENING', payload: true });
+    } else {
+      console.log('[VoiceChatContainer] handleStartListening: Condiciones no cumplidas, no se inicia STT');
     }
-  }, [isSessionClosed, conversationActive, isListening, isSpeaking, isProcessing, roomRef]);
+  }, [state.isSessionClosed, state.conversationActive, state.isListening, state.isSpeaking, state.isProcessing, roomRef]);
 
   const handleStopListening = useCallback(() => {
-    if (isListening) {
+    console.log('[VoiceChatContainer] handleStopListening called. isListening:', state.isListening);
+    
+    if (state.isListening) {
       console.log('[VoiceChatContainer] Deteniendo escucha STT');
       dispatch({ type: 'SET_LISTENING', payload: false });
+    } else {
+      console.log('[VoiceChatContainer] handleStopListening: No se estaba escuchando, no se detiene STT');
     }
-  }, [isListening]);
+  }, [state.isListening]);
 
   const onConnectedCallback = useCallback((connectedRoom: Room) => {
     roomRef.current = connectedRoom;
@@ -355,6 +374,52 @@ function VoiceChatContainer() {
     }
   }, [isTimeRunningOut, state.isTimeRunningOutState]);
 
+  // Efecto para desactivar push-to-talk cuando no se está escuchando
+  useEffect(() => {
+    if (!state.isListening && state.isPushToTalkActive) {
+      console.log('[VoiceChatContainer] Desactivating push-to-talk because listening stopped');
+      dispatch({ type: 'SET_PUSH_TO_TALK_ACTIVE', payload: false });
+    }
+  }, [state.isListening, state.isPushToTalkActive]);
+
+  // Efecto para detectar si el saludo inicial no llega
+  useEffect(() => {
+    if (state.conversationActive && !state.greetingMessageId && state.activeSessionId) {
+      console.log('[VoiceChatContainer] Conversación activa pero sin saludo inicial. Configurando timeout...');
+      
+      const greetingTimeout = setTimeout(() => {
+        if (!state.greetingMessageId && state.conversationActive) {
+          console.error('[VoiceChatContainer] ❌ SALUDO INICIAL NO RECIBIDO después de 8 segundos');
+          console.error('Posibles causas:');
+          console.error('1. Backend no está enviando initial_greeting_message');
+          console.error('2. Username no se está pasando correctamente al backend');
+          console.error('3. Configuración de Tavus/LiveKit no está procesando metadata');
+          console.error('4. Error en el sistema de TTS del backend');
+          
+          showNotification(
+            'El saludo inicial no se ejecutó correctamente. Verifica la configuración del backend.',
+            'warning',
+            8000
+          );
+          
+          // Crear un saludo manual como fallback
+          const fallbackGreeting: Message = {
+            id: `fallback-greeting-${Date.now()}`,
+            text: `¡Hola ${session?.user?.name || 'Usuario'}! Soy María, tu asistente de salud mental. ¿En qué puedo ayudarte hoy?`,
+            isUser: false,
+            timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
+          };
+          
+          console.log('[VoiceChatContainer] Creando saludo de respaldo:', fallbackGreeting);
+          dispatch({ type: 'SET_MESSAGES', payload: [fallbackGreeting] });
+          dispatch({ type: 'SET_GREETING_MESSAGE_ID', payload: fallbackGreeting.id });
+        }
+      }, 8000); // 8 segundos para que llegue el saludo
+
+      return () => clearTimeout(greetingTimeout);
+    }
+  }, [state.conversationActive, state.greetingMessageId, state.activeSessionId, session?.user?.name, showNotification]);
+
   useEffect(() => {
     console.log('[UserProfileEffect] authStatus:', authStatus, 'Session:', session);
     if (authStatus === 'authenticated' && session?.user) {
@@ -383,6 +448,12 @@ function VoiceChatContainer() {
     currentSpeakingId: state.currentSpeakingId,
     isSpeaking: state.isSpeaking,
     conversationActive: state.conversationActive,
+    activeTracks: activeTracks.map(track => ({
+      identity: track.identity,
+      kind: track.kind,
+      source: track.source,
+      publication: track.publication
+    })),
   });
 
   useEffect(() => {
@@ -487,13 +558,13 @@ function VoiceChatContainer() {
     );
   }
 
-  if (appError.type && appError.type !== 'permissions' && appError.type !== 'profile') {
+  if (appError.type && appError.type !== 'permissions' && appError.type !== 'profile' && appError.message) {
     console.error(
       '[VoiceChatContainer] Early return: Application error occurred.',
       `Type: ${appError.type}, Message: ${appError.message}`,
       appError 
     );
-    return <ErrorDisplay error={appError} onClose={clearError} />;
+    return <ErrorDisplay error={{ message: appError.message, type: appError.type || undefined }} onClose={clearError} />;
   }
 
   if (authStatus === 'authenticated' && 
@@ -524,6 +595,7 @@ function VoiceChatContainer() {
           }}
           isSessionClosed={state.isSessionClosed}
           connectionState={connectionState}
+          discoveredParticipant={discoveredTargetParticipant}
         />
       </div>
     );
@@ -543,40 +615,77 @@ function VoiceChatContainer() {
   );
 
   console.log('[VoiceChatContainer] Rendering main VoiceChatLayout.');
+  
+  // Logging adicional para diagnóstico de audio
+  console.log('[VoiceChatContainer] Audio tracks disponibles:', audioTracks.length);
+  audioTracks.forEach((track, index) => {
+    console.log(`[VoiceChatContainer] Audio track ${index}:`, {
+      sid: track.sid,
+      kind: track.kind,
+      isMuted: track.isMuted,
+    });
+  });
+  
+  // Logging adicional para diagnóstico completo del sistema
+  console.log('[VoiceChatContainer] Estado completo del sistema:', {
+    isReadyToStart: state.isReadyToStart,
+    calculatedIsReadyToStart,
+    authStatus,
+    connectionState,
+    discoveredParticipant: discoveredTargetParticipant?.identity,
+    totalActiveTracks: activeTracks.length,
+    hasVideoTrack: !!tavusVideoTrack,
+    hasAudioTracks: audioTracks.length > 0,
+    conversationActive: state.conversationActive
+  });
+  
   return (
-    <VoiceChatLayout
-      appError={appError}
-      notification={notification}
-      isChatVisible={isChatVisible}
-      tavusVideoTrackPublication={tavusVideoTrack?.publication as RemoteTrackPublication | undefined}
-      discoveredTargetParticipant={discoveredTargetParticipant || undefined}
-      connectionState={connectionState}
-      isSpeaking={isSpeaking}
-      isListening={isListening}
-      isProcessing={isProcessing}
-      isThinking={isThinking}
-      isSessionClosed={isSessionClosed}
-      conversationActive={conversationActive}
-      isPushToTalkActive={isPushToTalkActive}
-      isReadyToStart={state.isReadyToStart}
-      authStatus={authStatus}
-      userName={session?.user?.name || userProfile?.username}
-      messages={messages}
-      greetingMessageId={greetingMessageId}
-      currentSpeakingId={currentSpeakingId}
-      userProfile={userProfile}
-      currentSessionTitle={currentSessionTitle}
-      sessionStartTime={sessionStartTime}
-      textInput={textInput}
-      setTextInput={(value: string) => dispatch({ type: 'SET_TEXT_INPUT', payload: value })}
-      clearError={clearError}
-      toggleChatVisibility={toggleChatVisibility}
-      handleStartConversation={handleStartConversation}
-      handleStartListening={sttHandleStartListening}
-      handleStopListening={sttHandleStopListening}
-      handleSendTextMessage={handleSendTextMessage}
-      dispatch={dispatch}
-    />
+    <>
+      {/* Renderizado de tracks de audio - elementos ocultos pero funcionales */}
+      {audioTracks.map((audioTrack, index) => (
+        <RemoteTrackPlayer
+          key={`audio-${audioTrack.sid || index}`}
+          track={audioTrack}
+          autoPlay={true}
+          muted={false}
+          className="hidden"
+        />
+      ))}
+      
+      <VoiceChatLayout
+        appError={appError}
+        notification={notification}
+        isChatVisible={isChatVisible}
+        tavusVideoTrackPublication={tavusVideoTrack?.publication as RemoteTrackPublication | undefined}
+        discoveredTargetParticipant={discoveredTargetParticipant || undefined}
+        connectionState={connectionState}
+        isSpeaking={isSpeaking}
+        isListening={isListening}
+        isProcessing={isProcessing}
+        isThinking={isThinking}
+        isSessionClosed={isSessionClosed}
+        conversationActive={conversationActive}
+        isPushToTalkActive={isPushToTalkActive}
+        isReadyToStart={state.isReadyToStart}
+        authStatus={authStatus}
+        userName={session?.user?.name || userProfile?.username}
+        messages={messages}
+        greetingMessageId={greetingMessageId}
+        currentSpeakingId={currentSpeakingId}
+        userProfile={userProfile}
+        currentSessionTitle={currentSessionTitle}
+        sessionStartTime={sessionStartTime}
+        textInput={textInput}
+        setTextInput={(value: string) => dispatch({ type: 'SET_TEXT_INPUT', payload: value })}
+        clearError={clearError}
+        toggleChatVisibility={toggleChatVisibility}
+        handleStartConversation={handleStartConversation}
+        handleStartListening={sttHandleStartListening}
+        handleStopListening={sttHandleStopListening}
+        handleSendTextMessage={handleSendTextMessage}
+        dispatch={dispatch}
+      />
+    </>
   );
 }
 

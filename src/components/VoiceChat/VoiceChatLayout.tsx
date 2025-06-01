@@ -1,17 +1,17 @@
 import React, { useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, Terminal, Clock, Calendar } from 'lucide-react';
+import { Loader2, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import type { Message } from "@/types/message";
+import type { Message, AppError } from "@/types";
 import { ConnectionState as LiveKitConnectionState, Track, type RemoteTrackPublication, Participant } from 'livekit-client';
-import ErrorDisplay from './ErrorDisplay';
-import NotificationDisplay from '../NotificationDisplay';
-import VideoPanelSkeleton from './VideoPanelSkeleton';
-import ChatToggle from './ChatToggle';
+import ErrorDisplay from '@/components/ui/ErrorDisplay';
+import NotificationDisplay from '@/components/ui/NotificationDisplay';
+import { VideoPanelSkeleton } from './VideoPanel';
 import StartConversationOverlay from './StartConversationOverlay';
 import { VideoTrack } from '@livekit/components-react';
 import type { ActiveTrackInfo } from '@/hooks/voicechat/useLiveKitTrackManagement';
-import type { AppError } from '@/contexts/ErrorContext';
+import { cn } from '@/lib/utils';
+import VideoPanel from './VideoPanel';
 
 // Tipo para el estado de autenticación, ajusta según la implementación real de next-auth
 type AuthStatus = "authenticated" | "loading" | "unauthenticated";
@@ -107,14 +107,14 @@ export default function VoiceChatLayout({
   return (
     <div className="relative flex flex-col h-screen overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 text-white">
       <AnimatePresence>
-        {appError && appError.type === 'livekit' && (
+        {appError && appError.type === 'livekit' && appError.message && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             className="absolute top-0 left-0 right-0 z-50"
           >
-            <ErrorDisplay error={appError} onClose={() => clearError()} />
+            <ErrorDisplay error={{ message: appError.message, type: appError.type || undefined }} onClose={() => clearError()} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -122,21 +122,49 @@ export default function VoiceChatLayout({
 
       <div className="flex flex-row-reverse flex-1 h-full overflow-hidden items-stretch">
         <div className={`relative flex-1 flex flex-col items-center justify-center transition-all duration-300 ease-in-out p-4 h-full`}>
-          <ChatToggle
-            isChatVisible={isChatVisible}
-            toggleChatVisibility={toggleChatVisibility}
-            conversationActive={conversationActive}
-          />
-          <div className="h-full w-full border-2 border-gray-600 rounded-lg overflow-hidden bg-black flex items-center justify-center">
+          <div className="h-full w-full rounded-lg overflow-hidden bg-gradient-to-br from-neutral-900 to-neutral-800 flex items-center justify-center relative">
             {tavusVideoTrackPublication && discoveredTargetParticipant ? (
-              <VideoTrack
-                trackRef={{
-                  participant: discoveredTargetParticipant,
-                  publication: tavusVideoTrackPublication,
-                  source: tavusVideoTrackPublication.source,
-                }}
-                className="w-full h-full object-contain"
-              />
+              <>
+                {/* Botón de toggle del chat para video directo */}
+                {conversationActive && (
+                  <button
+                    onClick={toggleChatVisibility}
+                    className="absolute top-4 right-4 z-30 p-3 bg-white/90 dark:bg-neutral-800/90 rounded-full shadow-lg hover:bg-white dark:hover:bg-neutral-700 transition-all duration-300 ease-in-out backdrop-blur-sm border border-neutral-200 dark:border-neutral-600"
+                    aria-label={isChatVisible ? "Ocultar chat" : "Mostrar chat"}
+                    title={isChatVisible ? "Ocultar chat de texto" : "Mostrar chat de texto"}
+                  >
+                    {isChatVisible ? (
+                      <ChevronsLeft className="h-5 w-5 text-neutral-700 dark:text-neutral-200" />
+                    ) : (
+                      <ChevronsRight className="h-5 w-5 text-neutral-700 dark:text-neutral-200" />
+                    )}
+                  </button>
+                )}
+                
+                {/* Contenedor del video con tamaño adaptativo */}
+                <div className={`transition-all duration-300 ease-in-out ${
+                  isChatVisible 
+                    ? 'w-full h-full' 
+                    : 'w-full max-w-2xl h-auto aspect-video mx-auto'
+                }`}>
+                  <VideoTrack
+                    trackRef={{
+                      participant: discoveredTargetParticipant,
+                      publication: tavusVideoTrackPublication,
+                      source: tavusVideoTrackPublication.source,
+                    }}
+                    className={`${
+                      isChatVisible 
+                        ? 'w-full h-full object-cover' 
+                        : 'w-full h-full object-cover rounded-xl shadow-2xl'
+                    }`}
+                    style={{
+                      objectFit: 'cover',
+                      objectPosition: 'center',
+                    }}
+                  />
+                </div>
+              </>
             ) : connectionState === LiveKitConnectionState.Connected ? (
               <DynamicVideoPanel
                 isChatVisible={isChatVisible}
@@ -149,6 +177,7 @@ export default function VoiceChatLayout({
                 handleStartListening={handleStartListening}
                 handleStopListening={handleStopListening}
                 isPushToTalkActive={isPushToTalkActive}
+                toggleChatVisibility={toggleChatVisibility}
               />
             ) : (
               <VideoPanelSkeleton />
@@ -177,14 +206,14 @@ export default function VoiceChatLayout({
                 Habla ahora (mantén pulsado Espacio)
               </motion.div>
             )}
-            {appError && appError.type !== 'livekit' && (
+            {appError && appError.type !== 'livekit' && appError.message && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 20 }}
                 className="w-full max-w-md"
               >
-                <ErrorDisplay error={appError} onClose={() => clearError()} />
+                <ErrorDisplay error={{ message: appError.message, type: appError.type || undefined }} onClose={() => clearError()} />
               </motion.div>
             )}
           </div>
