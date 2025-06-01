@@ -530,6 +530,27 @@ function VoiceChatContainer() {
     };
   }, [clearError]);
 
+  // Efecto para verificar la salud del backend después de iniciar conversación
+  useEffect(() => {
+    if (state.conversationActive && !state.isSessionClosed) {
+      console.log('[VoiceChatContainer] Conversación activa - monitoreando comunicación con backend...');
+      
+      // Verificar que los mensajes se estén procesando correctamente
+      const backendHealthCheck = setTimeout(() => {
+        if (state.isThinking) {
+          console.warn('[VoiceChatContainer] ⚠️ Backend parece estar tardando en responder (>15s)');
+          showNotification(
+            'El sistema está tardando en responder. Verifica tu conexión a internet.',
+            'warning',
+            5000
+          );
+        }
+      }, 15000); // 15 segundos
+      
+      return () => clearTimeout(backendHealthCheck);
+    }
+  }, [state.conversationActive, state.isSessionClosed, state.isThinking, showNotification]);
+
   const isLoading = authStatus === 'loading' || (!state.userProfile && session?.user?.id);
 
   if (isLoading) {

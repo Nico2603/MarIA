@@ -52,10 +52,17 @@ export function useLiveKitDataChannelEvents({
   }, [room]); // Ejecutar cuando room cambie
 
   const handleDataReceived = useCallback((payload: Uint8Array, participant?: RemoteParticipant, kind?: DataPacket_Kind) => {
+    console.log('[handleDataReceived] Datos recibidos de:', participant?.identity, 'kind:', kind);
+    
     if (kind === DataPacket_Kind.RELIABLE && participant && participant.identity === AGENT_IDENTITY) {
       try {
         const event = JSON.parse(new TextDecoder().decode(payload));
-        console.log('[handleDataReceived]> Raw event:', event); // Log general para todos los eventos recibidos del agente
+        console.log('[handleDataReceived] ✅ Evento recibido del backend:', {
+          type: event.type,
+          payload: event.payload,
+          timestamp: new Date().toISOString()
+        });
+        
         switch (event.type) {
           case 'initial_greeting_message':
             console.log('[LiveKit] ✅ initial_greeting_message recibido:', event.payload);
@@ -80,7 +87,9 @@ export function useLiveKitDataChannelEvents({
               console.error('[LiveKit] ❌ initial_greeting_message recibido pero sin texto válido:', event.payload);
             }
             break;
+            
           case 'user_transcription_result':
+            console.log('[LiveKit] ✅ user_transcription_result recibido:', event.payload);
             if (event.payload && event.payload.transcript) {
               const userMessage: Message = { 
                 id: `user-${Date.now()}`, 
@@ -88,10 +97,13 @@ export function useLiveKitDataChannelEvents({
                 isUser: true, 
                 timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true })
               };
+              console.log('[LiveKit] Agregando transcripción del usuario:', userMessage);
               dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
             }
             break;
+            
           case 'ai_response_generated':
+            console.log('[LiveKit] ✅ ai_response_generated recibido:', event.payload);
             if (event.payload && event.payload.text) {
               const aiMessage: Message = { 
                   id: event.payload.id || `ai-${Date.now()}`, 
@@ -100,12 +112,16 @@ export function useLiveKitDataChannelEvents({
                   timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }), 
                   suggestedVideo: event.payload.suggestedVideo || undefined 
               };
+              console.log('[LiveKit] Agregando respuesta de IA:', aiMessage);
               dispatch({ type: 'ADD_MESSAGE', payload: aiMessage });
               dispatch({ type: 'SET_THINKING', payload: false });
+            } else {
+              console.error('[LiveKit] ❌ ai_response_generated sin texto válido:', event.payload);
             }
             break;
+            
           case 'tts_started':
-            console.log('[LiveKit] tts_started messageId:', event.payload.messageId);
+            console.log('[LiveKit] ✅ tts_started recibido para messageId:', event.payload?.messageId);
             console.log(' current greetingMessageId:', greetingMessageId);
             console.log(' conversationActive flag:', conversationActive);
             if (event.payload && event.payload.messageId) {
@@ -120,8 +136,9 @@ export function useLiveKitDataChannelEvents({
               }
             }
             break;
+            
           case 'tts_ended':
-            console.log('[LiveKit] tts_ended messageId:', event.payload.messageId, 'isClosing:', event.payload.isClosing);
+            console.log('[LiveKit] ✅ tts_ended recibido para messageId:', event.payload?.messageId, 'isClosing:', event.payload?.isClosing);
             console.log(' currentSpeakingId before clear:', currentSpeakingId);
             if (event.payload && event.payload.messageId) {
               if (currentSpeakingId === event.payload.messageId) {
@@ -143,18 +160,27 @@ export function useLiveKitDataChannelEvents({
                 }
 
                 if (event.payload.isClosing) {
+                  console.log('[LiveKit] TTS terminado con señal de cierre, finalizando sesión...');
                   endSession(); 
                 }
               }
             }
             break;
+            
           default:
-            // console.log("[DataChannel] Evento no manejado:", event.type);
+            console.warn("[LiveKit] ⚠️ Evento no manejado recibido del backend:", event.type, event.payload);
         }
       } catch (e) {
-        console.error("[DataChannelHook] Error procesando DataChannel del agente Maria:", e);
+        console.error("[DataChannelHook] ❌ Error procesando DataChannel del agente Maria:", e);
+        console.error("Raw payload:", new TextDecoder().decode(payload));
         setAppError('agent', 'Error procesando datos del agente.'); // Especificar tipo de error
       }
+    } else {
+      console.log('[handleDataReceived] Datos ignorados - no son del agente esperado:', {
+        kind,
+        participantIdentity: participant?.identity,
+        expectedIdentity: AGENT_IDENTITY
+      });
     }
   }, [
     dispatch, 
@@ -172,13 +198,42 @@ export function useLiveKitDataChannelEvents({
 
   const handleSendTextMessage = useCallback(async (messageText: string) => {
     const trimmedInput = messageText.trim();
+    
+    console.log('[handleSendTextMessage] Condiciones de envío:', {
+      trimmedInput: !!trimmedInput,
+      conversationActive,
+      isProcessing,
+      isSpeaking,
+      isSessionClosed,
+      activeSessionId,
+      roomExists: !!roomRef.current,
+      localParticipantExists: !!roomRef.current?.localParticipant,
+    });
+    
     // La condición de !isListening se elimina porque el usuario puede escribir mientras el sistema escucha para transcribir.
     // Se asume que si el usuario envía texto, es una entrada explícita que debe tener prioridad.
     if (trimmedInput && conversationActive && !isProcessing && !isSpeaking && !isSessionClosed && activeSessionId && roomRef.current && roomRef.current.localParticipant) {
-      console.log(`Enviando texto al agente Maria: \"${trimmedInput}\"`);
+      console.log(`[handleSendTextMessage] ✅ Enviando texto al agente Maria: "${trimmedInput}"`);
+      console.log(`[handleSendTextMessage] Session ID activa: ${activeSessionId}`);
+      
       try {
-        const payload = JSON.stringify({ type: "submit_user_text", payload: { text: trimmedInput } });
-        await roomRef.current.localParticipant.publishData(new TextEncoder().encode(payload), { reliable: true });
+        const payload = JSON.stringify({ 
+          type: "submit_user_text", 
+          payload: { 
+            text: trimmedInput,
+            sessionId: activeSessionId, // Asegurar que se incluya el sessionId
+            timestamp: new Date().toISOString()
+          } 
+        });
+        
+        console.log('[handleSendTextMessage] Payload a enviar:', payload);
+        
+        await roomRef.current.localParticipant.publishData(
+          new TextEncoder().encode(payload), 
+          { reliable: true }
+        );
+        
+        console.log('[handleSendTextMessage] ✅ Mensaje enviado exitosamente via DataChannel');
         
         // Añadir mensaje del usuario inmediatamente a la UI
         const userMessage: Message = { 
@@ -187,17 +242,45 @@ export function useLiveKitDataChannelEvents({
           isUser: true,
           timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true })
         };
+        
+        console.log('[handleSendTextMessage] Agregando mensaje del usuario a la UI:', userMessage);
         dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
         dispatch({ type: 'SET_TEXT_INPUT', payload: '' }); // Limpiar input después de enviar
         dispatch({ type: 'SET_THINKING', payload: true });
+        
+        console.log('[handleSendTextMessage] ⏳ Esperando respuesta del backend...');
 
       } catch (error) {
-        console.error("Error al enviar mensaje de texto al agente vía DataChannel:", error);
+        console.error("[handleSendTextMessage] ❌ Error al enviar mensaje de texto al agente vía DataChannel:", error);
         setAppError('api', "Error al enviar tu mensaje. Intenta de nuevo."); // Especificar tipo de error
         dispatch({ type: 'SET_THINKING', payload: false });
       }
     } else {
-        console.log("Envío de mensaje de texto ignorado. Condiciones no cumplidas:", { trimmedInput, conversationActive, isProcessing, isSpeaking, /*isListening,*/ isSessionClosed, activeSessionId, roomExists: !!roomRef.current });
+        console.warn("[handleSendTextMessage] ❌ Envío de mensaje de texto ignorado. Condiciones no cumplidas:", { 
+          trimmedInput: !!trimmedInput, 
+          conversationActive, 
+          isProcessing, 
+          isSpeaking, 
+          isSessionClosed, 
+          activeSessionId, 
+          roomExists: !!roomRef.current,
+          localParticipantExists: !!roomRef.current?.localParticipant
+        });
+        
+        // Dar feedback específico al usuario sobre por qué no se puede enviar
+        if (!conversationActive) {
+          setAppError('api', "Debes iniciar una conversación primero.");
+        } else if (isProcessing) {
+          setAppError('api', "Espera a que termine de procesar el mensaje anterior.");
+        } else if (isSpeaking) {
+          setAppError('api', "Espera a que María termine de hablar.");
+        } else if (isSessionClosed) {
+          setAppError('api', "La sesión ha terminado. Inicia una nueva conversación.");
+        } else if (!activeSessionId) {
+          setAppError('api', "Error de sesión. Reinicia la conversación.");
+        } else if (!roomRef.current || !roomRef.current.localParticipant) {
+          setAppError('api', "Error de conexión. Verifica tu conexión a internet.");
+        }
     }
   }, [
     dispatch, conversationActive, isProcessing, isSpeaking, /*isListening,*/ isSessionClosed,

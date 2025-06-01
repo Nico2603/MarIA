@@ -24,6 +24,7 @@ export function useReadyToStart({
   activeTracks = [], // Con valor por defecto
 }: UseReadyToStartProps): boolean {
   const [isReady, setIsReady] = useState(false);
+  const [avatarLoadStartTime, setAvatarLoadStartTime] = useState<number | null>(null);
 
   useEffect(() => {
     const userAuthenticated = authStatus === 'authenticated';
@@ -47,17 +48,38 @@ export function useReadyToStart({
       );
       
       // El avatar está completamente cargado solo si tiene tanto video como audio
-      tavusCompletelyLoaded = !!(tavusVideoTrack && tavusAudioTrack);
+      const hasVideoAndAudio = !!(tavusVideoTrack && tavusAudioTrack);
+      
+      // Establecer tiempo de inicio de carga cuando se detecta el agente por primera vez
+      if (agentDiscovered && !avatarLoadStartTime) {
+        setAvatarLoadStartTime(Date.now());
+        console.log('[useReadyToStart] Avatar detectado, iniciando temporizador de carga...');
+      }
+      
+      // Tiempo mínimo de carga: 3 segundos para asegurar que todo esté estable
+      const minLoadTime = 3000; // 3 segundos
+      const hasMinLoadTimePassed = avatarLoadStartTime ? 
+        (Date.now() - avatarLoadStartTime) >= minLoadTime : false;
+      
+      tavusCompletelyLoaded = hasVideoAndAudio && hasMinLoadTimePassed;
       
       console.log('[useReadyToStart] Verificando carga completa de Tavus:', {
         hasVideo: !!tavusVideoTrack,
         hasAudio: !!tavusAudioTrack,
+        hasVideoAndAudio,
+        avatarLoadStartTime,
+        timeSinceLoad: avatarLoadStartTime ? Date.now() - avatarLoadStartTime : 0,
+        hasMinLoadTimePassed,
         completelyLoaded: tavusCompletelyLoaded,
         totalTracks: activeTracks.length
       });
     } else {
       // Si no es Tavus, consideramos que está listo (para otros tipos de agentes)
       tavusCompletelyLoaded = true;
+      // Reset del tiempo de carga si el agente cambia
+      if (avatarLoadStartTime) {
+        setAvatarLoadStartTime(null);
+      }
     }
 
     // Condición 1: Verificación básica de conexión y avatar completamente cargado
@@ -70,9 +92,6 @@ export function useReadyToStart({
 
     // Condición 2: Verificación adicional de que el saludo se haya reproducido correctamente
     const greetingCompleted = greetingMessageId && !currentSpeakingId && !isSpeaking;
-    const advancedConditionsMet = 
-      basicConditionsMet &&
-      greetingCompleted;
 
     // El usuario estará listo solo cuando se cumplan las condiciones básicas
     // El saludo puede usarse como verificación adicional pero no es obligatorio para estar "listo"
@@ -82,23 +101,25 @@ export function useReadyToStart({
       setIsReady(shouldBeReady);
       
       if (shouldBeReady) {
-        console.log('[useReadyToStart] ✅ Sistema completamente cargado y listo para iniciar conversación', {
+        console.log('[useReadyToStart] ✅ Avatar completamente cargado y sistema listo para iniciar conversación', {
           userAuthenticated,
           livekitConnected,
           agentDiscovered,
           agentIdentity: discoveredParticipant?.identity,
           tavusCompletelyLoaded,
           greetingCompleted,
-          totalActiveTracks: activeTracks.length
+          totalActiveTracks: activeTracks.length,
+          timeSinceDetection: avatarLoadStartTime ? Date.now() - avatarLoadStartTime : 0
         });
       } else {
-        console.log('[useReadyToStart] ⏳ Sistema aún cargando, esperando condiciones:', {
+        console.log('[useReadyToStart] ⏳ Avatar aún cargando, esperando condiciones:', {
           userAuthenticated,
           livekitConnected,
           agentDiscovered,
           agentIdentity: discoveredParticipant?.identity,
           tavusCompletelyLoaded,
           conversationActive,
+          timeSinceDetection: avatarLoadStartTime ? Date.now() - avatarLoadStartTime : 0,
           activeTracks: activeTracks.map(t => ({ identity: t.identity, kind: t.kind, source: t.source }))
         });
       }
@@ -113,6 +134,7 @@ export function useReadyToStart({
     conversationActive,
     activeTracks,
     isReady,
+    avatarLoadStartTime,
   ]);
 
   return isReady;

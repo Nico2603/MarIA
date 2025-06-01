@@ -52,22 +52,22 @@ const StartConversationOverlay: React.FC<StartConversationOverlayProps> = ({
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       className={`flex items-center space-x-3 p-3 rounded-lg transition-all duration-300 ${
-        isCompleted ? 'bg-green-500/20 text-green-300' :
-        isActive ? 'bg-blue-500/20 text-blue-300' :
-        'bg-gray-500/20 text-gray-400'
+        isCompleted ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
+        isActive ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
+        'bg-gray-500/20 text-gray-400 border border-gray-500/30'
       }`}
     >
       {isCompleted ? (
-        <CheckCircle2 className="h-5 w-5 text-green-400" />
+        <CheckCircle2 className="h-5 w-5 text-green-400 flex-shrink-0" />
       ) : isActive ? (
-        <Loader2 className="h-5 w-5 animate-spin text-blue-400" />
+        <Loader2 className="h-5 w-5 animate-spin text-blue-400 flex-shrink-0" />
       ) : (
-        <Icon className="h-5 w-5" />
+        <Icon className="h-5 w-5 flex-shrink-0" />
       )}
-      <div className="flex-1">
-        <div className="font-medium">{label}</div>
+      <div className="flex-1 min-w-0">
+        <div className="font-medium truncate">{label}</div>
         {description && (
-          <div className="text-xs opacity-75 mt-1">{description}</div>
+          <div className="text-xs opacity-75 mt-1 truncate">{description}</div>
         )}
       </div>
     </motion.div>
@@ -126,25 +126,25 @@ const StartConversationOverlay: React.FC<StartConversationOverlayProps> = ({
                 label="Agente de IA detectado"
                 isCompleted={hasDiscoveredAgent}
                 isActive={isRoomConnected && !hasDiscoveredAgent}
-                description={hasDiscoveredAgent ? `Agente ${discoveredParticipant?.identity} listo` : "Esperando agente..."}
+                description={hasDiscoveredAgent ? `Agente ${discoveredParticipant?.identity} encontrado` : "Esperando agente..."}
               />
               
               {isTavusAgent && (
                 <>
                   <LoadingStep
                     icon={Video}
-                    label="Sistema de video cargado"
+                    label="Avatar visual cargado"
                     isCompleted={isReadyToStart}
                     isActive={hasDiscoveredAgent && !isReadyToStart}
-                    description={isReadyToStart ? "Avatar visual listo" : "Cargando avatar..."}
+                    description={isReadyToStart ? "Avatar completamente renderizado" : "Cargando componentes visuales..."}
                   />
                   
                   <LoadingStep
                     icon={Volume2}
-                    label="Sistema de audio configurado"
+                    label="Sistema de audio sincronizado"
                     isCompleted={isReadyToStart}
                     isActive={hasDiscoveredAgent && !isReadyToStart}
-                    description={isReadyToStart ? "Audio sincronizado" : "Configurando audio..."}
+                    description={isReadyToStart ? "Audio y voz configurados" : "Sincronizando sistema de voz..."}
                   />
                 </>
               )}
