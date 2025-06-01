@@ -73,7 +73,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   return (
     <div
       ref={chatContainerRef}
-      className="flex-1 flex flex-col bg-white dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 relative"
+      className="flex-1 flex flex-col bg-transparent border-b border-gray-200 dark:border-gray-700 relative"
       aria-live="polite"
       aria-relevant="additions text"
     >
@@ -92,18 +92,18 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                 : 'Inicia sesión para empezar.'}
             </h2>
             {authStatus === 'authenticated' && (
-              <div className="mb-4">
+              <div className="mb-4 text-sm text-neutral-600 dark:text-neutral-400">
                 {totalPreviousSessions !== null && totalPreviousSessions !== undefined ? (
                   <>
-                    <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-1">
+                    <p className="mb-1">
                       Has completado {totalPreviousSessions} {totalPreviousSessions === 1 ? 'sesión previa' : 'sesiones previas'}.
                     </p>
-                    <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+                    <p className="font-semibold text-neutral-700 dark:text-neutral-300">
                       Estás por iniciar tu sesión número {totalPreviousSessions + 1}.
                     </p>
                   </>
                 ) : (
-                  <p className="text-sm flex items-center justify-center text-neutral-600 dark:text-neutral-400">
+                  <p className="flex items-center justify-center">
                     Iniciando una nueva aventura conversacional.
                   </p>
                 )}
@@ -114,7 +114,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                 )}
               </div>
             )}
-            <p className="text-sm">
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
               {authStatus === 'authenticated'
                 ? 'Cuando estés listo, pulsa "Comenzar tu sesión".'
                 : 'Usa el menú superior para acceder.'}
@@ -137,7 +137,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
         <div ref={chatEndRef} />
       </div>
       
-      <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60">
+      <div className="flex-shrink-0 bg-transparent">
         <ChatInput 
           textInput={textInput}
           setTextInput={setTextInput}

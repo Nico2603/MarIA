@@ -43,7 +43,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const safeTextInput = textInput ?? '';
 
   return (
-    <div className="p-4 bg-white dark:bg-neutral-800 border-t border-neutral-200 dark:border-neutral-700">
+    <div className="p-4 bg-transparent">
       <form onSubmit={(e) => { 
         e.preventDefault(); 
         if (safeTextInput.trim()) {
@@ -65,7 +65,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
             "Escribe o pulsa [Espacio]..."
           }
           rows={1}
-          className="flex-1 resize-none p-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 bg-neutral-50 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 disabled:opacity-60 disabled:cursor-not-allowed text-sm"
+          className="flex-1 resize-none p-3 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-neutral-700/80 text-neutral-800 dark:text-neutral-100 placeholder-neutral-500 dark:placeholder-neutral-400 disabled:opacity-60 disabled:cursor-not-allowed text-base shadow-sm"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
@@ -83,7 +83,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
           type="button"
           onClick={isListening ? handleStopListening : handleStartListening} 
           disabled={!conversationActive || isProcessing || isSpeaking || isSessionClosed || isThinking}
-          className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 ${ 
+          className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-neutral-900 shadow-md ${ 
             isListening
             ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-400' 
             : 'bg-primary-600 hover:bg-primary-700 text-white focus:ring-primary-500'
@@ -103,7 +103,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
         <button
           type="submit"
           disabled={!safeTextInput.trim() || !conversationActive || isListening || isProcessing || isSpeaking || isSessionClosed || isThinking}
-          className="w-10 h-10 rounded-full flex items-center justify-center bg-primary-600 text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+          className="w-11 h-11 rounded-full flex items-center justify-center bg-primary-600 text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity shadow-md"
           aria-label="Enviar mensaje"
         >
           <Send className="h-5 w-5" />
@@ -124,7 +124,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
           </Link>
         </div>
       ) : (
-          <p className={`text-xs mt-2 text-center text-neutral-500 dark:text-neutral-400 ${!conversationActive ? 'opacity-50' : ''}`}>
+          <p className={`text-xs mt-2 text-center text-neutral-500 dark:text-neutral-400 ${!conversationActive ? 'opacity-50' : 'font-medium'}`}>
               {conversationActive ? 'Mantén pulsada la tecla [Espacio] para hablar.' : 'Inicia la conversación para activar el micrófono.'}
           </p>
       )}

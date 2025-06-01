@@ -102,13 +102,10 @@ export default function VoiceChatLayout({
 }: VoiceChatLayoutProps) {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
-
-  // El efecto de scroll to bottom y de ajuste de textarea se quedan en VoiceChatContainer
-  // ya que dependen de estados que no se pasan a este layout (como textInput)
-  // o se manejan mejor en el contenedor principal.
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
   return (
-    <div className="relative flex flex-col h-full overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+    <div className="relative flex flex-col h-screen overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 text-white">
       <AnimatePresence>
         {appError && appError.type === 'livekit' && (
           <motion.div
@@ -117,46 +114,46 @@ export default function VoiceChatLayout({
             exit={{ opacity: 0, y: -20 }}
             className="absolute top-0 left-0 right-0 z-50"
           >
-            {/* @ts-ignore onClose no espera argumentos o uno opcional según uso previo */}
             <ErrorDisplay error={appError} onClose={() => clearError()} />
           </motion.div>
         )}
       </AnimatePresence>
       <NotificationDisplay notification={notification} />
 
-      <div className="flex flex-row-reverse flex-1 overflow-hidden">
-        <div className={`relative flex-1 flex flex-col items-center justify-center transition-all duration-300 ease-in-out`}>
+      <div className="flex flex-row-reverse flex-1 h-full overflow-hidden items-stretch">
+        <div className={`relative flex-1 flex flex-col items-center justify-center transition-all duration-300 ease-in-out p-4 h-full`}>
           <ChatToggle
             isChatVisible={isChatVisible}
             toggleChatVisibility={toggleChatVisibility}
             conversationActive={conversationActive}
           />
-          {tavusVideoTrackPublication ? (
-            <VideoTrack
-              trackRef={{
-                participant: discoveredTargetParticipant!,
-                publication: tavusVideoTrackPublication!,
-                source: tavusVideoTrackPublication!.source,
-              }}
-              className="w-full h-full object-contain"
-            />
-          ) : connectionState === LiveKitConnectionState.Connected ? (
-            <DynamicVideoPanel
-              isChatVisible={isChatVisible}
-              // tavusTrackInfo={tavusVideoTrackPublication} // DynamicVideoPanel espera ActiveTrackInfo, no solo publication
-              isSpeaking={isSpeaking}
-              isListening={isListening}
-              isProcessing={isProcessing}
-              isThinking={isThinking}
-              isSessionClosed={isSessionClosed}
-              conversationActive={conversationActive}
-              handleStartListening={handleStartListening}
-              handleStopListening={handleStopListening}
-              isPushToTalkActive={isPushToTalkActive}
-            />
-          ) : (
-            <VideoPanelSkeleton />
-          )}
+          <div className="h-full w-full border-2 border-gray-600 rounded-lg overflow-hidden bg-black flex items-center justify-center">
+            {tavusVideoTrackPublication && discoveredTargetParticipant ? (
+              <VideoTrack
+                trackRef={{
+                  participant: discoveredTargetParticipant,
+                  publication: tavusVideoTrackPublication,
+                  source: tavusVideoTrackPublication.source,
+                }}
+                className="w-full h-full object-contain"
+              />
+            ) : connectionState === LiveKitConnectionState.Connected ? (
+              <DynamicVideoPanel
+                isChatVisible={isChatVisible}
+                isSpeaking={isSpeaking}
+                isListening={isListening}
+                isProcessing={isProcessing}
+                isThinking={isThinking}
+                isSessionClosed={isSessionClosed}
+                conversationActive={conversationActive}
+                handleStartListening={handleStartListening}
+                handleStopListening={handleStopListening}
+                isPushToTalkActive={isPushToTalkActive}
+              />
+            ) : (
+              <VideoPanelSkeleton />
+            )}
+          </div>
 
           {!conversationActive && !isSessionClosed && (
              <StartConversationOverlay
@@ -185,9 +182,8 @@ export default function VoiceChatLayout({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 20 }}
-                className="w-full max-w-md" 
+                className="w-full max-w-md"
               >
-                 {/* @ts-ignore onClose no espera argumentos o uno opcional según uso previo*/}
                 <ErrorDisplay error={appError} onClose={() => clearError()} />
               </motion.div>
             )}
@@ -202,46 +198,38 @@ export default function VoiceChatLayout({
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="flex-none w-1/3 bg-white h-full border-r border-gray-300 flex flex-col"
+              className="flex-none w-full md:w-1/3 bg-transparent h-full border-r border-gray-300 dark:border-gray-700 flex flex-col"
             >
-              {/* @ts-ignore ChatPanelProps pendiente de revisión para onSendMessage */}
               <DynamicChatPanel
                 messages={messages}
                 isThinking={isThinking}
-                handleSendTextMessage={handleSendTextMessage}
-                chatEndRef={chatEndRef}
-                greetingMessageId={greetingMessageId}
+                isSpeaking={isSpeaking}
                 currentSpeakingId={currentSpeakingId}
-                userName={userProfile?.name}
+                greetingMessageId={greetingMessageId}
+                userName={userProfile?.name || userName}
                 userImage={userProfile?.image}
-                conversationActive={conversationActive}
+                chatContainerRef={chatContainerRef}
+                chatEndRef={chatEndRef}
+                authStatus={authStatus}
+                initialContext={null}
+                activeSessionId={null}
+                currentSessionTitle={currentSessionTitle}
                 textInput={textInput}
                 setTextInput={setTextInput}
+                handleSendTextMessage={handleSendTextMessage}
+                handleStartListening={handleStartListening}
+                handleStopListening={handleStopListening}
+                isListening={isListening}
+                isSessionClosed={isSessionClosed}
+                conversationActive={conversationActive}
+                isPushToTalkActive={isPushToTalkActive}
+                textAreaRef={textAreaRef}
+                isProcessing={isProcessing}
               />
             </motion.aside>
           )}
         </AnimatePresence>
       </div>
-
-      <footer className="bg-gray-850 p-3 border-t border-gray-700 flex items-center justify-between text-xs text-gray-400">
-        <div className="flex items-center space-x-2">
-          <Terminal size={16} />
-          <span>{currentSessionTitle || 'Nueva Conversación'}</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          {sessionStartTime && (
-            <>
-              <Calendar size={16} />
-              <span>{new Date(sessionStartTime).toLocaleDateString()}</span>
-              <Clock size={16} />
-              <span>{new Date(sessionStartTime).toLocaleTimeString()}</span>
-            </>
-          )}
-          {connectionState === LiveKitConnectionState.Connected && <span className="text-green-400">Conectado</span>}
-          {connectionState === LiveKitConnectionState.Connecting && <span className="text-yellow-400">Conectando...</span>}
-          {connectionState === LiveKitConnectionState.Disconnected && <span className="text-red-400">Desconectado</span>}
-        </div>
-      </footer>
     </div>
   );
 } 

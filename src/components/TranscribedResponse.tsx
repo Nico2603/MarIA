@@ -62,24 +62,51 @@ const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
       initial={{ opacity: 0, x: isUser ? 20 : -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-      className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}
+      className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4 items-end`}
     >
-      <div className={`max-w-[85%] ${isUser ? 'order-1' : 'order-2'}`}>
-        {/* Indicador de quién habla */}
-        <div className="mb-1 text-sm font-medium text-neutral-500">
-          {isUser ? 'Tú' : 'María'}
-        </div>
-        
+      {/* Avatar o indicador */}
+      <div className={`w-10 h-10 rounded-full overflow-hidden flex-shrink-0 ${
+        isUser ? 'order-2 ml-3' : 'order-1 mr-3'
+      } shadow-md`}>
+        {isUser ? (
+          avatarUrl ? (
+            <Image 
+              src={avatarUrl}
+              alt="Avatar del usuario"
+              width={40}
+              height={40}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg">
+              {/* Aquí podrías poner iniciales del usuario si no hay imagen */}
+              U
+            </div>
+          )
+        ) : (
+          <div className="w-full h-full bg-primary-100 flex items-center justify-center text-primary-600">
+            <Image 
+                src="/img/MarIA.png" 
+                alt="MarIA Avatar"
+                width={40}
+                height={40}
+                className="w-full h-full object-cover" 
+            />
+          </div>
+        )}
+      </div>
+
+      <div className={`max-w-[75%] md:max-w-[65%] ${isUser ? 'order-1' : 'order-2'}`}>
         {/* Contenedor del mensaje */}
         <div 
-          className={`rounded-xl p-4 ${
+          className={`rounded-xl px-4 py-3 ${
             isUser 
-              ? 'bg-primary-600 text-white' 
-              : 'bg-white border border-neutral-200 shadow-sm text-neutral-800'
-          } ${isHighlighted ? 'ring-2 ring-primary-300' : ''}`}
+              ? 'bg-primary-600 text-white shadow-md' 
+              : 'bg-white border border-neutral-200 dark:bg-neutral-700 dark:border-neutral-600 shadow-md text-neutral-800 dark:text-neutral-100'
+          } ${isHighlighted ? 'ring-2 ring-primary-400 dark:ring-primary-500' : ''}`}
         >
           {/* Texto del mensaje */}
-          <div className="whitespace-pre-wrap">
+          <div className="whitespace-pre-wrap text-sm">
             {text}
             {isHighlighted && (
               <motion.span
@@ -101,7 +128,7 @@ const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
           
           {/* Disclaimer para mensajes del asistente */}
           {!isUser && (
-            <div className="mt-3 text-xs text-neutral-400 italic">
+            <div className="mt-2 pt-2 border-t border-neutral-200 dark:border-neutral-600 text-xs text-neutral-500 dark:text-neutral-400 italic">
               Este asistente está especializado en ansiedad para el contexto colombiano, pero no sustituye a un profesional.
             </div>
           )}
@@ -121,33 +148,6 @@ const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
             </div>
           )}
         </div>
-      </div>
-      
-      {/* Avatar o indicador */}
-      <div className={`w-8 h-8 rounded-full overflow-hidden flex-shrink-0 ${
-        isUser ? 'order-2 ml-3' : 'order-1 mr-3'
-      }`}>
-        {isUser ? (
-          avatarUrl ? (
-            <Image 
-              src={avatarUrl}
-              alt="Avatar del usuario"
-              width={32}
-              height={32}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-              T
-            </div>
-          )
-        ) : (
-          <div className="w-full h-full bg-primary-100 flex items-center justify-center text-primary-600">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-            </svg>
-          </div>
-        )}
       </div>
     </motion.div>
   );
