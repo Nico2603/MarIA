@@ -1,141 +1,34 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { ConnectionState as LiveKitConnectionState, Track } from 'livekit-client';
 import type { RemoteParticipant } from 'livekit-client';
 
 interface UseReadyToStartProps {
-  authStatus: string; // 'authenticated', 'loading', 'unauthenticated'
+  authStatus: string;
   connectionState: LiveKitConnectionState;
   discoveredParticipant: RemoteParticipant | null;
   greetingMessageId: string | null;
   currentSpeakingId: string | null;
   isSpeaking: boolean;
-  conversationActive: boolean; // Para evitar que se ponga "listo" si ya hay una conversación
-  activeTracks?: Array<{ identity: string; kind: Track.Kind; source: Track.Source; publication?: any }>; // Mejorado con publication
+  conversationActive: boolean;
+  activeTracks?: Array<{ identity: string; kind: Track.Kind; source: Track.Source; publication?: any }>;
+  tavusVideoLoaded?: boolean;
 }
 
 export function useReadyToStart({
   authStatus,
   connectionState,
   discoveredParticipant,
-  greetingMessageId,
-  currentSpeakingId,
-  isSpeaking,
   conversationActive,
-  activeTracks = [], // Con valor por defecto
 }: UseReadyToStartProps): boolean {
-  const [isReady, setIsReady] = useState(false);
-  const [avatarLoadStartTime, setAvatarLoadStartTime] = useState<number | null>(null);
-
-  useEffect(() => {
-    const userAuthenticated = authStatus === 'authenticated';
-    const livekitConnected = connectionState === LiveKitConnectionState.Connected;
-    const agentDiscovered = discoveredParticipant !== null;
-    
-    // Verificación más estricta para Tavus: debe tener tanto video como audio completamente cargados
-    const isTavusAgent = discoveredParticipant?.identity === 'tavus-avatar-agent';
-    let tavusCompletelyLoaded = false;
-    
-    if (isTavusAgent) {
-      const tavusVideoTrack = activeTracks.find(t => 
-        t.identity === 'tavus-avatar-agent' && 
-        t.kind === Track.Kind.Video && 
-        t.source === Track.Source.Camera
-      );
-      
-      const tavusAudioTrack = activeTracks.find(t => 
-        t.identity === 'tavus-avatar-agent' && 
-        t.kind === Track.Kind.Audio
-      );
-      
-      // El avatar está completamente cargado solo si tiene tanto video como audio
-      const hasVideoAndAudio = !!(tavusVideoTrack && tavusAudioTrack);
-      
-      // Establecer tiempo de inicio de carga cuando se detecta el agente por primera vez
-      if (agentDiscovered && !avatarLoadStartTime) {
-        setAvatarLoadStartTime(Date.now());
-        console.log('[useReadyToStart] Avatar detectado, iniciando temporizador de carga...');
-      }
-      
-      // Tiempo mínimo de carga: 3 segundos para asegurar que todo esté estable
-      const minLoadTime = 3000; // 3 segundos
-      const hasMinLoadTimePassed = avatarLoadStartTime ? 
-        (Date.now() - avatarLoadStartTime) >= minLoadTime : false;
-      
-      tavusCompletelyLoaded = hasVideoAndAudio && hasMinLoadTimePassed;
-      
-      console.log('[useReadyToStart] Verificando carga completa de Tavus:', {
-        hasVideo: !!tavusVideoTrack,
-        hasAudio: !!tavusAudioTrack,
-        hasVideoAndAudio,
-        avatarLoadStartTime,
-        timeSinceLoad: avatarLoadStartTime ? Date.now() - avatarLoadStartTime : 0,
-        hasMinLoadTimePassed,
-        completelyLoaded: tavusCompletelyLoaded,
-        totalTracks: activeTracks.length
-      });
-    } else {
-      // Si no es Tavus, consideramos que está listo (para otros tipos de agentes)
-      tavusCompletelyLoaded = true;
-      // Reset del tiempo de carga si el agente cambia
-      if (avatarLoadStartTime) {
-        setAvatarLoadStartTime(null);
-      }
+  // Lógica simplificada: listo cuando está autenticado y conectado
+  const isReady = useMemo(() => {
+    if (conversationActive) {
+      return true;
     }
-
-    // Condición 1: Verificación básica de conexión y avatar completamente cargado
-    const basicConditionsMet = 
-      userAuthenticated &&
-      livekitConnected &&
-      agentDiscovered &&
-      tavusCompletelyLoaded &&
-      !conversationActive;
-
-    // Condición 2: Verificación adicional de que el saludo se haya reproducido correctamente
-    const greetingCompleted = greetingMessageId && !currentSpeakingId && !isSpeaking;
-
-    // El usuario estará listo solo cuando se cumplan las condiciones básicas
-    // El saludo puede usarse como verificación adicional pero no es obligatorio para estar "listo"
-    const shouldBeReady = basicConditionsMet;
-
-    if (shouldBeReady !== isReady) {
-      setIsReady(shouldBeReady);
-      
-      if (shouldBeReady) {
-        console.log('[useReadyToStart] ✅ Avatar completamente cargado y sistema listo para iniciar conversación', {
-          userAuthenticated,
-          livekitConnected,
-          agentDiscovered,
-          agentIdentity: discoveredParticipant?.identity,
-          tavusCompletelyLoaded,
-          greetingCompleted,
-          totalActiveTracks: activeTracks.length,
-          timeSinceDetection: avatarLoadStartTime ? Date.now() - avatarLoadStartTime : 0
-        });
-      } else {
-        console.log('[useReadyToStart] ⏳ Avatar aún cargando, esperando condiciones:', {
-          userAuthenticated,
-          livekitConnected,
-          agentDiscovered,
-          agentIdentity: discoveredParticipant?.identity,
-          tavusCompletelyLoaded,
-          conversationActive,
-          timeSinceDetection: avatarLoadStartTime ? Date.now() - avatarLoadStartTime : 0,
-          activeTracks: activeTracks.map(t => ({ identity: t.identity, kind: t.kind, source: t.source }))
-        });
-      }
-    }
-  }, [
-    authStatus,
-    connectionState,
-    discoveredParticipant,
-    greetingMessageId,
-    currentSpeakingId,
-    isSpeaking,
-    conversationActive,
-    activeTracks,
-    isReady,
-    avatarLoadStartTime,
-  ]);
+    
+    return authStatus === 'authenticated' && 
+           connectionState === LiveKitConnectionState.Connected;
+  }, [authStatus, connectionState, conversationActive]);
 
   return isReady;
 } 

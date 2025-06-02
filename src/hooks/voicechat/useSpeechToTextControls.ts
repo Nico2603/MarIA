@@ -26,71 +26,45 @@ export function useSpeechToTextControls({
   const { setError: setAppError, clearError } = useError();
 
   const handleStartListening = useCallback(async () => {
-    console.log('[useSpeechToTextControls] handleStartListening called. Conditions:', {
-      isListening,
-      isProcessing,
-      isSpeaking,
-      isSessionClosed,
-      conversationActive,
-      roomExists: !!roomRef.current,
-      localParticipantExists: !!roomRef.current?.localParticipant
-    });
-    
-    if (isListening || isProcessing || isSpeaking || isSessionClosed || !conversationActive) {
-      console.log('[useSpeechToTextControls] handleStartListening: Condiciones no cumplidas, return early');
-      return;
-    }
-    
-    clearError();
-    if (roomRef.current && roomRef.current.localParticipant) {
-        try {
-            await roomRef.current.localParticipant.setMicrophoneEnabled(true);
-            console.log("[useSpeechToTextControls] Micrófono local habilitado para LiveKit (STT).");
-            console.log("[useSpeechToTextControls] Verificando permisos de micrófono...");
-            
-            // Verificar que tenemos permisos de micrófono
-            try {
-              const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-              console.log("[useSpeechToTextControls] Permisos de micrófono confirmados");
-              stream.getTracks().forEach(track => track.stop()); // Limpiar el stream de prueba
-            } catch (permissionError) {
-              console.error("[useSpeechToTextControls] Error de permisos de micrófono:", permissionError);
-              setAppError('permissions', 'Se requieren permisos de micrófono para usar la función de voz.');
-              return;
-            }
-            
-            setIsListening(true);
-        } catch (error) {
-            console.error("[useSpeechToTextControls] Error al habilitar el micrófono para LiveKit STT:", error);
-            setAppError('stt', 'Error al activar el micrófono para la transcripción.');
-            setIsListening(false);
-            return;
+    if (!isListening && !isProcessing && !isSpeaking && !isSessionClosed && conversationActive && roomRef.current?.localParticipant) {
+      setIsListening(true);
+      
+      try {
+        await roomRef.current.localParticipant.setMicrophoneEnabled(true);
+        
+        // Verificar permisos de micrófono
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(track => track.stop());
+        
+      } catch (error) {
+        console.error("[useSpeechToTextControls] Error al habilitar micrófono:", error);
+        setIsListening(false);
+        
+        if (error instanceof Error) {
+          if (error.name === 'NotAllowedError') {
+            throw new Error('Permisos de micrófono denegados. Por favor, permite el acceso al micrófono.');
+          } else if (error.name === 'NotFoundError') {
+            throw new Error('No se encontró ningún micrófono. Verifica que tengas un micrófono conectado.');
+          } else {
+            throw new Error(`Error de micrófono: ${error.message}`);
+          }
+        } else {
+          throw new Error('Error desconocido al acceder al micrófono.');
         }
-    } else {
-        console.warn("[useSpeechToTextControls] LiveKit Room o LocalParticipant no disponible para iniciar STT.");
-        setAppError('livekit', 'Conexión no lista para iniciar transcripción.');
-        return;
+      }
     }
-  }, [isListening, isProcessing, isSpeaking, isSessionClosed, conversationActive, clearError, setAppError, roomRef, setIsListening]);
-  
-  const handleStopListening = useCallback(() => {
-    console.log('[useSpeechToTextControls] handleStopListening called. isListening:', isListening);
-    
-    if (!isListening) {
-        console.log("[useSpeechToTextControls] Intento de detener escucha cuando no se está grabando (STT).");
-        return;
-    }
-    console.log("[useSpeechToTextControls] Deteniendo escucha para STT (LiveKit)...");
-    if (roomRef.current && roomRef.current.localParticipant) {
+  }, [isListening, isProcessing, isSpeaking, isSessionClosed, conversationActive, roomRef, setIsListening]);
+
+  const handleStopListening = useCallback(async () => {
+    if (isListening) {
+      setIsListening(false);
+      
+      if (roomRef.current?.localParticipant) {
         roomRef.current.localParticipant.setMicrophoneEnabled(false)
-            .then(() => console.log("[useSpeechToTextControls] Micrófono local deshabilitado (STT)."))
-            .catch(error => {
-                console.error("[useSpeechToTextControls] Error al deshabilitar micrófono para LiveKit STT:", error);
-                setAppError('stt', 'Error al desactivar el micrófono.');
-            });
+          .catch(error => console.error("[useSpeechToTextControls] Error al deshabilitar micrófono:", error));
+      }
     }
-    setIsListening(false);
-  }, [isListening, setAppError, roomRef, setIsListening]);
+  }, [isListening, roomRef, setIsListening]);
 
   return {
     handleStartListening,

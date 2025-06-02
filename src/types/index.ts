@@ -16,16 +16,6 @@ export interface Message {
   suggestedVideo?: { title: string; url: string };
 }
 
-// === Tipos de Perfil ===
-import type { User, Profile, ChatSession } from '@prisma/client';
-
-// Extiende el tipo Profile de Prisma para incluir opcionalmente el usuario relacionado
-// Esto coincide con cómo se usa en el frontend después de hacer include: { profile: true }
-export interface UserProfile extends Profile {
-  user?: User; // El usuario puede o no estar incluido dependiendo de la consulta
-  sessions?: ChatSession[]; // Añadido
-}
-
 // === Tipos de VoiceChat ===
 // Perfil de usuario simplificado para el chat de voz
 export interface ExtendedUserProfile {
@@ -92,9 +82,4 @@ export type AppErrorType = 'livekit' | 'openai' | 'stt' | 'tts' | 'agent' | 'pro
 export interface AppError {
   type: AppErrorType;
   message: string | null;
-}
-
-// === Re-exportaciones para compatibilidad ===
-// Mantener compatibilidad con importaciones existentes
-export type { NotificationMessage as Notification };
-export type { Message as ChatMessage }; 
+} 

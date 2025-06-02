@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface UseSessionTimeoutProps {
   conversationActive: boolean;
@@ -23,6 +23,18 @@ export function useSessionTimeout({
   warningThresholdMs = DEFAULT_WARNING_THRESHOLD_MS,
 }: UseSessionTimeoutProps) {
   const [isTimeRunningOut, setIsTimeRunningOut] = useState(false);
+  
+  // Use refs to store the latest callback functions to avoid dependency issues
+  const onTimeoutRef = useRef(onTimeout);
+  const onWarningRef = useRef(onWarning);
+  
+  useEffect(() => {
+    onTimeoutRef.current = onTimeout;
+  }, [onTimeout]);
+  
+  useEffect(() => {
+    onWarningRef.current = onWarning;
+  }, [onWarning]);
 
   useEffect(() => {
     let warningTimeoutId: NodeJS.Timeout | null = null;
@@ -38,26 +50,26 @@ export function useSessionTimeout({
       if (remainingWarningTime > 0) {
         warningTimeoutId = setTimeout(() => {
           setIsTimeRunningOut(true);
-          if (onWarning) {
-            onWarning();
+          if (onWarningRef.current) {
+            onWarningRef.current();
           }
         }, remainingWarningTime);
       } else if (!isTimeRunningOut && elapsedTime >= warningThresholdMs) {
         // Si ya pasó el tiempo de advertencia al iniciar el efecto y no se ha mostrado la advertencia
         setIsTimeRunningOut(true);
-        if (onWarning) {
-          onWarning();
+        if (onWarningRef.current) {
+          onWarningRef.current();
         }
       }
 
       if (remainingFinalTime > 0) {
         finalTimeoutId = setTimeout(() => {
-          onTimeout();
+          onTimeoutRef.current();
         }, remainingFinalTime);
       } else {
         // Si ya pasó el tiempo final al iniciar el efecto
         if (!isSessionClosed) { // Evitar llamar onTimeout si la sesión ya se cerró por otro medio
-          onTimeout();
+          onTimeoutRef.current();
         }
       }
     }
@@ -70,7 +82,7 @@ export function useSessionTimeout({
         clearTimeout(finalTimeoutId);
       }
     };
-  }, [conversationActive, sessionStartTime, isSessionClosed, onTimeout, onWarning, sessionDurationMs, warningThresholdMs, isTimeRunningOut]);
+  }, [conversationActive, sessionStartTime, isSessionClosed, sessionDurationMs, warningThresholdMs, isTimeRunningOut]);
 
   // Retornamos isTimeRunningOut para que el componente pueda usarlo si necesita mostrar algo en la UI
   return { isTimeRunningOut, setIsTimeRunningOut }; 

@@ -11,6 +11,7 @@ interface TranscribedResponseProps {
   tags?: string[];
   suggestedVideo?: { title: string; url: string };
   avatarUrl?: string;
+  userName?: string | null;
 }
 
 const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
@@ -21,6 +22,7 @@ const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
   tags = [],
   suggestedVideo,
   avatarUrl,
+  userName,
 }) => {
   // Renderizar las etiquetas con colores según categoría
   const renderTags = () => {
@@ -76,11 +78,18 @@ const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
               width={40}
               height={40}
               className="w-full h-full object-cover"
+              onError={(e) => {
+                console.log('[TranscribedResponse] Error loading user avatar, falling back to placeholder');
+                e.currentTarget.style.display = 'none';
+              }}
             />
           ) : (
-            <div className="w-full h-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg">
-              {/* Aquí podrías poner iniciales del usuario si no hay imagen */}
-              U
+            <div className="w-full h-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-inner">
+              {/* Mostrar iniciales del nombre del usuario */}
+              {userName ? 
+                userName.split(' ').map(name => name.charAt(0)).join('').slice(0, 2).toUpperCase() : 
+                'U'
+              }
             </div>
           )
         ) : (
@@ -91,6 +100,10 @@ const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
                 width={40}
                 height={40}
                 className="w-full h-full object-cover" 
+                onError={(e) => {
+                  console.log('[TranscribedResponse] Error loading MarIA avatar');
+                  e.currentTarget.style.display = 'none';
+                }}
             />
           </div>
         )}

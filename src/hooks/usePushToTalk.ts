@@ -32,25 +32,22 @@ export function usePushToTalk({
       targetElement.closest('input, textarea, [contenteditable="true"]') !== null;
 
     if (event.code === 'Space' && !isInputFocused) {
-      console.log('[usePushToTalk] Space key down. Conditions:', {
-        isListening,
-        isProcessing,
-        isSpeaking,
-        isThinking,
-        conversationActive,
-        isSessionClosed
-      });
-      
       event.preventDefault(); // Prevenir scroll u otras acciones por defecto de la barra espaciadora
       if (!isListening && !isProcessing && !isSpeaking && !isThinking && conversationActive && !isSessionClosed) {
-        console.log('[usePushToTalk] Activating push-to-talk');
         setIsPushToTalkActive(true);
         onStartListening();
-      } else {
-        console.log('[usePushToTalk] Space down: Conditions not met for push-to-talk');
       }
     }
-  }, [isListening, isProcessing, isSpeaking, isThinking, conversationActive, isSessionClosed, onStartListening, setIsPushToTalkActive]);
+  }, [
+    isListening, 
+    isProcessing, 
+    isSpeaking, 
+    isThinking, 
+    conversationActive, 
+    isSessionClosed, 
+    setIsPushToTalkActive, 
+    onStartListening
+  ]);
 
   const handleKeyUp = useCallback((event: KeyboardEvent) => {
     const targetElement = event.target as HTMLElement;
@@ -63,7 +60,6 @@ export function usePushToTalk({
     // Solo detener si se estaba escuchando (isListening es true) y PTT estaba activo
     // y la tecla liberada es Espacio, y no hay un input enfocado.
     if (event.code === 'Space' && isListening && !isInputFocused) { 
-      console.log('[usePushToTalk] Space key up. Stopping listening via push-to-talk');
       event.preventDefault();
       onStopListening(); 
     }

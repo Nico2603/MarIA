@@ -3,41 +3,39 @@ import { Track } from 'livekit-client';
 import { useMediaAttachment } from '@/hooks/voicechat/useMediaAttachment';
 
 interface RemoteTrackPlayerProps {
-  track: Track; // Cambiado de trackRef a track
+  track: Track;
   id?: string;
   className?: string;
   autoPlay?: boolean;
   muted?: boolean;
-  // Añade aquí otras props que quieras pasar al elemento multimedia, como 'playsInline'
   playsInline?: boolean;
   onLoadedData?: (event: React.SyntheticEvent<HTMLMediaElement, Event>) => void;
-  // etc.
+  onVideoLoaded?: () => void;
 }
 
 const RemoteTrackPlayer: React.FC<RemoteTrackPlayerProps> = ({
-  track, // Usar track directamente
+  track,
   id,
   className,
   autoPlay = true,
   muted = false,
   playsInline = true,
   onLoadedData,
+  onVideoLoaded,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const videoLoadedCallbackFiredRef = useRef(false);
   
-  // Usar el nuevo hook. El track puede ser null si la prop track lo es (aunque aquí es requerida).
   useMediaAttachment({ track: track, containerRef });
 
-  // Si necesitamos aplicar props directamente al elemento <audio>/<video>,
-  // podríamos necesitar una forma de acceder a él desde useMediaAttachment,
-  // o pasar estas props a useMediaAttachment para que las aplique.
-  // Por ahora, la mayoría de los atributos se manejarán a través del contenedor
-  // o mediante configuración directa si es necesario (requeriría modificar useMediaAttachment).
+  useEffect(() => {
+    // Reset el flag cuando cambia el track
+    videoLoadedCallbackFiredRef.current = false;
+  }, [track.sid]);
 
   useEffect(() => {
     const currentContainer = containerRef.current;
     if (currentContainer) {
-      // El elemento multimedia ahora es el único hijo del containerRef gracias a useMediaAttachment
       const mediaElement = currentContainer.firstChild as HTMLMediaElement | null;
       if (mediaElement) {
         mediaElement.autoplay = autoPlay;
@@ -46,25 +44,79 @@ const RemoteTrackPlayer: React.FC<RemoteTrackPlayerProps> = ({
         if (playsInline && mediaElement instanceof HTMLVideoElement) {
           mediaElement.playsInline = playsInline;
         }
-        if (onLoadedData) {
-            mediaElement.onloadeddata = (event) => onLoadedData(event as unknown as React.SyntheticEvent<HTMLMediaElement, Event>);
-        } else {
-            mediaElement.onloadeddata = null; // Asegurar que se limpia si onLoadedData se quita
+        
+        // Aplicar estilos para video
+        if (mediaElement instanceof HTMLVideoElement) {
+          mediaElement.style.width = '100%';
+          mediaElement.style.height = '100%';
+          mediaElement.style.objectFit = 'cover';
+          mediaElement.style.objectPosition = 'center top';
+        }
+        
+        // Manejar onVideoLoaded específicamente para videos
+        if (onVideoLoaded && mediaElement instanceof HTMLVideoElement) {
+          const handleVideoLoaded = () => {
+            if (mediaElement.readyState >= 3 && !videoLoadedCallbackFiredRef.current) { // HAVE_FUTURE_DATA o superior
+              console.log('[RemoteTrackPlayer] 🎬 Video cargado detectado, disparando callback');
+              videoLoadedCallbackFiredRef.current = true;
+              onVideoLoaded();
+            }
+          };
+          
+          // Verificar si el video ya está listo inmediatamente
+          if (mediaElement.readyState >= 3 && !videoLoadedCallbackFiredRef.current) {
+            console.log('[RemoteTrackPlayer] 🎬 Video ya estaba listo, disparando callback inmediatamente');
+            videoLoadedCallbackFiredRef.current = true;
+            onVideoLoaded();
+          }
+          
+          // Configurar event listeners para diferentes etapas de carga
+          mediaElement.oncanplay = handleVideoLoaded;
+          mediaElement.oncanplaythrough = handleVideoLoaded;
+          
+          // Manejar onLoadedData con el callback combinado
+          const combinedLoadedDataHandler = (event: Event) => {
+            if (onLoadedData) {
+              onLoadedData(event as unknown as React.SyntheticEvent<HTMLMediaElement, Event>);
+            }
+            handleVideoLoaded();
+          };
+          
+          mediaElement.onloadeddata = combinedLoadedDataHandler;
+          
+          // Log para debug
+          console.log('[RemoteTrackPlayer] 🎬 Configurando event listeners para video:', {
+            trackSid: track.sid,
+            readyState: mediaElement.readyState,
+            videoWidth: mediaElement.videoWidth,
+            videoHeight: mediaElement.videoHeight
+          });
+        } else if (onLoadedData) {
+          // Solo configurar onLoadedData si no es video o no hay onVideoLoaded
+          mediaElement.onloadeddata = (event) => onLoadedData(event as unknown as React.SyntheticEvent<HTMLMediaElement, Event>);
         }
       }
     }
-    // Limpieza de onloadeddata
+    
     return () => {
         if (currentContainer) {
             const mediaElement = currentContainer.firstChild as HTMLMediaElement | null;
-            if (mediaElement && onLoadedData) { // Solo limpiar si onLoadedData estaba presente
+            if (mediaElement) {
                 mediaElement.onloadeddata = null;
+                mediaElement.oncanplay = null;
+                mediaElement.oncanplaythrough = null;
             }
         }
     }
-  }, [track, autoPlay, muted, id, playsInline, onLoadedData]); // track como dependencia para re-aplicar si la pista cambia
+  }, [track, autoPlay, muted, id, playsInline, onLoadedData, onVideoLoaded]);
 
-  return <div ref={containerRef} className={className} />;
+  return (
+    <div 
+      ref={containerRef} 
+      className={className}
+      style={{ position: 'relative' }}
+    />
+  );
 };
 
 export default RemoteTrackPlayer; 

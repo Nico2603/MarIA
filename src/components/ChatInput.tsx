@@ -46,8 +46,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
     <div className="p-4 bg-transparent">
       <form onSubmit={(e) => { 
         e.preventDefault(); 
-        if (safeTextInput.trim()) {
-          console.log('[ChatInput] Enviando texto al bot:', safeTextInput);
+        if (safeTextInput.trim() && conversationActive && !isSessionClosed && !isProcessing && !isSpeaking) {
+          console.log('[ChatInput] 📝 Enviando mensaje por formulario:', safeTextInput);
           handleSendTextMessage(safeTextInput);
         }
       }} className="flex items-center space-x-3">
@@ -60,16 +60,17 @@ const ChatInput: React.FC<ChatInputProps> = ({
             isSessionClosed ? "Sesión finalizada." : 
             isListening ? "Escuchando..." :
             isProcessing ? "Procesando..." :
-            isSpeaking ? "Hablando..." :
-            isThinking ? "Pensando..." :
-            "Escribe o pulsa [Espacio]..."
+            isSpeaking ? "María está hablando..." :
+            isThinking ? "María está pensando..." :
+            "Escribe tu mensaje o pulsa [Espacio] para hablar..."
           }
           rows={1}
           className="flex-1 resize-none p-3 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-neutral-700/80 text-neutral-800 dark:text-neutral-100 placeholder-neutral-500 dark:placeholder-neutral-400 disabled:opacity-60 disabled:cursor-not-allowed text-base shadow-sm"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
-              if (safeTextInput.trim()) {
+              if (safeTextInput.trim() && conversationActive && !isSessionClosed && !isProcessing && !isSpeaking) {
+                console.log('[ChatInput] 📝 Enviando mensaje por Enter:', safeTextInput);
                 handleSendTextMessage(safeTextInput);
               }
             }
@@ -77,12 +78,28 @@ const ChatInput: React.FC<ChatInputProps> = ({
               e.stopPropagation();
             }
           }}
-          disabled={!conversationActive || isListening || isProcessing || isSpeaking || isSessionClosed || isThinking}
+          disabled={!conversationActive || isSessionClosed || isProcessing || isSpeaking}
         />
+        
+        {/* Botón de envío de texto */}
+        <button
+          type="submit"
+          disabled={!conversationActive || isSessionClosed || isProcessing || isSpeaking || !safeTextInput.trim()}
+          className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-neutral-900 shadow-md ${
+            (!conversationActive || isSessionClosed || isProcessing || isSpeaking || !safeTextInput.trim()) 
+              ? 'bg-neutral-300 dark:bg-neutral-600 text-neutral-500 cursor-not-allowed opacity-50' 
+              : 'bg-green-600 hover:bg-green-700 text-white focus:ring-green-500'
+          }`}
+          aria-label="Enviar mensaje"
+        >
+          <Send className="h-5 w-5" />
+        </button>
+
+        {/* Botón de micrófono */}
         <button 
           type="button"
           onClick={isListening ? handleStopListening : handleStartListening} 
-          disabled={!conversationActive || isProcessing || isSpeaking || isSessionClosed || isThinking}
+          disabled={!conversationActive || isSessionClosed || isProcessing || isSpeaking}
           className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-neutral-900 shadow-md ${ 
             isListening
             ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-400' 
@@ -90,23 +107,15 @@ const ChatInput: React.FC<ChatInputProps> = ({
           } ${ 
             (isPushToTalkActive) ? 'ring-4 ring-offset-0 ring-green-400 scale-110' : '' 
           } ${ 
-            (!conversationActive || isProcessing || isSpeaking || isSessionClosed || isThinking) ? 'opacity-50 cursor-not-allowed' : ''
+            (!conversationActive || isSessionClosed || isProcessing || isSpeaking) ? 'opacity-50 cursor-not-allowed' : ''
           }`}
           aria-label={isListening ? "Detener micrófono" : "Activar micrófono"}
-          onMouseDown={() => { console.log('Botón mic: mouse down'); onSpeechStart?.(); }}
-          onMouseUp={() =>   { console.log('Botón mic: mouse up');   onSpeechEnd?.(); }}
-          onTouchStart={() => { console.log('Botón mic: touch start'); onSpeechStart?.(); }}
-          onTouchEnd={() =>   { console.log('Botón mic: touch end');   onSpeechEnd?.(); }}
+          onMouseDown={() => { console.log('[ChatInput] 🎤 Botón mic: mouse down'); onSpeechStart?.(); }}
+          onMouseUp={() =>   { console.log('[ChatInput] 🎤 Botón mic: mouse up');   onSpeechEnd?.(); }}
+          onTouchStart={() => { console.log('[ChatInput] 🎤 Botón mic: touch start'); onSpeechStart?.(); }}
+          onTouchEnd={() =>   { console.log('[ChatInput] 🎤 Botón mic: touch end');   onSpeechEnd?.(); }}
         >
           {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mic className="h-5 w-5" />}
-        </button>
-        <button
-          type="submit"
-          disabled={!safeTextInput.trim() || !conversationActive || isListening || isProcessing || isSpeaking || isSessionClosed || isThinking}
-          className="w-11 h-11 rounded-full flex items-center justify-center bg-primary-600 text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity shadow-md"
-          aria-label="Enviar mensaje"
-        >
-          <Send className="h-5 w-5" />
         </button>
       </form>
       {isSessionClosed ? (

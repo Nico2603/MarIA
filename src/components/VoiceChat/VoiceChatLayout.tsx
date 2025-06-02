@@ -1,13 +1,15 @@
+'use client';
+
 import React, { useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
 import type { Message, AppError } from "@/types";
-import { ConnectionState as LiveKitConnectionState, Track, type RemoteTrackPublication, Participant } from 'livekit-client';
+import { ConnectionState as LiveKitConnectionState, Track, type RemoteTrackPublication, Participant, RemoteParticipant } from 'livekit-client';
 import ErrorDisplay from '@/components/ui/ErrorDisplay';
 import NotificationDisplay from '@/components/ui/NotificationDisplay';
 import { VideoPanelSkeleton } from './VideoPanel';
-import StartConversationOverlay from './StartConversationOverlay';
 import { VideoTrack } from '@livekit/components-react';
 import type { ActiveTrackInfo } from '@/hooks/voicechat/useLiveKitTrackManagement';
 import { cn } from '@/lib/utils';
@@ -35,8 +37,9 @@ interface VoiceChatLayoutProps {
   appError: AppError | null;
   notification: any | null; // Cambiado a any temporalmente
   isChatVisible: boolean;
+  tavusVideoTrack?: ActiveTrackInfo;
   tavusVideoTrackPublication: RemoteTrackPublication | undefined;
-  discoveredTargetParticipant?: Participant;
+  discoveredTargetParticipant?: RemoteParticipant;
   connectionState: LiveKitConnectionState;
   isSpeaking: boolean;
   isListening: boolean;
@@ -60,17 +63,18 @@ interface VoiceChatLayoutProps {
   // Callbacks y refs
   clearError: (type?: string) => void;
   toggleChatVisibility: () => void;
-  handleStartConversation: () => void;
   handleStartListening: () => void;
   handleStopListening: () => void;
   handleSendTextMessage: (text: string) => Promise<void>;
   dispatch: React.Dispatch<any>; // Considerar un tipo más específico si es posible
+  onTavusVideoLoaded?: () => void;
 }
 
 export default function VoiceChatLayout({
   appError,
   notification,
   isChatVisible,
+  tavusVideoTrack,
   tavusVideoTrackPublication,
   discoveredTargetParticipant,
   connectionState,
@@ -94,12 +98,13 @@ export default function VoiceChatLayout({
   setTextInput,
   clearError,
   toggleChatVisibility,
-  handleStartConversation,
   handleStartListening,
   handleStopListening,
   handleSendTextMessage,
   dispatch,
+  onTavusVideoLoaded,
 }: VoiceChatLayoutProps) {
+  const { data: session } = useSession();
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
@@ -120,105 +125,8 @@ export default function VoiceChatLayout({
       </AnimatePresence>
       <NotificationDisplay notification={notification} />
 
-      <div className="flex flex-row-reverse flex-1 h-full overflow-hidden items-stretch">
-        <div className={`relative flex-1 flex flex-col items-center justify-center transition-all duration-300 ease-in-out p-4 h-full`}>
-          <div className="h-full w-full rounded-lg overflow-hidden bg-gradient-to-br from-neutral-900 to-neutral-800 flex items-center justify-center relative">
-            {tavusVideoTrackPublication && discoveredTargetParticipant ? (
-              <>
-                {/* Botón de toggle del chat para video directo */}
-                {conversationActive && (
-                  <button
-                    onClick={toggleChatVisibility}
-                    className="absolute top-4 right-4 z-30 p-3 bg-white/90 dark:bg-neutral-800/90 rounded-full shadow-lg hover:bg-white dark:hover:bg-neutral-700 transition-all duration-300 ease-in-out backdrop-blur-sm border border-neutral-200 dark:border-neutral-600"
-                    aria-label={isChatVisible ? "Ocultar chat" : "Mostrar chat"}
-                    title={isChatVisible ? "Ocultar chat de texto" : "Mostrar chat de texto"}
-                  >
-                    {isChatVisible ? (
-                      <ChevronsLeft className="h-5 w-5 text-neutral-700 dark:text-neutral-200" />
-                    ) : (
-                      <ChevronsRight className="h-5 w-5 text-neutral-700 dark:text-neutral-200" />
-                    )}
-                  </button>
-                )}
-                
-                {/* Contenedor del video con tamaño adaptativo */}
-                <div className={`transition-all duration-300 ease-in-out ${
-                  isChatVisible 
-                    ? 'w-full h-full' 
-                    : 'w-full max-w-2xl h-auto aspect-video mx-auto'
-                }`}>
-                  <VideoTrack
-                    trackRef={{
-                      participant: discoveredTargetParticipant,
-                      publication: tavusVideoTrackPublication,
-                      source: tavusVideoTrackPublication.source,
-                    }}
-                    className={`${
-                      isChatVisible 
-                        ? 'w-full h-full object-cover' 
-                        : 'w-full h-full object-cover rounded-xl shadow-2xl'
-                    }`}
-                    style={{
-                      objectFit: 'cover',
-                      objectPosition: 'center',
-                    }}
-                  />
-                </div>
-              </>
-            ) : connectionState === LiveKitConnectionState.Connected ? (
-              <DynamicVideoPanel
-                isChatVisible={isChatVisible}
-                isSpeaking={isSpeaking}
-                isListening={isListening}
-                isProcessing={isProcessing}
-                isThinking={isThinking}
-                isSessionClosed={isSessionClosed}
-                conversationActive={conversationActive}
-                handleStartListening={handleStartListening}
-                handleStopListening={handleStopListening}
-                isPushToTalkActive={isPushToTalkActive}
-                toggleChatVisibility={toggleChatVisibility}
-              />
-            ) : (
-              <VideoPanelSkeleton />
-            )}
-          </div>
-
-          {!conversationActive && !isSessionClosed && (
-             <StartConversationOverlay
-                handleStartConversation={handleStartConversation}
-                isReadyToStart={isReadyToStart}
-                authStatus={authStatus}
-                userName={userName}
-                isSessionClosed={isSessionClosed}
-                connectionState={connectionState}
-             />
-          )}
-
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex flex-col items-center space-y-2 z-20">
-            {isPushToTalkActive && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className="bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg text-sm font-semibold"
-              >
-                Habla ahora (mantén pulsado Espacio)
-              </motion.div>
-            )}
-            {appError && appError.type !== 'livekit' && appError.message && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
-                className="w-full max-w-md"
-              >
-                <ErrorDisplay error={{ message: appError.message, type: appError.type || undefined }} onClose={() => clearError()} />
-              </motion.div>
-            )}
-          </div>
-        </div>
-
+      <div className="flex flex-1 h-full overflow-hidden">
+        {/* Panel del chat - 1/3 del espacio a la izquierda en desktop, full width en mobile */}
         <AnimatePresence>
           {isChatVisible && (
             <motion.aside
@@ -227,7 +135,13 @@ export default function VoiceChatLayout({
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="flex-none w-full md:w-1/3 bg-transparent h-full border-r border-gray-300 dark:border-gray-700 flex flex-col"
+              className={cn(
+                "flex-none bg-white dark:bg-gray-900 h-full border-r border-gray-300 dark:border-gray-700 flex flex-col max-h-screen",
+                // Responsivo: full width en mobile, 1/3 en desktop
+                "w-full md:w-2/5 lg:w-1/3 xl:w-1/3",
+                // En mobile, tomar toda la pantalla excepto cuando está colapsado
+                "fixed md:relative z-40 md:z-auto"
+              )}
             >
               <DynamicChatPanel
                 messages={messages}
@@ -235,8 +149,8 @@ export default function VoiceChatLayout({
                 isSpeaking={isSpeaking}
                 currentSpeakingId={currentSpeakingId}
                 greetingMessageId={greetingMessageId}
-                userName={userProfile?.name || userName}
-                userImage={userProfile?.image}
+                userName={userProfile?.username || userName}
+                userImage={session?.user?.image || null}
                 chatContainerRef={chatContainerRef}
                 chatEndRef={chatEndRef}
                 authStatus={authStatus}
@@ -258,6 +172,107 @@ export default function VoiceChatLayout({
             </motion.aside>
           )}
         </AnimatePresence>
+
+        {/* Contenedor principal del video - 2/3 del espacio a la derecha en desktop, ajustado en mobile */}
+        <div className={cn(
+          "relative flex flex-col transition-all duration-300 ease-in-out bg-gray-900",
+          // En desktop: 2/3 cuando chat visible, full cuando no
+          isChatVisible 
+            ? "flex-1 md:w-3/5 lg:w-2/3 xl:w-2/3" 
+            : "w-full",
+          // En mobile: full width siempre
+          "w-full md:w-auto"
+        )}>
+          {/* Contenedor del video con altura optimizada */}
+          <div className="flex-1 flex items-center justify-center relative p-2 md:p-4 min-h-0">
+            <div className={cn(
+              "relative w-full h-full rounded-lg overflow-hidden bg-gradient-to-br from-neutral-900 to-neutral-800 flex items-center justify-center",
+              "max-h-[calc(100vh-1rem)] md:max-h-[calc(100vh-2rem)]"
+            )}>
+              {tavusVideoTrackPublication && discoveredTargetParticipant ? (
+                <>
+                  {/* Botón de toggle del chat - posición responsive */}
+                  {conversationActive && (
+                    <button
+                      onClick={toggleChatVisibility}
+                      className={cn(
+                        "absolute z-30 p-2.5 bg-white/90 dark:bg-neutral-800/90 rounded-full shadow-lg hover:bg-white dark:hover:bg-neutral-700 transition-all duration-300 ease-in-out backdrop-blur-sm border border-neutral-200 dark:border-neutral-600",
+                        // Posición responsive
+                        "top-3 right-3 md:top-4 md:left-4"
+                      )}
+                      aria-label={isChatVisible ? "Ocultar chat" : "Mostrar chat"}
+                      title={isChatVisible ? "Ocultar chat de texto" : "Mostrar chat de texto"}
+                    >
+                      {isChatVisible ? (
+                        <ChevronsLeft className="h-4 w-4 md:h-5 md:w-5 text-neutral-700 dark:text-neutral-200" />
+                      ) : (
+                        <ChevronsRight className="h-4 w-4 md:h-5 md:w-5 text-neutral-700 dark:text-neutral-200" />
+                      )}
+                    </button>
+                  )}
+                  
+                  {/* Video track optimizado */}
+                  <div className="w-full h-full">
+                    <VideoTrack
+                      trackRef={{
+                        participant: discoveredTargetParticipant,
+                        publication: tavusVideoTrackPublication,
+                        source: tavusVideoTrackPublication.source,
+                      }}
+                      className="w-full h-full object-cover rounded-lg"
+                      style={{
+                        objectFit: 'cover',
+                        objectPosition: 'center top',
+                      }}
+                    />
+                  </div>
+                </>
+              ) : connectionState === LiveKitConnectionState.Connected ? (
+                <DynamicVideoPanel
+                  isChatVisible={isChatVisible}
+                  tavusTrackInfo={tavusVideoTrack}
+                  isSpeaking={isSpeaking}
+                  isListening={isListening}
+                  isProcessing={isProcessing}
+                  isThinking={isThinking}
+                  isSessionClosed={isSessionClosed}
+                  conversationActive={conversationActive}
+                  handleStartListening={handleStartListening}
+                  handleStopListening={handleStopListening}
+                  isPushToTalkActive={isPushToTalkActive}
+                  toggleChatVisibility={toggleChatVisibility}
+                  onVideoLoaded={onTavusVideoLoaded}
+                />
+              ) : (
+                <VideoPanelSkeleton />
+              )}
+            </div>
+          </div>
+
+          {/* Controles e indicadores en la parte inferior - posición responsive */}
+          <div className="absolute bottom-4 md:bottom-6 left-1/2 transform -translate-x-1/2 flex flex-col items-center space-y-2 md:space-y-3 z-20 px-4">
+            {isPushToTalkActive && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-full shadow-lg text-xs md:text-sm font-semibold border border-blue-500"
+              >
+                Habla ahora (mantén pulsado Espacio)
+              </motion.div>
+            )}
+            {appError && appError.type !== 'livekit' && appError.message && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                className="w-full max-w-md"
+              >
+                <ErrorDisplay error={{ message: appError.message, type: appError.type || undefined }} onClose={() => clearError()} />
+              </motion.div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

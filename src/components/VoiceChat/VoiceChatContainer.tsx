@@ -17,7 +17,6 @@ import {
 } from 'livekit-client';
 import { Send, AlertCircle, Mic, ChevronsLeft, ChevronsRight, MessageSquare, Loader2, Terminal, Clock, Calendar } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import ChatInput from '../ChatInput';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -30,7 +29,6 @@ import NotificationDisplay from '@/components/ui/NotificationDisplay';
 import ErrorDisplay from '@/components/ui/ErrorDisplay';
 import { VideoPanelSkeleton } from './VideoPanel';
 import type { Message } from "@/types";
-import StartConversationOverlay from './StartConversationOverlay';
 import { useLiveKitTrackManagement, ActiveTrackInfo } from '@/hooks/voicechat/useLiveKitTrackManagement';
 import RemoteTrackPlayer from './RemoteTrackPlayer';
 import { useLiveKitDataChannelEvents } from '@/hooks/voicechat/useLiveKitDataChannelEvents';
@@ -41,33 +39,28 @@ import { VideoTrack } from '@livekit/components-react';
 import VoiceChatLayout from './VoiceChatLayout';
 import { useParticipantDiscovery } from '@/hooks/voicechat/useParticipantDiscovery';
 import { useReadyToStart } from '@/hooks/voicechat/useReadyToStart';
-
-const HISTORY_LENGTH = 12;
-const AGENT_IDENTITY = "Maria-TTS-Bot";
+import { AGENT_IDENTITY, isValidAgent } from '@/lib/constants/agents';
 
 const DynamicChatPanel = dynamic(() => import('../ChatPanel'), { 
-  ssr: false, 
-  loading: () => (
-    <div className="flex-1 flex items-center justify-center bg-gray-850 h-full border-l border-gray-700">
-      <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-    </div>
-  )
+  ssr: false
 });
 
 const DynamicVideoPanel = dynamic(() => import('./VideoPanel'), {
-  ssr: false,
-  loading: () => <VideoPanelSkeleton />,
+  ssr: false
 });
 
 function VoiceChatContainer() {
-  console.log('[VoiceChatContainer] Component rendering started.');
   const { data: session, status: authStatus } = useSession();
   const { error: appError, setError: setAppError, clearError } = useError();
   const { notification, showNotification } = useNotifications();
 
   const [state, dispatch] = useReducer(voiceChatReducer, initialState);
   const [discoveredTargetParticipant, setDiscoveredTargetParticipant] = useState<RemoteParticipant | null>(null);
+  const [initializationPhase, setInitializationPhase] = useState<'auth' | 'connecting' | 'ready' | 'complete'>('auth');
+  const [tavusVideoLoaded, setTavusVideoLoaded] = useState(false);
+  
   const dataReceivedHandlerRef = useRef<((...args: any[]) => void) | null>(null);
+  
   const {
     isListening,
     isProcessing,
@@ -93,15 +86,28 @@ function VoiceChatContainer() {
 
   const roomRef = useRef<Room | null>(null);
   const audioStreamRef = useRef<MediaStream | null>(null);
-  const chatEndRef = useRef<HTMLDivElement>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-  const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const thinkingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const processingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitialized = useRef(false);
 
   const toggleChatVisibility = useCallback(() => {
     dispatch({ type: 'TOGGLE_CHAT_VISIBILITY' });
   }, []);
+
+  const handleTavusVideoLoaded = useCallback(() => {
+    setTavusVideoLoaded(true);
+  }, []);
+
+  // Reset tavus video loaded state when participant changes - SIMPLIFICADO
+  useEffect(() => {
+    if (discoveredTargetParticipant?.identity === 'tavus-avatar-agent' && tavusVideoLoaded) {
+      // Solo resetear si cambia a un participante diferente de Tavus
+      return;
+    }
+    if (discoveredTargetParticipant?.identity !== 'tavus-avatar-agent' && tavusVideoLoaded) {
+      setTavusVideoLoaded(false);
+    }
+  }, [discoveredTargetParticipant?.identity]);
 
   const {
     activeTracks,
@@ -112,67 +118,54 @@ function VoiceChatContainer() {
     roomRef
   });
 
-  const tavusVideoTrack = activeTracks.find(t => 
+  const tavusVideoTrack = useMemo(() => activeTracks.find(t => 
     t.kind === Track.Kind.Video && 
     t.identity === 'tavus-avatar-agent' && 
     t.source === Track.Source.Camera
-  );
-  const audioTracks = activeTracks
+  ), [activeTracks]);
+
+  const audioTracks = useMemo(() => activeTracks
     .filter(t => t.kind === Track.Kind.Audio && t.publication && t.publication.track)
-    .map(t => t.publication.track!);
+    .map(t => t.publication.track!), [activeTracks]);
 
   const handleStartListening = useCallback(() => {
-    console.log('[VoiceChatContainer] handleStartListening called. Conditions:', {
-      isSessionClosed: state.isSessionClosed,
-      conversationActive: state.conversationActive,
-      roomExists: !!roomRef.current?.localParticipant,
-      isListening: state.isListening,
-      isSpeaking: state.isSpeaking,
-      isProcessing: state.isProcessing
-    });
-    
     if (!state.isSessionClosed && 
         state.conversationActive && 
         roomRef.current?.localParticipant && 
         !state.isListening && 
         !state.isSpeaking && 
         !state.isProcessing) {
-      console.log('[VoiceChatContainer] Iniciando escucha STT');
       dispatch({ type: 'SET_LISTENING', payload: true });
-    } else {
-      console.log('[VoiceChatContainer] handleStartListening: Condiciones no cumplidas, no se inicia STT');
     }
-  }, [state.isSessionClosed, state.conversationActive, state.isListening, state.isSpeaking, state.isProcessing, roomRef]);
+  }, [state.isSessionClosed, state.conversationActive, state.isListening, state.isSpeaking, state.isProcessing]);
 
   const handleStopListening = useCallback(() => {
-    console.log('[VoiceChatContainer] handleStopListening called. isListening:', state.isListening);
-    
     if (state.isListening) {
-      console.log('[VoiceChatContainer] Deteniendo escucha STT');
       dispatch({ type: 'SET_LISTENING', payload: false });
-    } else {
-      console.log('[VoiceChatContainer] handleStopListening: No se estaba escuchando, no se detiene STT');
     }
   }, [state.isListening]);
 
   const onConnectedCallback = useCallback((connectedRoom: Room) => {
     roomRef.current = connectedRoom;
     clearError();
-    showNotification("Conectado a la sala de voz", "success");
+    setInitializationPhase('ready');
+    
     if (state.conversationActive && roomRef.current?.localParticipant) {
       roomRef.current.localParticipant.setMicrophoneEnabled(true);
       dispatch({ type: 'SET_LISTENING', payload: true });
     }
-  }, [clearError, showNotification, state.conversationActive, dispatch]);
+  }, [clearError, state.conversationActive]);
 
   const onDisconnectedCallback = useCallback(() => {
     roomRef.current = null;
-    showNotification("Desconectado de la sala de voz", "warning");
+    showNotification("Conexión perdida", "warning");
     dispatch({ type: 'RESET_CONVERSATION_STATE' });
-  }, [showNotification, dispatch]);
+    setInitializationPhase('auth');
+  }, [showNotification]);
 
   const onConnectionErrorCallback = useCallback((err: Error) => {
-    setAppError('livekit', `Error de LiveKit: ${err.message}`);
+    setAppError('livekit', `Error de conexión: ${err.message}`);
+    setInitializationPhase('auth');
   }, [setAppError]);
 
   const onDataReceivedLiveKitCallback = useCallback((...args: any[]) => {
@@ -181,11 +174,8 @@ function VoiceChatContainer() {
     }
   }, []);
 
-  const {
-    room,
-    connectionState,
-    disconnectFromLiveKit,
-  } = useLiveKitConnectionManager({
+  // Memoizar la configuración del hook para evitar re-creaciones
+  const liveKitConnectionConfig = useMemo(() => ({
     userProfile: userProfile,
     initialContext: initialContext,
     activeSessionId: activeSessionId,
@@ -196,56 +186,71 @@ function VoiceChatContainer() {
     handleTrackUnsubscribed,
     handleParticipantDisconnected,
     onDataReceived: onDataReceivedLiveKitCallback,
-  });
+  }), [
+    userProfile?.id,
+    userProfile?.username,
+    userProfile?.email,
+    initialContext,
+    activeSessionId,
+    onConnectedCallback,
+    onDisconnectedCallback,
+    onConnectionErrorCallback,
+    handleTrackSubscribed,
+    handleTrackUnsubscribed,
+    handleParticipantDisconnected,
+    onDataReceivedLiveKitCallback,
+  ]);
 
+  const {
+    room,
+    connectionState,
+    disconnectFromLiveKit,
+  } = useLiveKitConnectionManager(liveKitConnectionConfig);
+
+  // Optimized participant discovery - SIMPLIFICADO
   useEffect(() => {
     if (!room) {
       setDiscoveredTargetParticipant(null);
       return;
     }
 
+    const allParticipants = Array.from(room.remoteParticipants.values());
+    const validAgents = allParticipants.filter(p => p.identity && isValidAgent(p.identity));
+    
     let foundInteractiveAgent: RemoteParticipant | null = null;
-    // AGENT_IDENTITY es "Maria-TTS-Bot". Buscamos otro agente remoto 
-    // que no sea el usuario local y que no sea Maria-TTS-Bot.
-    // Este debería ser el agente interactivo (ej. Tavus).
-    for (const p of Array.from(room.remoteParticipants.values())) {
-      // Asegurarse de que no es el bot de solo TTS y que tiene una identidad
-      if (p.identity && p.identity !== AGENT_IDENTITY) { 
-        console.log(`[VoiceChatContainer] Participant Discovery: Found potential interactive agent: ${p.identity}`);
-        foundInteractiveAgent = p;
-        break;
-      }
+    
+    // Priorizar tavus-avatar-agent si está disponible
+    const tavusAgent = validAgents.find(p => p.identity === 'tavus-avatar-agent');
+    if (tavusAgent) {
+      foundInteractiveAgent = tavusAgent;
+    } else if (validAgents.length > 0) {
+      foundInteractiveAgent = validAgents[0];
     }
 
-    if (foundInteractiveAgent) {
-      setDiscoveredTargetParticipant(foundInteractiveAgent);
-    } else {
-      setDiscoveredTargetParticipant(null);
-      console.log("[VoiceChatContainer] Participant Discovery: No interactive agent found initially. Listening for new connections...");
-      const handleNewParticipantConnected = (participant: RemoteParticipant) => {
-        if (participant.identity && participant.identity !== AGENT_IDENTITY) {
-          console.log(`[VoiceChatContainer] Participant Discovery: New interactive agent connected: ${participant.identity}`);
-          setDiscoveredTargetParticipant(participant);
-          room.off(RoomEvent.ParticipantConnected, handleNewParticipantConnected);
-        }
-      };
-      room.on(RoomEvent.ParticipantConnected, handleNewParticipantConnected);
-      return () => {
-        room.off(RoomEvent.ParticipantConnected, handleNewParticipantConnected);
-      };
-    }
-  }, [room, dispatch]);
+    setDiscoveredTargetParticipant(foundInteractiveAgent);
+  }, [room?.remoteParticipants.size]);
 
+  // User profile management
   useEffect(() => {
-    if (discoveredTargetParticipant) {
-      console.log(`VoiceChatContainer: Discovered target participant ${discoveredTargetParticipant.identity} is available.`);
-    } else if (room && room.remoteParticipants.size > 0 && Array.from(room.remoteParticipants.values()).every(p => p.identity === AGENT_IDENTITY)) {
-      console.log(`VoiceChatContainer: Only agent participant(s) found. Still waiting for target participant.`);
-    } else if (room) {
-      console.log(`VoiceChatContainer: Waiting for target participant to be auto-discovered (room is present).`);
+    if (authStatus === 'authenticated' && session?.user) {
+      const newProfile = { 
+        id: session.user.id || undefined,
+        email: session.user.email || null,
+        username: session.user.name || null,
+      };
+      
+      if (!userProfile || 
+          userProfile.id !== newProfile.id ||
+          userProfile.email !== newProfile.email ||
+          userProfile.username !== newProfile.username) {
+        dispatch({ type: 'SET_USER_PROFILE', payload: newProfile });
+      }
+    } else if (authStatus === 'unauthenticated' && userProfile !== null) {
+      dispatch({ type: 'SET_USER_PROFILE', payload: null });
     }
-  }, [discoveredTargetParticipant, room]);
+  }, [authStatus, session?.user?.id, session?.user?.email, session?.user?.name, userProfile]);
 
+  // Conversation session management
   const conversationManagerProps = useMemo(() => ({
     session,
     authStatus,
@@ -261,25 +266,29 @@ function VoiceChatContainer() {
     showNotification,
     dispatch,
   }), [
-    session, authStatus, 
-    state.conversationActive, state.isReadyToStart, state.messages, 
-    state.activeSessionId, state.isSessionClosed,
-    disconnectFromLiveKit, setAppError, showNotification, dispatch
+    session?.user?.id,
+    authStatus, 
+    state.conversationActive, 
+    state.isReadyToStart, 
+    state.messages.length,
+    state.activeSessionId, 
+    state.isSessionClosed,
+    disconnectFromLiveKit, 
+    setAppError, 
+    showNotification
   ]);
 
   const {
-    handleStartConversation,
     endSession
   } = useConversationSessionManager(conversationManagerProps);
 
-  const memoizedEndSession = useCallback(endSession, [endSession]);
-
+  // Data channel events
   const dataChannelEventsProps = useMemo(() => ({
     dispatch,
     conversationActive: state.conversationActive,
     greetingMessageId: state.greetingMessageId,
     currentSpeakingId: state.currentSpeakingId,
-    endSession: memoizedEndSession,
+    endSession,
     isProcessing: state.isProcessing,
     isListening: state.isListening,
     isSpeaking: state.isSpeaking,
@@ -289,10 +298,16 @@ function VoiceChatContainer() {
     roomRef: roomRef,
     isReadyToStart: state.isReadyToStart,
   }), [
-    dispatch,
-    state.conversationActive, state.greetingMessageId, state.currentSpeakingId,
-    memoizedEndSession, state.isProcessing, state.isListening, state.isSpeaking,
-    state.isSessionClosed, state.activeSessionId, room, roomRef,
+    state.conversationActive, 
+    state.greetingMessageId, 
+    state.currentSpeakingId,
+    endSession, 
+    state.isProcessing, 
+    state.isListening, 
+    state.isSpeaking,
+    state.isSessionClosed, 
+    state.activeSessionId, 
+    room?.name,
     state.isReadyToStart,
   ]);
 
@@ -302,143 +317,13 @@ function VoiceChatContainer() {
     dataReceivedHandlerRef.current = handleDataReceived;
   }, [handleDataReceived]);
 
-  useEffect(() => {
-    if (room !== roomRef.current) {
-        roomRef.current = room;
-    }
-  }, [room]);
-
-  const setIsListeningCallback = useCallback(
-    (value: boolean) => dispatch({ type: 'SET_LISTENING', payload: value }),
-    []
-  );
-
-  const speechToTextControlsProps = useMemo(() => ({
-    isListening: state.isListening,
-    isProcessing: state.isProcessing,
-    isSpeaking: state.isSpeaking,
-    isSessionClosed: state.isSessionClosed,
-    conversationActive: state.conversationActive,
-    roomRef,
-    setIsListening: setIsListeningCallback,
-  }), [
-    state.isListening, state.isProcessing, state.isSpeaking, 
-    state.isSessionClosed, state.conversationActive, 
-    setIsListeningCallback,
-  ]);
-
-  const {
-    handleStartListening: sttHandleStartListening,
-    handleStopListening: sttHandleStopListening
-  } = useSpeechToTextControls(speechToTextControlsProps);
-
-  const setPushToTalkActiveCallback = useCallback(
-    (value: boolean) => dispatch({ type: 'SET_PUSH_TO_TALK_ACTIVE', payload: value }),
-    []
-  );
-
-  usePushToTalk({
-    isListening: state.isListening,
-    isProcessing: state.isProcessing,
-    isSpeaking: state.isSpeaking,
-    isThinking: state.isThinking,
-    conversationActive: state.conversationActive,
-    isSessionClosed: state.isSessionClosed,
-    onStartListening: handleStartListening,
-    onStopListening: handleStopListening,
-    setIsPushToTalkActive: setPushToTalkActiveCallback,
-  });
-
-  const handleSessionTimeout = useCallback(() => {
-    endSession(false);
-    showNotification("La sesión ha finalizado debido a inactividad.", "warning", 5000);
-    dispatch({ type: 'SET_TIME_RUNNING_OUT', payload: false });
-  }, [endSession, showNotification]);
-
-  const handleSessionWarning = useCallback(() => {
-    showNotification("La sesión finalizará pronto debido a inactividad.", "warning", 5000);
-    dispatch({ type: 'SET_TIME_RUNNING_OUT', payload: true });
-  }, [showNotification]);
-
-  const { isTimeRunningOut } = useSessionTimeout({
-    conversationActive: state.conversationActive,
-    sessionStartTime: state.sessionStartTime,
-    isSessionClosed: state.isSessionClosed,
-    onTimeout: handleSessionTimeout,
-    onWarning: handleSessionWarning,
-  });
-
-  useEffect(() => {
-    if (state.isTimeRunningOutState !== isTimeRunningOut) {
-      dispatch({ type: 'SET_TIME_RUNNING_OUT', payload: isTimeRunningOut });
-    }
-  }, [isTimeRunningOut, state.isTimeRunningOutState]);
-
-  // Efecto para desactivar push-to-talk cuando no se está escuchando
-  useEffect(() => {
-    if (!state.isListening && state.isPushToTalkActive) {
-      console.log('[VoiceChatContainer] Desactivating push-to-talk because listening stopped');
-      dispatch({ type: 'SET_PUSH_TO_TALK_ACTIVE', payload: false });
-    }
-  }, [state.isListening, state.isPushToTalkActive]);
-
-  // Efecto para detectar si el saludo inicial no llega
-  useEffect(() => {
-    if (state.conversationActive && !state.greetingMessageId && state.activeSessionId) {
-      console.log('[VoiceChatContainer] Conversación activa pero sin saludo inicial. Configurando timeout...');
-      
-      const greetingTimeout = setTimeout(() => {
-        if (!state.greetingMessageId && state.conversationActive) {
-          console.error('[VoiceChatContainer] ❌ SALUDO INICIAL NO RECIBIDO después de 8 segundos');
-          console.error('Posibles causas:');
-          console.error('1. Backend no está enviando initial_greeting_message');
-          console.error('2. Username no se está pasando correctamente al backend');
-          console.error('3. Configuración de Tavus/LiveKit no está procesando metadata');
-          console.error('4. Error en el sistema de TTS del backend');
-          
-          showNotification(
-            'El saludo inicial no se ejecutó correctamente. Verifica la configuración del backend.',
-            'warning',
-            8000
-          );
-          
-          // Crear un saludo manual como fallback
-          const fallbackGreeting: Message = {
-            id: `fallback-greeting-${Date.now()}`,
-            text: `¡Hola ${session?.user?.name || 'Usuario'}! Soy María, tu asistente de salud mental. ¿En qué puedo ayudarte hoy?`,
-            isUser: false,
-            timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
-          };
-          
-          console.log('[VoiceChatContainer] Creando saludo de respaldo:', fallbackGreeting);
-          dispatch({ type: 'SET_MESSAGES', payload: [fallbackGreeting] });
-          dispatch({ type: 'SET_GREETING_MESSAGE_ID', payload: fallbackGreeting.id });
-        }
-      }, 8000); // 8 segundos para que llegue el saludo
-
-      return () => clearTimeout(greetingTimeout);
-    }
-  }, [state.conversationActive, state.greetingMessageId, state.activeSessionId, session?.user?.name, showNotification]);
-
-  useEffect(() => {
-    console.log('[UserProfileEffect] authStatus:', authStatus, 'Session:', session);
-    if (authStatus === 'authenticated' && session?.user) {
-      console.log('[UserProfileEffect] Setting user profile:', session.user);
-      dispatch({ 
-        type: 'SET_USER_PROFILE', 
-        payload: { 
-          id: session.user.id || undefined,
-          email: session.user.email || null,
-          username: session.user.name || null,
-        } 
-      });
-    } else if (authStatus === 'unauthenticated') {
-      console.log('[UserProfileEffect] Setting user profile to null (unauthenticated).');
-      dispatch({ type: 'SET_USER_PROFILE', payload: null });
-    } else {
-      console.log('[UserProfileEffect] Conditions not met to set user profile.');
-    }
-  }, [authStatus, session, dispatch]);
+  // Ready to start calculation - ESTABILIZADO
+  const stableActiveTracks = useMemo(() => activeTracks.map(track => ({
+    identity: track.identity,
+    kind: track.kind,
+    source: track.source,
+    publication: track.publication
+  })), [activeTracks.length, activeTracks.map(t => `${t.identity}-${t.kind}-${t.source}`).join(',')]);
 
   const calculatedIsReadyToStart = useReadyToStart({
     authStatus,
@@ -448,123 +333,118 @@ function VoiceChatContainer() {
     currentSpeakingId: state.currentSpeakingId,
     isSpeaking: state.isSpeaking,
     conversationActive: state.conversationActive,
-    activeTracks: activeTracks.map(track => ({
-      identity: track.identity,
-      kind: track.kind,
-      source: track.source,
-      publication: track.publication
-    })),
+    activeTracks: stableActiveTracks,
+    tavusVideoLoaded: tavusVideoLoaded,
+  });
+
+  // Actualizar isReadyToStart SOLO cuando sea realmente necesario
+  useEffect(() => {
+    if (state.isReadyToStart !== calculatedIsReadyToStart) {
+      dispatch({ type: 'SET_READY_TO_START', payload: calculatedIsReadyToStart });
+      
+      if (calculatedIsReadyToStart && !isInitialized.current) {
+        setInitializationPhase('complete');
+        isInitialized.current = true;
+      }
+    }
+  }, [calculatedIsReadyToStart]);
+
+  // Callbacks defined outside of useMemo to avoid hook violations
+  const setIsListening = useCallback(
+    (value: boolean) => dispatch({ type: 'SET_LISTENING', payload: value }),
+    []
+  );
+
+  const setIsPushToTalkActive = useCallback(
+    (value: boolean) => dispatch({ type: 'SET_PUSH_TO_TALK_ACTIVE', payload: value }),
+    []
+  );
+
+  const onTimeoutCallback = useCallback(() => {
+    endSession(false);
+    showNotification("Sesión finalizada por inactividad.", "warning", 5000);
+    dispatch({ type: 'SET_TIME_RUNNING_OUT', payload: false });
+  }, [endSession, showNotification]);
+
+  const onWarningCallback = useCallback(() => {
+    showNotification("La sesión finalizará pronto.", "warning", 5000);
+    dispatch({ type: 'SET_TIME_RUNNING_OUT', payload: true });
+  }, [showNotification]);
+
+  // Speech to text controls
+  const speechToTextControlsProps = useMemo(() => ({
+    isListening: state.isListening,
+    isProcessing: state.isProcessing,
+    isSpeaking: state.isSpeaking,
+    isSessionClosed: state.isSessionClosed,
+    conversationActive: state.conversationActive,
+    roomRef,
+    setIsListening,
+  }), [
+    state.isListening, 
+    state.isProcessing, 
+    state.isSpeaking, 
+    state.isSessionClosed, 
+    state.conversationActive,
+    setIsListening,
+  ]);
+
+  const {
+    handleStartListening: sttHandleStartListening,
+    handleStopListening: sttHandleStopListening
+  } = useSpeechToTextControls(speechToTextControlsProps);
+
+  // Push to talk
+  usePushToTalk({
+    isListening: state.isListening,
+    isProcessing: state.isProcessing,
+    isSpeaking: state.isSpeaking,
+    isThinking: state.isThinking,
+    conversationActive: state.conversationActive,
+    isSessionClosed: state.isSessionClosed,
+    onStartListening: handleStartListening,
+    onStopListening: handleStopListening,
+    setIsPushToTalkActive,
+  });
+
+  // Session timeout
+  const { isTimeRunningOut } = useSessionTimeout({
+    conversationActive: state.conversationActive,
+    sessionStartTime: state.sessionStartTime,
+    isSessionClosed: state.isSessionClosed,
+    onTimeout: onTimeoutCallback,
+    onWarning: onWarningCallback,
   });
 
   useEffect(() => {
-    if (state.isReadyToStart !== calculatedIsReadyToStart) {
-        dispatch({ type: 'SET_READY_TO_START', payload: calculatedIsReadyToStart });
-        if (calculatedIsReadyToStart && state.greetingMessageId && !state.currentSpeakingId && !state.isSpeaking) {
-            // Opcional: Mover la notificación aquí si se quiere solo cuando greeting ha sonado Y está listo
-            // showNotification("María está lista para conversar.", "success");
-        }
+    if (state.isTimeRunningOutState !== isTimeRunningOut) {
+      dispatch({ type: 'SET_TIME_RUNNING_OUT', payload: isTimeRunningOut });
     }
-  }, [calculatedIsReadyToStart, dispatch, state.isReadyToStart, state.greetingMessageId, state.currentSpeakingId, state.isSpeaking, showNotification]);
+  }, [isTimeRunningOut, state.isTimeRunningOutState]);
 
-  const handleKeyPress = useCallback((event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault();
-      if (state.textInput.trim() && state.conversationActive && !state.isProcessing && !state.isSpeaking && !state.isListening && !state.isThinking) {
-        handleSendTextMessage(state.textInput.trim());
-      }
-    }
-  }, [state.textInput, state.conversationActive, state.isProcessing, state.isSpeaking, state.isListening, state.isThinking, handleSendTextMessage]);
-  
-  const scrollToBottom = useCallback(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
-
+  // Cleanup on unmount
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
-
-  useEffect(() => {
-    const container = chatContainerRef.current;
-    let observer: MutationObserver | null = null;
-
-    if (container) {
-      const MutationObserverConstructor = window.MutationObserver || (window as any).WebKitMutationObserver;
-      if (MutationObserverConstructor) {
-        observer = new MutationObserverConstructor((mutations) => {
-          mutations.forEach((mutation) => {
-            if (mutation.type === 'childList') {
-              scrollToBottom();
-            }
-          });
-        });
-        observer.observe(container, { childList: true });
-      }
-    }
-
     return () => {
-      if (observer) {
-        observer.disconnect();
-      }
-    };
-  }, [scrollToBottom]);
-
-  useEffect(() => {
-    if (textAreaRef.current) {
-      textAreaRef.current.style.height = 'auto';
-      textAreaRef.current.style.height = `${textAreaRef.current.scrollHeight}px`;
-    }
-  }, [textInput]);
-
-  useEffect(() => {
-    console.log('[VoiceChatContainer] Initializing basic listeners and cleanup.');
-    return () => {
-      console.log('[VoiceChatContainer] Cleaning up basic listeners.');
-      clearError(); // Ensure errors are cleared on unmount
-      // Clear any timeouts that might have been set
-      if (thinkingTimeoutRef.current) {
-        clearTimeout(thinkingTimeoutRef.current);
-      }
-      if (processingTimeoutRef.current) {
-        clearTimeout(processingTimeoutRef.current);
-      }
+      clearError();
+      if (thinkingTimeoutRef.current) clearTimeout(thinkingTimeoutRef.current);
+      if (processingTimeoutRef.current) clearTimeout(processingTimeoutRef.current);
     };
   }, [clearError]);
 
-  // Efecto para verificar la salud del backend después de iniciar conversación
-  useEffect(() => {
-    if (state.conversationActive && !state.isSessionClosed) {
-      console.log('[VoiceChatContainer] Conversación activa - monitoreando comunicación con backend...');
-      
-      // Verificar que los mensajes se estén procesando correctamente
-      const backendHealthCheck = setTimeout(() => {
-        if (state.isThinking) {
-          console.warn('[VoiceChatContainer] ⚠️ Backend parece estar tardando en responder (>15s)');
-          showNotification(
-            'El sistema está tardando en responder. Verifica tu conexión a internet.',
-            'warning',
-            5000
-          );
-        }
-      }, 15000); // 15 segundos
-      
-      return () => clearTimeout(backendHealthCheck);
-    }
-  }, [state.conversationActive, state.isSessionClosed, state.isThinking, showNotification]);
+  // Loading states
+  const isLoading = authStatus === 'loading' || (!userProfile && session?.user?.id);
 
-  const isLoading = authStatus === 'loading' || (!state.userProfile && session?.user?.id);
-
-  if (isLoading) {
-    console.log('[VoiceChatContainer] Early return: isLoading is true.');
+  // Simplificado: solo verificar autenticación básica
+  if (authStatus === 'loading') {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-gray-900 text-white">
         <Loader2 className="animate-spin h-12 w-12 text-blue-500" />
-        <p className="mt-4 text-lg">Cargando perfil y configuración...</p>
+        <p className="mt-4 text-lg">Iniciando MarIA...</p>
       </div>
     );
   }
 
   if (!session?.user?.id) {
-    console.log('[VoiceChatContainer] Early return: User not authenticated.');
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-gray-900 text-white">
         <AlertCircle className="h-16 w-16 text-red-500" />
@@ -580,89 +460,13 @@ function VoiceChatContainer() {
   }
 
   if (appError.type && appError.type !== 'permissions' && appError.type !== 'profile' && appError.message) {
-    console.error(
-      '[VoiceChatContainer] Early return: Application error occurred.',
-      `Type: ${appError.type}, Message: ${appError.message}`,
-      appError 
-    );
     return <ErrorDisplay error={{ message: appError.message, type: appError.type || undefined }} onClose={clearError} />;
   }
 
-  if (authStatus === 'authenticated' && 
-      connectionState === LiveKitConnectionState.Connecting && 
-      !state.conversationActive) {
-    console.log('[VoiceChatContainer] Early return: Connecting to LiveKit room.');
-    return (
-        <div className="flex flex-col items-center justify-center h-screen bg-gray-900 text-white p-4">
-          <Loader2 className="h-16 w-16 animate-spin text-blue-400" />
-          <h1 className="mt-6 text-2xl md:text-3xl font-semibold text-center">
-            Conectando a la sala de voz...
-          </h1>
-        </div>
-      );
-  }
-
-  if (!state.conversationActive && state.userProfile) {
-    console.log('[VoiceChatContainer] Displaying StartConversationOverlay because conversation is not active and user profile exists.');
-    return (
-      <div className="flex-1 flex flex-col relative">
-        <StartConversationOverlay
-          authStatus={authStatus}
-          userName={state.userProfile?.username}
-          isReadyToStart={state.isReadyToStart}
-          handleStartConversation={() => {
-            console.log('[VoiceChatContainer] StartConversationOverlay: handleStartConversation triggered.');
-            handleStartConversation();
-          }}
-          isSessionClosed={state.isSessionClosed}
-          connectionState={connectionState}
-          discoveredParticipant={discoveredTargetParticipant}
-        />
-      </div>
-    );
-  }
-
-  console.log(
-    '⚙️ [VoiceChatContainer] Estados antes de renderizar VoiceChatLayout:',
-    'isReadyToStart=', state.isReadyToStart,
-    'conversationActive=', state.conversationActive,
-    'isChatVisible=', state.isChatVisible,
-    'isSessionClosed=', state.isSessionClosed,
-    'authStatus=', authStatus,
-    'connectionState=', connectionState,
-    'discoveredTargetParticipant=', discoveredTargetParticipant?.identity,
-    'userProfile=', state.userProfile ? 'Exists' : 'null',
-    'appError=', appError ? `${appError.type}: ${appError.message}` : 'null'
-  );
-
-  console.log('[VoiceChatContainer] Rendering main VoiceChatLayout.');
-  
-  // Logging adicional para diagnóstico de audio
-  console.log('[VoiceChatContainer] Audio tracks disponibles:', audioTracks.length);
-  audioTracks.forEach((track, index) => {
-    console.log(`[VoiceChatContainer] Audio track ${index}:`, {
-      sid: track.sid,
-      kind: track.kind,
-      isMuted: track.isMuted,
-    });
-  });
-  
-  // Logging adicional para diagnóstico completo del sistema
-  console.log('[VoiceChatContainer] Estado completo del sistema:', {
-    isReadyToStart: state.isReadyToStart,
-    calculatedIsReadyToStart,
-    authStatus,
-    connectionState,
-    discoveredParticipant: discoveredTargetParticipant?.identity,
-    totalActiveTracks: activeTracks.length,
-    hasVideoTrack: !!tavusVideoTrack,
-    hasAudioTracks: audioTracks.length > 0,
-    conversationActive: state.conversationActive
-  });
-  
+  // Ir directo a VoiceChatLayout sin pantallas de carga intermedias
   return (
     <>
-      {/* Renderizado de tracks de audio - elementos ocultos pero funcionales */}
+      {/* Audio tracks - hidden but functional */}
       {audioTracks.map((audioTrack, index) => (
         <RemoteTrackPlayer
           key={`audio-${audioTrack.sid || index}`}
@@ -677,6 +481,7 @@ function VoiceChatContainer() {
         appError={appError}
         notification={notification}
         isChatVisible={isChatVisible}
+        tavusVideoTrack={tavusVideoTrack}
         tavusVideoTrackPublication={tavusVideoTrack?.publication as RemoteTrackPublication | undefined}
         discoveredTargetParticipant={discoveredTargetParticipant || undefined}
         connectionState={connectionState}
@@ -700,11 +505,11 @@ function VoiceChatContainer() {
         setTextInput={(value: string) => dispatch({ type: 'SET_TEXT_INPUT', payload: value })}
         clearError={clearError}
         toggleChatVisibility={toggleChatVisibility}
-        handleStartConversation={handleStartConversation}
         handleStartListening={sttHandleStartListening}
         handleStopListening={sttHandleStopListening}
         handleSendTextMessage={handleSendTextMessage}
         dispatch={dispatch}
+        onTavusVideoLoaded={handleTavusVideoLoaded}
       />
     </>
   );

@@ -10,8 +10,14 @@ import {
   Participant,
   TrackPublication,
 } from 'livekit-client';
+import { AGENT_IDENTITY, isValidAgent } from '@/lib/constants/agents';
 
-const AGENT_IDENTITY = "Maria-TTS-Bot";
+export interface LiveKitTrack {
+  identity: string;
+  kind: Track.Kind;
+  source: Track.Source;
+  publication?: RemoteTrackPublication;
+}
 
 export interface ActiveTrackInfo {
   id: string;
@@ -33,7 +39,7 @@ export function useLiveKitTrackManagement({
   const [activeTracks, setActiveTracks] = useState<ActiveTrackInfo[]>([]);
 
   const addTrack = useCallback((track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
-    const isAgent = participant.identity === AGENT_IDENTITY;
+    const isAgent = isValidAgent(participant.identity);
     const newTrackInfo: ActiveTrackInfo = {
       id: `${participant.sid}-${publication.trackSid}`,
       participant: participant as Participant,
@@ -57,8 +63,6 @@ export function useLiveKitTrackManagement({
   }, []);
 
   const handleTrackSubscribed = useCallback((track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
-    console.log(`[LiveKitTrackMgmt] Track Subscribed: ${track.kind} from ${participant.identity} (Source: ${publication.source}, SID: ${publication.trackSid})`);
-    
     const localParticipant = roomRef.current?.localParticipant;
 
     if (
@@ -66,24 +70,18 @@ export function useLiveKitTrackManagement({
       publication.kind === Track.Kind.Video &&
       participant.identity === localParticipant.identity
     ) {
-      console.log(
-        `[LiveKitTrackMgmt] Ignorando vídeo local: Identity=${participant.identity}`
-      );
       return;
     }
 
     addTrack(track, publication, participant);
-    console.log(`[LiveKitTrackMgmt] Pista añadida a activeTracks: Kind=${track.kind}, Identity=${participant.identity}, Source=${publication.source}`);
 
   }, [addTrack, roomRef]);
 
   const handleTrackUnsubscribed = useCallback((track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
-    console.log(`Track Unsubscribed: ${track.kind} from ${participant.identity}`);
     removeTrack(publication.trackSid, participant.identity, track.kind);
   }, [removeTrack]);
 
   const handleParticipantDisconnected = useCallback((participant: RemoteParticipant) => {
-    console.log(`Participant Disconnected: ${participant.identity}. Eliminando sus pistas de activeTracks.`);
     setActiveTracks((prevTracks) => {
       return prevTracks.filter(t => t.identity !== participant.identity);
     });

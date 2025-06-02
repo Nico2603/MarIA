@@ -122,6 +122,15 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   isPushToTalkActive,
   textAreaRef,
 }) => {
+  // Debug reducido para ChatPanel
+  if (messages.length > 0) {
+    console.log('[ChatPanel] 📊 Renderizando:', {
+      messagesCount: messages.length,
+      isThinking,
+      conversationActive
+    });
+  }
+
   return (
     <div
       ref={chatContainerRef}
@@ -168,24 +177,29 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             )}
             <p className="text-sm text-neutral-700 dark:text-neutral-400">
               {authStatus === 'authenticated'
-                ? 'Cuando estés listo, pulsa "Comenzar tu sesión".'
+                ? 'Esperando inicio de la conversación...'
                 : 'Usa el menú superior para acceder.'}
             </p>
           </motion.div>
         ) : (
-          messages.map((msg, index) => (
-            <TranscribedResponse
-              key={msg.id}
-              text={msg.text}
-              isUser={msg.isUser}
-              timestamp={msg.timestamp}
-              isHighlighted={currentSpeakingId === msg.id}
-              suggestedVideo={msg.suggestedVideo}
-              avatarUrl={msg.isUser ? (userImage || '/img/MarIA.png') : undefined}
-            />
-          ))
+          <>
+            {messages.map((msg, index) => {
+              return (
+                <TranscribedResponse
+                  key={msg.id}
+                  text={msg.text}
+                  isUser={msg.isUser}
+                  timestamp={msg.timestamp}
+                  isHighlighted={currentSpeakingId === msg.id}
+                  suggestedVideo={msg.suggestedVideo}
+                  avatarUrl={msg.isUser ? (userImage || undefined) : undefined}
+                  userName={msg.isUser ? userName : undefined}
+                />
+              );
+            })}
+            {isThinking && <ThinkingIndicator />}
+          </>
         )}
-        {isThinking && <ThinkingIndicator />}
         <div ref={chatEndRef} />
       </div>
       

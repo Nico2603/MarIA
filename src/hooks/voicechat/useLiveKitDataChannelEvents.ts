@@ -1,12 +1,11 @@
 'use client';
 
 import { useCallback, Dispatch, FormEvent, RefObject, useEffect } from 'react';
-import { DataPacket_Kind, RemoteParticipant, Room, LocalParticipant, Track, TrackPublication } from 'livekit-client';
+import { DataPacket_Kind, RemoteParticipant, Room, LocalParticipant, Track, TrackPublication, RoomEvent } from 'livekit-client';
 import { Room as LiveKitRoom } from 'livekit-client';
 import type { Message, VoiceChatAction, VoiceChatState, ExtendedUserProfile } from '@/types'; // Actualizado para usar types consolidados
 import { useError } from '@/contexts/ErrorContext'; // Asegúrate que la ruta es correcta
-
-const AGENT_IDENTITY = "Maria-TTS-Bot"; // Considerar mover a un archivo de constantes compartido
+import { AGENT_IDENTITY, isValidAgent } from '@/lib/constants/agents';
 
 interface UseLiveKitDataChannelEventsProps {
   dispatch: Dispatch<VoiceChatAction>; // Usar dispatch
@@ -39,128 +38,268 @@ export function useLiveKitDataChannelEvents({
   room, // Recibir room
   isReadyToStart, // <--- Añadido
 }: UseLiveKitDataChannelEventsProps) {
-  const { setError: setAppError } = useError();
+  const { setError: setAppError, clearError } = useError();
 
-  useEffect(() => {
+  // Función de depuración para verificar la comunicación con el backend
+  const debugBackendCommunication = useCallback(() => {
     if (room && room.localParticipant) {
       const localTrackPublications = Array.from(room.localParticipant.trackPublications.values());
-      console.log('[LiveKit] LocalParticipant track publications (all types):', localTrackPublications);
+      console.log('[DebugBackend] LocalParticipant track publications:', localTrackPublications);
       
       const remoteParticipantIdentities = Array.from(room.remoteParticipants.values()).map((p: RemoteParticipant) => p.identity);
-      console.log('[LiveKit] Remote participants identities:', remoteParticipantIdentities);
+      console.log('[DebugBackend] Remote participants:', remoteParticipantIdentities);
+      
+      const validAgents = remoteParticipantIdentities.filter(identity => isValidAgent(identity));
+      console.log('[DebugBackend] Valid agents found:', validAgents);
+      
+      if (validAgents.length === 0) {
+        console.warn('[DebugBackend] ⚠️ No se encontraron agentes válidos conectados');
+        setAppError('agent', 'No hay agentes conectados. Verifica la configuración del backend.');
+      } else {
+        console.log('[DebugBackend] ✅ Agentes válidos detectados, limpiando errores de agente');
+        // Solo limpiar el error si es de tipo 'agent'
+        setAppError('agent', null);
+      }
     }
-  }, [room]); // Ejecutar cuando room cambie
+  }, [room, setAppError]);
+
+  // Función para verificar agentes con delay inicial
+  const checkAgentsWithDelay = useCallback(() => {
+    // Verificar inmediatamente
+    debugBackendCommunication();
+    
+    // Verificar después de 2 segundos para dar tiempo a que se conecten los agentes
+    setTimeout(() => {
+      debugBackendCommunication();
+    }, 2000);
+    
+    // Verificar después de 5 segundos como verificación final
+    setTimeout(() => {
+      debugBackendCommunication();
+    }, 5000);
+  }, [debugBackendCommunication]);
+
+  useEffect(() => {
+    const debugAgentValidation = () => {
+      if (!room) return;
+
+      const localParticipant = room.localParticipant;
+      const remoteParticipants = Array.from(room.remoteParticipants.values());
+      const validAgents = remoteParticipants.filter(p => p.identity && isValidAgent(p.identity));
+
+      // Solo reportar si hay problemas reales
+      if (validAgents.length === 0 && conversationActive) {
+        console.warn(`[DebugBackend] No hay agentes válidos en conversación activa`);
+      } else if (validAgents.length > 0) {
+        clearError();
+      }
+    };
+
+    const handleParticipantConnected = (participant: RemoteParticipant) => {
+      if (isValidAgent(participant.identity)) {
+        clearError();
+      }
+    };
+
+    const handleParticipantDisconnected = (participant: RemoteParticipant) => {
+      // Verificar agentes después de un breve delay
+      setTimeout(debugAgentValidation, 1000);
+    };
+
+    if (room) {
+      // Configurar listeners de eventos
+      room.on(RoomEvent.ParticipantConnected, handleParticipantConnected);
+      room.on(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
+      
+      // Ejecutar debug solo cuando hay conversación activa
+      if (conversationActive) {
+        const intervalId = setInterval(debugAgentValidation, 10000); // Cada 10 segundos
+        debugAgentValidation();
+        
+        return () => {
+          clearInterval(intervalId);
+          room.off(RoomEvent.ParticipantConnected, handleParticipantConnected);
+          room.off(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
+        };
+      } else {
+        return () => {
+          room.off(RoomEvent.ParticipantConnected, handleParticipantConnected);
+          room.off(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
+        };
+      }
+    }
+  }, [room, clearError, conversationActive]);
 
   const handleDataReceived = useCallback((payload: Uint8Array, participant?: RemoteParticipant, kind?: DataPacket_Kind) => {
-    console.log('[handleDataReceived] Datos recibidos de:', participant?.identity, 'kind:', kind);
-    
-    if (kind === DataPacket_Kind.RELIABLE && participant && participant.identity === AGENT_IDENTITY) {
+    if (kind === DataPacket_Kind.RELIABLE && participant && isValidAgent(participant.identity)) {
       try {
-        const event = JSON.parse(new TextDecoder().decode(payload));
-        console.log('[handleDataReceived] ✅ Evento recibido del backend:', {
-          type: event.type,
-          payload: event.payload,
-          timestamp: new Date().toISOString()
-        });
+        const rawData = new TextDecoder().decode(payload);
+        const event = JSON.parse(rawData);
+
+        // Mapear eventos de Tavus al formato esperado
+        let mappedEvent = event;
         
-        switch (event.type) {
+        if (event.message_type && event.event_type) {
+          // Mapear eventos de Tavus a nuestro formato
+          switch (event.event_type) {
+            case 'conversation.replica.started_speaking':
+              mappedEvent = {
+                type: 'tts_started',
+                payload: {
+                  messageId: event.inference_id || `tavus-${Date.now()}`,
+                  timestamp: new Date().toISOString()
+                }
+              };
+              
+              // Para Tavus, cuando empieza a hablar, crear un mensaje placeholder
+              if (isProcessing) {
+                const aiMessage: Message = { 
+                  id: mappedEvent.payload.messageId,
+                  text: "María está respondiendo...",
+                  isUser: false, 
+                  timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true })
+                };
+                dispatch({ type: 'ADD_MESSAGE', payload: aiMessage });
+                dispatch({ type: 'SET_THINKING', payload: false });
+                dispatch({ type: 'SET_PROCESSING', payload: false });
+              }
+              break;
+              
+            case 'conversation.replica.stopped_speaking':
+              mappedEvent = {
+                type: 'tts_ended',
+                payload: {
+                  messageId: event.inference_id || `tavus-${Date.now()}`,
+                  isClosing: false,
+                  timestamp: new Date().toISOString()
+                }
+              };
+              break;
+              
+            case 'conversation.user.started_speaking':
+            case 'conversation.user.stopped_speaking':
+              return; // No procesar, es solo informativo
+              
+            case 'conversation.response':
+            case 'conversation.replica.response':
+              // Si Tavus envía el texto de la respuesta en este evento
+              if (event.properties && event.properties.text) {
+                mappedEvent = {
+                  type: 'ai_response_generated',
+                  payload: {
+                    id: event.inference_id || `tavus-text-${Date.now()}`,
+                    text: event.properties.text,
+                    timestamp: new Date().toISOString()
+                  }
+                };
+              } else {
+                return;
+              }
+              break;
+              
+            case 'system.replica_joined':
+            case 'system.replica_present':
+              return; // No procesar estos eventos
+              
+            default:
+              // Evento no mapeado
+              mappedEvent = null;
+          }
+        }
+        
+        // Verificar si el evento fue mapeado correctamente
+        if (!mappedEvent) {
+          return;
+        }
+        
+        // Procesar el evento mapeado
+        switch (mappedEvent.type) {
           case 'initial_greeting_message':
-            console.log('[LiveKit] ✅ initial_greeting_message recibido:', event.payload);
-            console.log('→ greetingMessageId before dispatch:', greetingMessageId);
-            console.log('→ conversationActive:', conversationActive);
-            console.log('→ activeSessionId:', activeSessionId);
-            
-            if (event.payload && event.payload.text) {
+            if (mappedEvent.payload && mappedEvent.payload.text) {
               const greetingMsg: Message = {
-                id: event.payload.id || `greeting-${Date.now()}`,
-                text: event.payload.text,
+                id: mappedEvent.payload.id || `greeting-${Date.now()}`,
+                text: mappedEvent.payload.text,
                 isUser: false,
                 timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
               };
               
-              console.log('[LiveKit] Creando mensaje de saludo:', greetingMsg);
               dispatch({ type: 'SET_MESSAGES', payload: [greetingMsg] });
               dispatch({ type: 'SET_GREETING_MESSAGE_ID', payload: greetingMsg.id });
-              console.log('→ greetingMessageId after dispatch:', greetingMsg.id);
-              console.log('✅ Saludo inicial configurado correctamente en el chat');
-            } else {
-              console.error('[LiveKit] ❌ initial_greeting_message recibido pero sin texto válido:', event.payload);
             }
             break;
             
           case 'user_transcription_result':
-            console.log('[LiveKit] ✅ user_transcription_result recibido:', event.payload);
-            if (event.payload && event.payload.transcript) {
+            if (mappedEvent.payload && mappedEvent.payload.transcript) {
               const userMessage: Message = { 
-                id: `user-${Date.now()}`, 
-                text: event.payload.transcript, 
+                id: `user-voice-${Date.now()}`, 
+                text: mappedEvent.payload.transcript, 
                 isUser: true, 
                 timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true })
               };
-              console.log('[LiveKit] Agregando transcripción del usuario:', userMessage);
               dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
+              
+              if (isListening) {
+                dispatch({ type: 'SET_LISTENING', payload: false });
+              }
+              
+              dispatch({ type: 'SET_PROCESSING', payload: true });
+              dispatch({ type: 'SET_THINKING', payload: true });
             }
             break;
             
           case 'ai_response_generated':
-            console.log('[LiveKit] ✅ ai_response_generated recibido:', event.payload);
-            if (event.payload && event.payload.text) {
+            // Limpiar timeout si existe
+            if ((window as any).currentMessageTimeoutId) {
+              clearTimeout((window as any).currentMessageTimeoutId);
+              (window as any).currentMessageTimeoutId = null;
+            }
+            
+            if (mappedEvent.payload && mappedEvent.payload.text && mappedEvent.payload.text.trim()) {
               const aiMessage: Message = { 
-                  id: event.payload.id || `ai-${Date.now()}`, 
-                  text: event.payload.text, 
+                  id: mappedEvent.payload.id || `ai-${Date.now()}`, 
+                  text: mappedEvent.payload.text.trim(), 
                   isUser: false, 
                   timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }), 
-                  suggestedVideo: event.payload.suggestedVideo || undefined 
+                  suggestedVideo: mappedEvent.payload.suggestedVideo || undefined 
               };
-              console.log('[LiveKit] Agregando respuesta de IA:', aiMessage);
               dispatch({ type: 'ADD_MESSAGE', payload: aiMessage });
               dispatch({ type: 'SET_THINKING', payload: false });
+              dispatch({ type: 'SET_PROCESSING', payload: false }); // Limpiar estado de procesamiento
             } else {
-              console.error('[LiveKit] ❌ ai_response_generated sin texto válido:', event.payload);
+              dispatch({ type: 'SET_THINKING', payload: false });
+              dispatch({ type: 'SET_PROCESSING', payload: false });
             }
             break;
             
           case 'tts_started':
-            console.log('[LiveKit] ✅ tts_started recibido para messageId:', event.payload?.messageId);
-            console.log(' current greetingMessageId:', greetingMessageId);
-            console.log(' conversationActive flag:', conversationActive);
-            if (event.payload && event.payload.messageId) {
-              dispatch({ type: 'SET_CURRENT_SPEAKING_ID', payload: event.payload.messageId });
+            if (mappedEvent.payload && mappedEvent.payload.messageId) {
+              dispatch({ type: 'SET_CURRENT_SPEAKING_ID', payload: mappedEvent.payload.messageId });
               dispatch({ type: 'SET_SPEAKING', payload: true });
               dispatch({ type: 'SET_THINKING', payload: false });
-              // Si este TTS que inicia es el del mensaje de saludo,
-              // y aún no estamos listos para empezar, entonces nos marcamos como listos.
-              if (event.payload.messageId === greetingMessageId && !isReadyToStart) {
+              dispatch({ type: 'SET_PROCESSING', payload: false }); // Limpiar procesamiento cuando inicia TTS
+              if (mappedEvent.payload.messageId === greetingMessageId && !isReadyToStart) {
                 dispatch({ type: 'SET_READY_TO_START', payload: true });
-                console.log('[LiveKit] Saludo inicial TTS iniciado, marcando como listo para empezar.');
               }
             }
             break;
             
           case 'tts_ended':
-            console.log('[LiveKit] ✅ tts_ended recibido para messageId:', event.payload?.messageId, 'isClosing:', event.payload?.isClosing);
-            console.log(' currentSpeakingId before clear:', currentSpeakingId);
-            if (event.payload && event.payload.messageId) {
-              if (currentSpeakingId === event.payload.messageId) {
+            if (mappedEvent.payload && mappedEvent.payload.messageId) {
+              if (currentSpeakingId === mappedEvent.payload.messageId) {
                 dispatch({ type: 'SET_SPEAKING', payload: false });
                 dispatch({ type: 'SET_CURRENT_SPEAKING_ID', payload: null });
 
-                // Solo activar la escucha automáticamente si el saludo inicial ha terminado
-                // y no estamos ya escuchando o procesando
-                if (event.payload.messageId === greetingMessageId && 
+                if (mappedEvent.payload.messageId === greetingMessageId && 
                     conversationActive && 
                     !isListening && 
                     !isProcessing && 
                     !isSessionClosed) {
-                  console.log('[LiveKit] Saludo inicial terminado, activando escucha automáticamente.');
-                  // Usar un pequeño delay para evitar conflictos de estado
                   setTimeout(() => {
                     dispatch({ type: 'SET_LISTENING', payload: true });
                   }, 500);
                 }
 
-                if (event.payload.isClosing) {
-                  console.log('[LiveKit] TTS terminado con señal de cierre, finalizando sesión...');
+                if (mappedEvent.payload.isClosing) {
                   endSession(); 
                 }
               }
@@ -168,7 +307,21 @@ export function useLiveKitDataChannelEvents({
             break;
             
           default:
-            console.warn("[LiveKit] ⚠️ Evento no manejado recibido del backend:", event.type, event.payload);
+            if (mappedEvent.type && mappedEvent.type !== 'undefined') {
+              const expectedEvents = [
+                'initial_greeting_message', 
+                'user_transcription_result', 
+                'ai_response_generated', 
+                'tts_started', 
+                'tts_ended'
+              ];
+              
+              if (!expectedEvents.includes(mappedEvent.type)) {
+                console.log(`[LiveKit] 🆕 Nuevo tipo de evento recibido: ${mappedEvent.type}`, mappedEvent.payload);
+              }
+            } else {
+              console.warn('[LiveKit] ⚠️ Evento recibido sin tipo válido:', mappedEvent);
+            }
         }
       } catch (e) {
         console.error("[DataChannelHook] ❌ Error procesando DataChannel del agente Maria:", e);
@@ -179,7 +332,9 @@ export function useLiveKitDataChannelEvents({
       console.log('[handleDataReceived] Datos ignorados - no son del agente esperado:', {
         kind,
         participantIdentity: participant?.identity,
-        expectedIdentity: AGENT_IDENTITY
+        expectedIdentity: AGENT_IDENTITY,
+        isValidAgent: participant ? isValidAgent(participant.identity) : false,
+        isReliable: kind === DataPacket_Kind.RELIABLE
       });
     }
   }, [
@@ -193,14 +348,14 @@ export function useLiveKitDataChannelEvents({
     isListening,
     isProcessing,
     isSessionClosed,
-    // room // No es necesario aquí ya que el useEffect lo maneja y handleDataReceived se pasa a los listeners de la sala
   ]);
 
   const handleSendTextMessage = useCallback(async (messageText: string) => {
     const trimmedInput = messageText.trim();
     
-    console.log('[handleSendTextMessage] Condiciones de envío:', {
+    console.log('[handleSendTextMessage] 🔍 Iniciando envío de texto:', {
       trimmedInput: !!trimmedInput,
+      inputLength: trimmedInput.length,
       conversationActive,
       isProcessing,
       isSpeaking,
@@ -210,82 +365,114 @@ export function useLiveKitDataChannelEvents({
       localParticipantExists: !!roomRef.current?.localParticipant,
     });
     
-    // La condición de !isListening se elimina porque el usuario puede escribir mientras el sistema escucha para transcribir.
-    // Se asume que si el usuario envía texto, es una entrada explícita que debe tener prioridad.
-    if (trimmedInput && conversationActive && !isProcessing && !isSpeaking && !isSessionClosed && activeSessionId && roomRef.current && roomRef.current.localParticipant) {
-      console.log(`[handleSendTextMessage] ✅ Enviando texto al agente Maria: "${trimmedInput}"`);
+    if (!trimmedInput) {
+      console.warn('[handleSendTextMessage] ❌ Texto vacío, cancelando envío');
+      return;
+    }
+
+    if (!conversationActive) {
+      console.warn('[handleSendTextMessage] ❌ Conversación no activa');
+      setAppError('api', "Debes iniciar una conversación primero.");
+      return;
+    }
+
+    if (isSessionClosed) {
+      console.warn('[handleSendTextMessage] ❌ Sesión cerrada');
+      setAppError('api', "La sesión ha terminado. Inicia una nueva conversación.");
+      return;
+    }
+
+    if (!activeSessionId) {
+      console.warn('[handleSendTextMessage] ❌ Sin ID de sesión activa');
+      setAppError('api', "Error de sesión. Reinicia la conversación.");
+      return;
+    }
+
+    if (!roomRef.current || !roomRef.current.localParticipant) {
+      console.warn('[handleSendTextMessage] ❌ Sin conexión LiveKit');
+      setAppError('api', "Error de conexión. Verifica tu conexión a internet.");
+      return;
+    }
+
+    // Verificar si ya está procesando algo
+    if (isProcessing || isSpeaking) {
+      console.warn('[handleSendTextMessage] ⏳ Sistema ocupado:', { isProcessing, isSpeaking });
+      setAppError('api', isProcessing ? "Espera a que termine de procesar el mensaje anterior." : "Espera a que María termine de hablar.");
+      return;
+    }
+
+    try {
+      console.log(`[handleSendTextMessage] ✅ Condiciones cumplidas, enviando texto: "${trimmedInput}"`);
       console.log(`[handleSendTextMessage] Session ID activa: ${activeSessionId}`);
       
-      try {
-        const payload = JSON.stringify({ 
-          type: "submit_user_text", 
-          payload: { 
-            text: trimmedInput,
-            sessionId: activeSessionId, // Asegurar que se incluya el sessionId
-            timestamp: new Date().toISOString()
-          } 
-        });
-        
-        console.log('[handleSendTextMessage] Payload a enviar:', payload);
-        
-        await roomRef.current.localParticipant.publishData(
-          new TextEncoder().encode(payload), 
-          { reliable: true }
-        );
-        
-        console.log('[handleSendTextMessage] ✅ Mensaje enviado exitosamente via DataChannel');
-        
-        // Añadir mensaje del usuario inmediatamente a la UI
-        const userMessage: Message = { 
-          id: `user-text-${Date.now()}`,
-          text: trimmedInput,
-          isUser: true,
-          timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true })
-        };
-        
-        console.log('[handleSendTextMessage] Agregando mensaje del usuario a la UI:', userMessage);
-        dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
-        dispatch({ type: 'SET_TEXT_INPUT', payload: '' }); // Limpiar input después de enviar
-        dispatch({ type: 'SET_THINKING', payload: true });
-        
-        console.log('[handleSendTextMessage] ⏳ Esperando respuesta del backend...');
-
-      } catch (error) {
-        console.error("[handleSendTextMessage] ❌ Error al enviar mensaje de texto al agente vía DataChannel:", error);
-        setAppError('api', "Error al enviar tu mensaje. Intenta de nuevo."); // Especificar tipo de error
-        dispatch({ type: 'SET_THINKING', payload: false });
-      }
-    } else {
-        console.warn("[handleSendTextMessage] ❌ Envío de mensaje de texto ignorado. Condiciones no cumplidas:", { 
-          trimmedInput: !!trimmedInput, 
-          conversationActive, 
-          isProcessing, 
-          isSpeaking, 
-          isSessionClosed, 
-          activeSessionId, 
-          roomExists: !!roomRef.current,
-          localParticipantExists: !!roomRef.current?.localParticipant
-        });
-        
-        // Dar feedback específico al usuario sobre por qué no se puede enviar
-        if (!conversationActive) {
-          setAppError('api', "Debes iniciar una conversación primero.");
-        } else if (isProcessing) {
-          setAppError('api', "Espera a que termine de procesar el mensaje anterior.");
-        } else if (isSpeaking) {
-          setAppError('api', "Espera a que María termine de hablar.");
-        } else if (isSessionClosed) {
-          setAppError('api', "La sesión ha terminado. Inicia una nueva conversación.");
-        } else if (!activeSessionId) {
-          setAppError('api', "Error de sesión. Reinicia la conversación.");
-        } else if (!roomRef.current || !roomRef.current.localParticipant) {
-          setAppError('api', "Error de conexión. Verifica tu conexión a internet.");
+      // Primero agregar el mensaje del usuario a la UI
+      const userMessage: Message = { 
+        id: `user-text-${Date.now()}`,
+        text: trimmedInput,
+        isUser: true,
+        timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true })
+      };
+      
+      console.log('[handleSendTextMessage] 📝 Agregando mensaje del usuario a la UI:', userMessage);
+      dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
+      dispatch({ type: 'SET_TEXT_INPUT', payload: '' }); // Limpiar input inmediatamente
+      
+      // Marcar como procesando ANTES de enviar
+      dispatch({ type: 'SET_PROCESSING', payload: true });
+      dispatch({ type: 'SET_THINKING', payload: true });
+      
+      const payload = JSON.stringify({ 
+        message_type: "conversation",
+        event_type: "conversation.respond",
+        conversation_id: activeSessionId,
+        properties: {
+          text: trimmedInput
         }
+      });
+      
+      console.log('[handleSendTextMessage] 📤 Payload a enviar al backend (formato Tavus):', payload);
+      
+      await roomRef.current.localParticipant.publishData(
+        new TextEncoder().encode(payload), 
+        { reliable: true }
+      );
+      
+      console.log('[handleSendTextMessage] ✅ Mensaje enviado exitosamente via DataChannel');
+      console.log('[handleSendTextMessage] ⏳ Esperando respuesta del backend...');
+
+      // Timeout más largo para verificar si el backend responde
+      const responseTimeoutId = setTimeout(() => {
+        console.warn('[handleSendTextMessage] ⚠️ Backend no respondió en 45 segundos');
+        dispatch({ type: 'SET_THINKING', payload: false });
+        dispatch({ type: 'SET_PROCESSING', payload: false });
+        setAppError('api', 'El sistema está tardando en responder. Verifica tu conexión o intenta de nuevo.');
+      }, 45000); // Aumentar a 45 segundos
+
+      // Almacenar el timeout ID para poder limpiarlo desde ai_response_generated
+      (window as any).currentMessageTimeoutId = responseTimeoutId;
+
+    } catch (error) {
+      console.error("[handleSendTextMessage] ❌ Error al enviar mensaje de texto:", error);
+      
+      // Limpiar estados si hay error
+      dispatch({ type: 'SET_THINKING', payload: false });
+      dispatch({ type: 'SET_PROCESSING', payload: false });
+      
+      // Mostrar error específico
+      if (error instanceof Error) {
+        if (error.message.includes('network') || error.message.includes('connection')) {
+          setAppError('api', "Error de conexión. Verifica tu internet e intenta de nuevo.");
+        } else {
+          setAppError('api', "Error al enviar tu mensaje. Intenta de nuevo.");
+        }
+      } else {
+        setAppError('api', "Error inesperado. Intenta de nuevo.");
+      }
     }
   }, [
-    dispatch, conversationActive, isProcessing, isSpeaking, /*isListening,*/ isSessionClosed,
+    dispatch, conversationActive, isProcessing, isSpeaking, isSessionClosed,
     activeSessionId, roomRef, setAppError
   ]);
 
   return { handleDataReceived, handleSendTextMessage };
-} 
+}

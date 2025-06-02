@@ -41,6 +41,10 @@ interface UseLiveKitConnectionManagerProps {
 
 const LIVEKIT_ROOM_NAME = 'ai-mental-health-chat';
 
+// Global para detectar múltiples instancias simultáneas
+let activeManagerInstances = 0;
+let globalConnectionAttempt = 0;
+
 export function useLiveKitConnectionManager({
   initialContext,
   activeSessionId,
@@ -64,12 +68,32 @@ export function useLiveKitConnectionManager({
   const [targetParticipant, setTargetParticipant] = useState<RemoteParticipant | null>(null);
   
   const liveKitUrlRef = useRef(process.env.NEXT_PUBLIC_LIVEKIT_URL || '');
+  const instanceIdRef = useRef<number>(0);
+  const shouldAutoReconnectRef = useRef<boolean>(true);
+  const connectionInProgressRef = useRef<boolean>(false);
 
+  // Registrar esta instancia del hook
+  useEffect(() => {
+    activeManagerInstances++;
+    instanceIdRef.current = activeManagerInstances;
+    
+    console.log(`[LKCM] Nueva instancia ${instanceIdRef.current} creada. Total activas: ${activeManagerInstances}`);
+    
+    return () => {
+      activeManagerInstances = Math.max(0, activeManagerInstances - 1);
+      console.log(`[LKCM] Instancia ${instanceIdRef.current} destruida. Total activas: ${activeManagerInstances}`);
+    };
+  }, []);
+
+  // Refs estables para evitar re-renders
   const sessionRef = useRef(session);
   const userProfileRef = useRef(userProfile);
   const initialContextRef = useRef(initialContext);
   const activeSessionIdRef = useRef(activeSessionId);
+  const currentRoomRef = useRef<Room | null>(null);
+  const connectionAttemptRef = useRef<number>(0);
 
+  // Actualizar refs cuando cambien las props
   useEffect(() => {
     sessionRef.current = session;
     userProfileRef.current = userProfile;
@@ -77,11 +101,12 @@ export function useLiveKitConnectionManager({
     activeSessionIdRef.current = activeSessionId;
   }, [session, userProfile, initialContext, activeSessionId]);
 
-  const currentRoomRef = useRef<Room | null>(null);
   useEffect(() => {
     currentRoomRef.current = room;
+    setConnectionState(room?.state || LiveKitConnectionState.Disconnected);
   }, [room]);
 
+  // Refs para callbacks para evitar dependencias circulares
   const onConnectedRef = useRef(onConnected);
   const onDisconnectedRef = useRef(onDisconnected);
   const onConnectionErrorRef = useRef(onConnectionError);
@@ -102,299 +127,321 @@ export function useLiveKitConnectionManager({
     onDataReceivedRef.current = onDataReceived;
   }, [onConnected, onDisconnected, onConnectionError, handleTrackSubscribed, handleTrackUnsubscribed, handleParticipantDisconnected, onDataReceived, onTargetParticipantFound]);
 
-  const getLiveKitToken = useCallback(async (participantIdentity: string, signal: AbortSignal) => {
-    clearError();
-    console.log('[LKCM] getLiveKitToken: Solicitando token...');
+  const getLiveKitToken = useCallback(async (roomName: string, participantName: string): Promise<string> => {
     try {
       const queryParams = new URLSearchParams({
-        room: LIVEKIT_ROOM_NAME,
-        participant: participantIdentity,
+        room: roomName,
+        participant: participantName,
+        identity: participantName,
       });
 
-      if (sessionRef.current?.user?.id) queryParams.append('userId', sessionRef.current.user.id);
+      // Añadir metadata del usuario si está disponible
+      if (userProfileRef.current?.id) {
+        queryParams.set('userId', userProfileRef.current.id);
+      }
       if (userProfileRef.current?.username) {
-        queryParams.append('username', userProfileRef.current.username);
-      } else if (sessionRef.current?.user?.name) {
-        queryParams.append('username', sessionRef.current.user.name);
+        queryParams.set('username', userProfileRef.current.username);
       }
-      if (initialContextRef.current) queryParams.append('latestSummary', initialContextRef.current);
-      if (activeSessionIdRef.current) queryParams.append('chatSessionId', activeSessionIdRef.current);
-
-      console.log('[LKCM] getLiveKitToken: Enviando parámetros:', Object.fromEntries(queryParams.entries()));
-
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
-      if (!apiBase) {
-        console.error('[LKCM] getLiveKitToken: NEXT_PUBLIC_API_BASE_URL no está configurado.');
-        setAppError('livekit', 'La URL base de la API no está configurada.');
-        return null;
+      if (activeSessionIdRef.current) {
+        queryParams.set('chatSessionId', activeSessionIdRef.current);
       }
-      
-      const response = await fetch(`${apiBase}/api/livekit-token?${queryParams.toString()}`, {
+      if (initialContextRef.current) {
+        queryParams.set('latestSummary', initialContextRef.current);
+      }
+
+      const response = await fetch(`/api/livekit-token?${queryParams.toString()}`, {
         method: 'GET',
-        signal,
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: `Error del servidor al obtener token: ${response.status}` }));
-        const errorMessage = errorData.error || errorData.message || `Error ${response.status} al obtener token.`;
-        console.error('[LKCM] getLiveKitToken: Error en respuesta del servidor:', errorMessage, errorData);
-        setAppError('api', errorMessage);
-        return null;
+        const errorText = await response.text();
+        throw new Error(`Token request failed: ${response.status} - ${errorText}`);
       }
+
       const data = await response.json();
+
       if (!data.token) {
-        console.error('[LKCM] getLiveKitToken: Token no recibido del servidor.');
-        setAppError('api', "Token no recibido del servidor en la respuesta JSON.");
-        return null;
+        throw new Error('No token received from server');
       }
-      console.log('[LKCM] getLiveKitToken: Token obtenido exitosamente.');
-      return data.token as string;
+
+      return data.token;
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.log('[LKCM] getLiveKitToken: Solicitud de token abortada.');
-        return null;
-      }
-      console.error("[LKCM] getLiveKitToken: Excepción al obtener token:", error);
-      setAppError('api', error instanceof Error ? error.message : 'Error desconocido al obtener token.');
-      return null;
+      console.error('[LKCM] Error obteniendo token de LiveKit:', error);
+      throw error;
     }
-  }, [clearError, setAppError]);
+  }, []);
 
   const disconnectFromLiveKit = useCallback(async () => {
-    console.log('[LKCM] disconnectFromLiveKit: Intentando desconectar...');
-    if (currentRoomRef.current) {
-      try {
+    try {
+      shouldAutoReconnectRef.current = false; // Prevenir auto-reconexión
+      if (currentRoomRef.current && (
+        currentRoomRef.current.state === LiveKitConnectionState.Connected || 
+        currentRoomRef.current.state === LiveKitConnectionState.Connecting
+      )) {
+        console.log(`[LKCM] Instancia ${instanceIdRef.current} desconectando...`);
         await currentRoomRef.current.disconnect();
-        console.log('[LKCM] disconnectFromLiveKit: Desconexión de la sala completada.');
-      } catch (error) {
-        console.error('[LKCM] disconnectFromLiveKit: Error al desconectar de la sala:', error);
-        // Opcionalmente, manejar el error de desconexión aquí
+      }
+    } catch (error) {
+      console.error('[LKCM] Error al desconectar de LiveKit:', error);
+    } finally {
+      // Reset de estados independientemente del resultado
+      setIsConnecting(false);
+      setConnectionState(LiveKitConnectionState.Disconnected);
+      setRoom(null);
+      currentRoomRef.current = null;
+      setTargetParticipant(null);
+      connectionInProgressRef.current = false;
+    }
+  }, []);
+
+  const connectToRoom = useCallback(async (sessionId: string, participantName: string) => {
+    // Verificar si ya está conectando o conectado
+    if (connectionInProgressRef.current || isConnecting || currentRoomRef.current?.state === LiveKitConnectionState.Connected) {
+      console.log(`[LKCM] Instancia ${instanceIdRef.current} ya está conectando o conectado, ignorando nueva conexión`);
+      return;
+    }
+
+    // Verificar si hay múltiples instancias activas
+    if (activeManagerInstances > 1) {
+      console.warn(`[LKCM] Detectadas ${activeManagerInstances} instancias activas. Solo la primera debería conectar.`);
+      // Solo permitir conectar a la primera instancia para evitar conflictos
+      if (instanceIdRef.current !== 1) {
+        console.log(`[LKCM] Instancia ${instanceIdRef.current} cancelando conexión (no es la principal)`);
+        return;
       }
     }
-    // Asegurarse de que estos estados se actualicen solo después de la desconexión
-    setRoom(null); 
-    setConnectionState(LiveKitConnectionState.Disconnected);
-    setIsConnecting(false); 
-  }, []); // No hay dependencias ya que currentRoomRef es un ref y las funciones de estado no cambian
 
-  useEffect(() => {
-    const abortController = new AbortController();
-    const { signal } = abortController;
+    // Incrementar contador de intentos para identificar reconexiones
+    globalConnectionAttempt++;
+    connectionAttemptRef.current = globalConnectionAttempt;
+    const currentAttempt = connectionAttemptRef.current;
+    
+    console.log(`[LKCM] Instancia ${instanceIdRef.current} iniciando conexión ${currentAttempt} para sesión: ${sessionId}`);
+    connectionInProgressRef.current = true;
+    setIsConnecting(true);
+    shouldAutoReconnectRef.current = true; // Permitir auto-reconexión futura
 
-    const connectToRoom = async () => {
-      if (isConnecting || currentRoomRef.current) {
-        console.log('[LKCM] connectToRoom: Ya está conectando o conectado. Saltando.');
-        return;
+    try {
+      // Desconectar cualquier sala anterior antes de crear una nueva
+      if (currentRoomRef.current) {
+        console.log('[LKCM] Desconectando sala anterior...');
+        await currentRoomRef.current.disconnect();
+        currentRoomRef.current = null;
+        setRoom(null);
       }
-      
-      setIsConnecting(true);
-      setConnectionState(LiveKitConnectionState.Connecting);
-      console.log('[LKCM] connectToRoom: Iniciando conexión...');
 
-      if (!session?.user?.id) {
-        console.error('[LKCM] connectToRoom: ID de usuario no disponible en sesión.');
+      const participantIdentity = `${participantName}_${sessionId}`;
+      const token = await getLiveKitToken(LIVEKIT_ROOM_NAME, participantIdentity);
+
+      // Verificar si este intento aún es válido (no ha sido superado por otro)
+      if (currentAttempt !== globalConnectionAttempt) {
+        console.log(`[LKCM] Intento ${currentAttempt} cancelado por intento más reciente ${globalConnectionAttempt}`);
         setIsConnecting(false);
-        setConnectionState(LiveKitConnectionState.Disconnected);
-        if (!signal.aborted) {
-          setAppError('livekit', 'ID de usuario no disponible para conectar.');
-        }
+        connectionInProgressRef.current = false;
         return;
       }
 
-      const participantName = userProfileRef.current?.username || session?.user?.name || 'Usuario';
-      const participantIdentity = `${participantName}_${session.user.id.substring(0, 8)}`;
-      
-      console.log(`[LKCM] connectToRoom: Identidad del participante: ${participantIdentity}`);
+      // Crear nueva instancia de Room
+      const newRoom = new Room({
+        adaptiveStream: true,
+        dynacast: true,
+        publishDefaults: {
+          dtx: false,
+          red: true,
+          simulcast: false,
+        },
+      });
 
-      const token = await getLiveKitToken(participantIdentity, signal);
-
-      if (signal.aborted) {
-        console.log('[LKCM] connectToRoom: Operación abortada (getLiveKitToken o antes).');
-        return;
-      }
-
-      if (!token) {
-        console.error('[LKCM] connectToRoom: No se pudo obtener el token. No se puede conectar.');
-        setIsConnecting(false);
-        setConnectionState(LiveKitConnectionState.Disconnected);
-        return;
-      }
-
-      console.log('[LKCM] connectToRoom: Token obtenido, intentando conectar a la sala de LiveKit...');
-      
-      const roomOptions: RoomOptions = {
-        // Opciones de sala si son necesarias
-      };
-      const newRoomInstance = new Room(roomOptions);
-
-      newRoomInstance
+      // Configurar event listeners
+      newRoom
         .on(RoomEvent.ConnectionStateChanged, (state: LiveKitConnectionState) => {
-          if (signal.aborted && state !== LiveKitConnectionState.Disconnected) {
-            console.log('[LKCM] RoomEvent.ConnectionStateChanged: Abortado, ignorando cambio de estado a menos que sea Disconnected', state);
-            return;
-          }
-          console.log('[LKCM] RoomEvent.ConnectionStateChanged:', state);
-          setConnectionState(state); 
+          console.log(`[LKCM] Instancia ${instanceIdRef.current} estado de conexión ${currentAttempt}: ${state}`);
+          setConnectionState(state);
+          
           if (state === LiveKitConnectionState.Connected) {
-            console.log('[LKCM] Conectado exitosamente a la sala:', newRoomInstance.name);
-            currentRoomRef.current = newRoomInstance; 
-            setRoom(newRoomInstance); 
+            currentRoomRef.current = newRoom; 
+            setRoom(newRoom); 
             setIsConnecting(false);
-            if (onConnectedRef.current) onConnectedRef.current(newRoomInstance);
+            connectionInProgressRef.current = false;
+            console.log(`[LKCM] Instancia ${instanceIdRef.current} conexión ${currentAttempt} exitosa`);
+            
+            if (onConnectedRef.current) onConnectedRef.current(newRoom);
 
-            // Buscar el RemoteParticipant objetivo
-            if (targetParticipantIdentity && newRoomInstance) {
+            // Target participant discovery
+            if (targetParticipantIdentity && newRoom) {
               let foundParticipant: RemoteParticipant | undefined = undefined;
-              for (const p of Array.from(newRoomInstance.remoteParticipants.values())) { 
+              for (const p of Array.from(newRoom.remoteParticipants.values())) { 
                 if (p.identity === targetParticipantIdentity) {
                   foundParticipant = p;
                   break;
                 }
               }
               if (foundParticipant) {
-                console.log(`[LKCM] Target participant ${targetParticipantIdentity} found.`);
                 setTargetParticipant(foundParticipant);
                 if (onTargetParticipantFoundRef.current) {
                   onTargetParticipantFoundRef.current(foundParticipant);
                 }
               } else {
-                console.warn(`[LKCM] Target participant ${targetParticipantIdentity} not found in the room. Listening for connections...`);
-                // Escuchar si se conecta más tarde
                 const handleNewParticipant = (newP: Participant) => {
                   if (newP instanceof RemoteParticipant && newP.identity === targetParticipantIdentity) {
-                    console.log(`[LKCM] Target participant ${targetParticipantIdentity} connected later.`);
                     setTargetParticipant(newP);
                     if (onTargetParticipantFoundRef.current) {
                       onTargetParticipantFoundRef.current(newP);
                     }
-                    newRoomInstance.off(RoomEvent.ParticipantConnected, handleNewParticipant); // Limpiar listener
+                    newRoom.off(RoomEvent.ParticipantConnected, handleNewParticipant);
                   }
                 };
-                newRoomInstance.on(RoomEvent.ParticipantConnected, handleNewParticipant);
+                newRoom.on(RoomEvent.ParticipantConnected, handleNewParticipant);
               }
             }
-            // Fin de la búsqueda del RemoteParticipant
 
           } else if (state === LiveKitConnectionState.Disconnected) {
-            console.log('[LKCM] Desconectado de la sala (evento ConnectionStateChanged).');
-            currentRoomRef.current = null;
-            setRoom(null);
-            setIsConnecting(false); 
+            console.log(`[LKCM] Instancia ${instanceIdRef.current} desconectado ${currentAttempt}`);
+            if (currentRoomRef.current === newRoom) {
+              currentRoomRef.current = null;
+              setRoom(null);
+              setTargetParticipant(null);
+            }
+            setIsConnecting(false);
+            connectionInProgressRef.current = false;
             if (onDisconnectedRef.current) onDisconnectedRef.current();
+            
+            // Solo reconectar automáticamente si está permitido
+            if (shouldAutoReconnectRef.current && sessionRef.current?.user?.id) {
+              console.log(`[LKCM] Instancia ${instanceIdRef.current} programando auto-reconexión...`);
+              setTimeout(() => {
+                if (shouldAutoReconnectRef.current && !currentRoomRef.current && sessionRef.current?.user?.id) {
+                  const userProfile = userProfileRef.current;
+                  const participantName = userProfile?.username || sessionRef.current?.user?.name || 'Usuario';
+                  connectToRoom(sessionRef.current.user.id, participantName);
+                }
+              }, 2000); // Esperar 2 segundos antes de reconectar
+            }
           }
         })
         .on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
-          if (signal.aborted) return;
-          console.log('[LKCM] RoomEvent.TrackSubscribed:', track.source, 'por', participant.identity);
           if (handleTrackSubscribedRef.current) handleTrackSubscribedRef.current(track, publication, participant);
         })
         .on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
-          if (signal.aborted) return;
-          console.log('[LKCM] RoomEvent.TrackUnsubscribed:', track.source, 'por', participant.identity);
           if (handleTrackUnsubscribedRef.current) handleTrackUnsubscribedRef.current(track, publication, participant);
         })
         .on(RoomEvent.ParticipantDisconnected, (participant) => {
-          if (signal.aborted) return;
-          console.log('[LKCM] RoomEvent.ParticipantDisconnected:', participant.identity);
           if (handleParticipantDisconnectedRef.current) handleParticipantDisconnectedRef.current(participant);
         })
         .on(RoomEvent.DataReceived, (payload, participant, kind, topic) => {
-          if (signal.aborted) return;
-          console.log('[LKCM] RoomEvent.DataReceived del participante:', participant?.identity, 'topic:', topic);
           if (onDataReceivedRef.current) onDataReceivedRef.current(payload, participant, kind, topic);
         })
         .on(RoomEvent.SignalConnected, () => {
-            if (signal.aborted) return;
-            console.log('[LKCM] RoomEvent.SignalConnected: Conexión de señal establecida.');
+          console.log(`[LKCM] Instancia ${instanceIdRef.current} señal conectada ${currentAttempt}`);
         })
         .on(RoomEvent.Disconnected, (reason) => {
-            console.log('[LKCM] RoomEvent.Disconnected - Razón:', reason);
-            if (!signal.aborted) {
-              currentRoomRef.current = null;
-              setRoom(null);
-              setIsConnecting(false);
-              setConnectionState(LiveKitConnectionState.Disconnected);
-              if (onDisconnectedRef.current) onDisconnectedRef.current();
-            }
+          console.log(`[LKCM] Instancia ${instanceIdRef.current} evento Disconnected ${currentAttempt}, razón: ${reason}`);
+          if (currentRoomRef.current === newRoom) {
+            currentRoomRef.current = null;
+            setRoom(null);
+            setTargetParticipant(null);
+          }
+          setConnectionState(LiveKitConnectionState.Disconnected);
+          setIsConnecting(false);
+          if (onDisconnectedRef.current) onDisconnectedRef.current();
         })
         .on(RoomEvent.LocalTrackUnpublished, (publication, participant) => {
-            if (signal.aborted) return;
-            console.log('[LKCM] RoomEvent.LocalTrackUnpublished:', publication.trackInfo?.name, 'por', participant.identity);
+          // Track unpublished
         })
         .on(RoomEvent.ConnectionQualityChanged, (quality, participant) => {
-            if (signal.aborted) return;
-            console.log('[LKCM] RoomEvent.ConnectionQualityChanged para', participant.identity, ':', quality);
+          if (quality === 'poor') {
+            console.warn('[LKCM] Poor connection quality for', participant.identity);
+          }
         })
         .on(RoomEvent.MediaDevicesError, (error) => {
-            if (signal.aborted) return;
-            console.error('[LKCM] RoomEvent.MediaDevicesError:', error.message);
-            setAppError('livekit', `Error de dispositivos multimedia: ${error.message}`);
+          console.error('[LKCM] RoomEvent.MediaDevicesError:', error.message);
+          setAppError('livekit', `Error de dispositivos multimedia: ${error.message}`);
         })
         .on(RoomEvent.RoomMetadataChanged, (metadata) => {
-            if (signal.aborted) return;
-            console.log("[LKCM] RoomEvent.RoomMetadataChanged:", metadata);
+          // Room metadata changed
         })
         .on(RoomEvent.Reconnecting, () => {
-            if (signal.aborted) return;
-            console.log('[LKCM] RoomEvent.Reconnecting: Intentando reconectar...');
-            setConnectionState(LiveKitConnectionState.Reconnecting);
+          setConnectionState(LiveKitConnectionState.Reconnecting);
         })
         .on(RoomEvent.Reconnected, () => {
-            if (signal.aborted) return;
-            console.log('[LKCM] RoomEvent.Reconnected: Reconectado exitosamente.');
-            setConnectionState(LiveKitConnectionState.Connected);
+          setConnectionState(LiveKitConnectionState.Connected);
         });
 
       try {
-        console.log('[LKCM] connectToRoom: Conectando con URL:', liveKitUrlRef.current, 'y token.');
-        await newRoomInstance.connect(liveKitUrlRef.current, token, { autoSubscribe: true });
-        console.log('[LKCM] connectToRoom: newRoomInstance.connect() PROMESA RESUELTA.');
+        console.log(`[LKCM] Instancia ${instanceIdRef.current} conectando a LiveKit ${currentAttempt}...`);
+        await newRoom.connect(liveKitUrlRef.current, token, { autoSubscribe: true });
       } catch (error) {
-        if (signal.aborted) {
-          console.log('[LKCM] connectToRoom: Conexión abortada durante el intento de conexión.');
-          return;
-        }
-        console.error('[LKCM] connectToRoom: Error al conectar a la sala de LiveKit:', error);
+        console.error(`[LKCM] Instancia ${instanceIdRef.current} error connecting to LiveKit ${currentAttempt}:`, error);
         if (onConnectionErrorRef.current) {
-            onConnectionErrorRef.current(error instanceof Error ? error : new Error('Error desconocido al conectar'));
+          onConnectionErrorRef.current(error instanceof Error ? error : new Error('Error desconocido al conectar'));
         }
-        currentRoomRef.current = null;
-        setRoom(null);
+        
+        // Cleanup en caso de error
+        if (currentRoomRef.current === newRoom) {
+          currentRoomRef.current = null;
+          setRoom(null);
+        }
         setIsConnecting(false);
         setConnectionState(LiveKitConnectionState.Disconnected);
         setAppError('livekit', error instanceof Error ? error.message : 'Fallo al conectar con LiveKit.');
       }
-    };
+    } catch (error) {
+      console.error(`[LKCM] Instancia ${instanceIdRef.current} error al conectar a LiveKit ${currentAttempt}:`, error);
+      setIsConnecting(false);
+      setConnectionState(LiveKitConnectionState.Disconnected);
+      setAppError('livekit', error instanceof Error ? error.message : 'Fallo al conectar con LiveKit.');
+    }
+  }, [getLiveKitToken, disconnectFromLiveKit, setAppError, targetParticipantIdentity]);
 
-    if (session?.user?.id && !currentRoomRef.current && connectionState === LiveKitConnectionState.Disconnected && !isConnecting) {
-      console.log("[LKCM] useEffect Principal: Condiciones cumplidas, llamando a connectToRoom.");
-      connectToRoom();
-    } else {
-      console.log("[LKCM] useEffect Principal: Condiciones NO cumplidas, no se llama a connectToRoom.", 
-        {
-          userId: !!session?.user?.id,
-          currentRoom: !!currentRoomRef.current,
-          connectionState,
-          isConnecting
+  // Effect principal de conexión - solo al montar
+  useEffect(() => {
+    console.log(`[LKCM] Instancia ${instanceIdRef.current} effect principal ejecutado`);
+    
+    // Solo intentar conectar al montar si tenemos la sesión
+    if (session?.user?.id && authStatus === 'authenticated') {
+      const userProfile = userProfileRef.current;
+      const participantName = userProfile?.username || session?.user?.name || 'Usuario';
+      
+      console.log(`[LKCM] Instancia ${instanceIdRef.current} intentando conexión inicial...`);
+      
+      // Pequeño delay para asegurar que el componente esté completamente montado
+      setTimeout(() => {
+        if (shouldAutoReconnectRef.current && !currentRoomRef.current && session?.user?.id) {
+          connectToRoom(session.user.id, participantName);
         }
-      );
+      }, 500);
     }
 
+    // Cleanup solo al desmontar
     return () => {
-      console.log("[LKCM] useEffect Principal: Limpieza. Abortando operaciones y desconectando si es necesario.");
-      abortController.abort();
-      if (currentRoomRef.current && 
-         (currentRoomRef.current.state === LiveKitConnectionState.Connected || 
-          currentRoomRef.current.state === LiveKitConnectionState.Reconnecting)) {
-        console.log("[LKCM] useEffect Principal: Desconectando de la sala en la limpieza.");
-        disconnectFromLiveKit().catch(error => 
-          console.error("[LKCM] useEffect Principal: Error al desconectar durante la limpieza:", error)
+      console.log(`[LKCM] Instancia ${instanceIdRef.current} cleanup final por desmontaje`);
+      shouldAutoReconnectRef.current = false;
+      
+      if (currentRoomRef.current?.state === LiveKitConnectionState.Connected) {
+        console.log(`[LKCM] Instancia ${instanceIdRef.current} desconectando por desmontaje final`);
+        currentRoomRef.current.disconnect().catch(error => 
+          console.error("[LKCM] Error disconnecting during final cleanup:", error)
         );
-      } else {
-        console.log("[LKCM] useEffect Principal: No se requiere desconexión explícita en la limpieza, estado de la sala:", currentRoomRef.current?.state);
       }
     };
-  }, [session?.user?.id, getLiveKitToken, disconnectFromLiveKit, setAppError]);
+  }, []); // Sin dependencias para que solo se ejecute al montar/desmontar
+
+  // Effect separado para manejar cambios de sesión
+  useEffect(() => {
+    if (authStatus === 'authenticated' && session?.user?.id && !currentRoomRef.current && shouldAutoReconnectRef.current) {
+      const userProfile = userProfileRef.current;
+      const participantName = userProfile?.username || session?.user?.name || 'Usuario';
+      
+      console.log(`[LKCM] Instancia ${instanceIdRef.current} sesión disponible, intentando conexión...`);
+      connectToRoom(session.user.id, participantName);
+    } else if (authStatus === 'unauthenticated' && currentRoomRef.current) {
+      console.log(`[LKCM] Instancia ${instanceIdRef.current} sesión perdida, desconectando...`);
+      disconnectFromLiveKit();
+    }
+  }, [session?.user?.id, authStatus, connectToRoom, disconnectFromLiveKit]);
 
   return { room, connectionState, disconnectFromLiveKit, targetParticipant };
 } 

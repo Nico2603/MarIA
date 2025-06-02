@@ -14,8 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal, Calendar, Clock, User, Mail, BadgeCheck, MessageSquareHeart } from 'lucide-react';
 import { ArrowRight } from 'lucide-react';
-import type { UserProfile } from '@/types/profile';
-import type { ChatSession } from '@prisma/client';
+import type { Profile, ChatSession } from '@prisma/client';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import {
@@ -54,7 +53,7 @@ export default function ProfilePage() {
 
   const [usernameForm, setUsernameForm] = useState('');
 
-  const { data: profile, isLoading: isLoadingProfile, error: profileError, refetch: refetchProfile } = useQuery<UserProfile, Error>({
+  const { data: profile, isLoading: isLoadingProfile, error: profileError, refetch: refetchProfile } = useQuery<Profile, Error>({
     queryKey: ['profile', session?.user?.email],
     queryFn: async () => {
       if (!session?.user?.email) throw new Error('Usuario no autenticado'); // Asegurar que la sesión exista
@@ -220,7 +219,7 @@ export default function ProfilePage() {
     }
   }, [isLoadingProfile, isLoadingHistory, history, profile]);
 
-  const { mutate: updateProfile, isPending: isUpdatingProfile } = useMutation<UserProfile, Error, { username: string }>({
+  const { mutate: updateProfile, isPending: isUpdatingProfile } = useMutation<Profile, Error, { username: string }>({
     mutationFn: async (newProfileData) => {
       const response = await fetch(API_PROFILE_URL, {
         method: 'PUT',
