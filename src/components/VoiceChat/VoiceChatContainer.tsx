@@ -230,25 +230,47 @@ function VoiceChatContainer() {
     setDiscoveredTargetParticipant(foundInteractiveAgent);
   }, [room?.remoteParticipants.size]);
 
-  // User profile management
+  // User profile management - Obtener perfil real de la base de datos
   useEffect(() => {
-    if (authStatus === 'authenticated' && session?.user) {
-      const newProfile = { 
-        id: session.user.id || undefined,
-        email: session.user.email || null,
-        username: session.user.name || null,
+    if (authStatus === 'authenticated' && session?.user?.email && !userProfile) {
+      // Obtener el perfil real de la base de datos
+      const fetchUserProfile = async () => {
+        try {
+          const response = await fetch('/api/profile');
+          if (response.ok) {
+            const profile = await response.json();
+            const newProfile = { 
+              id: session?.user?.id || undefined,
+              email: session?.user?.email || null,
+              username: profile.username || session?.user?.name || null,
+            };
+            dispatch({ type: 'SET_USER_PROFILE', payload: newProfile });
+          } else {
+            // Fallback a datos de sesión si falla la API
+            const newProfile = { 
+              id: session?.user?.id || undefined,
+              email: session?.user?.email || null,
+              username: session?.user?.name || null,
+            };
+            dispatch({ type: 'SET_USER_PROFILE', payload: newProfile });
+          }
+        } catch (error) {
+          console.error('Error obteniendo perfil de usuario:', error);
+          // Fallback a datos de sesión
+          const newProfile = { 
+            id: session?.user?.id || undefined,
+            email: session?.user?.email || null,
+            username: session?.user?.name || null,
+          };
+          dispatch({ type: 'SET_USER_PROFILE', payload: newProfile });
+        }
       };
-      
-      if (!userProfile || 
-          userProfile.id !== newProfile.id ||
-          userProfile.email !== newProfile.email ||
-          userProfile.username !== newProfile.username) {
-        dispatch({ type: 'SET_USER_PROFILE', payload: newProfile });
-      }
+
+      fetchUserProfile();
     } else if (authStatus === 'unauthenticated' && userProfile !== null) {
       dispatch({ type: 'SET_USER_PROFILE', payload: null });
     }
-  }, [authStatus, session?.user?.id, session?.user?.email, session?.user?.name, userProfile]);
+  }, [authStatus, session?.user?.id, session?.user?.email, userProfile]);
 
   // Conversation session management
   const conversationManagerProps = useMemo(() => ({
@@ -279,7 +301,8 @@ function VoiceChatContainer() {
   ]);
 
   const {
-    endSession
+    endSession,
+    handleStartConversation,
   } = useConversationSessionManager(conversationManagerProps);
 
   // Data channel events
@@ -510,6 +533,7 @@ function VoiceChatContainer() {
         handleSendTextMessage={handleSendTextMessage}
         dispatch={dispatch}
         onTavusVideoLoaded={handleTavusVideoLoaded}
+        handleStartConversation={handleStartConversation}
       />
     </>
   );

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Track } from 'livekit-client';
 import { useMediaAttachment } from '@/hooks/voicechat/useMediaAttachment';
 
@@ -11,6 +11,7 @@ interface RemoteTrackPlayerProps {
   playsInline?: boolean;
   onLoadedData?: (event: React.SyntheticEvent<HTMLMediaElement, Event>) => void;
   onVideoLoaded?: () => void;
+  onError?: () => void;
 }
 
 const RemoteTrackPlayer: React.FC<RemoteTrackPlayerProps> = ({
@@ -22,16 +23,26 @@ const RemoteTrackPlayer: React.FC<RemoteTrackPlayerProps> = ({
   playsInline = true,
   onLoadedData,
   onVideoLoaded,
+  onError,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoLoadedCallbackFiredRef = useRef(false);
+  const [hasError, setHasError] = useState(false);
   
   useMediaAttachment({ track: track, containerRef });
 
+  // Reset el flag cuando cambia el track
   useEffect(() => {
-    // Reset el flag cuando cambia el track
     videoLoadedCallbackFiredRef.current = false;
+    setHasError(false);
   }, [track.sid]);
+
+  // Callback para manejar errores
+  const handleMediaError = useCallback(() => {
+    console.error('[RemoteTrackPlayer] ❌ Error en reproducción de media');
+    setHasError(true);
+    onError?.();
+  }, [onError]);
 
   useEffect(() => {
     const currentContainer = containerRef.current;
@@ -51,70 +62,78 @@ const RemoteTrackPlayer: React.FC<RemoteTrackPlayerProps> = ({
           mediaElement.style.height = '100%';
           mediaElement.style.objectFit = 'cover';
           mediaElement.style.objectPosition = 'center top';
+          
+          // Configuración optimizada para Tavus
+          mediaElement.style.backgroundColor = '#000';
+          mediaElement.preload = 'metadata';
         }
         
+        // Manejar eventos de carga
+        const handleLoadedData = (event: Event) => {
+          console.log('[RemoteTrackPlayer] 📡 Datos de media cargados');
+          onLoadedData?.(event as any);
+        };
+
         // Manejar onVideoLoaded específicamente para videos
         if (onVideoLoaded && mediaElement instanceof HTMLVideoElement) {
           const handleVideoLoaded = () => {
             if (mediaElement.readyState >= 3 && !videoLoadedCallbackFiredRef.current) { // HAVE_FUTURE_DATA o superior
               console.log('[RemoteTrackPlayer] 🎬 Video cargado detectado, disparando callback');
               videoLoadedCallbackFiredRef.current = true;
+              setHasError(false);
               onVideoLoaded();
             }
           };
           
-          // Verificar si el video ya está listo inmediatamente
-          if (mediaElement.readyState >= 3 && !videoLoadedCallbackFiredRef.current) {
-            console.log('[RemoteTrackPlayer] 🎬 Video ya estaba listo, disparando callback inmediatamente');
-            videoLoadedCallbackFiredRef.current = true;
-            onVideoLoaded();
+          // Múltiples eventos para asegurar detección
+          mediaElement.addEventListener('loadeddata', handleVideoLoaded);
+          mediaElement.addEventListener('canplay', handleVideoLoaded);
+          mediaElement.addEventListener('canplaythrough', handleVideoLoaded);
+          mediaElement.addEventListener('playing', handleVideoLoaded);
+          
+          // Manejar errores
+          mediaElement.addEventListener('error', handleMediaError);
+          mediaElement.addEventListener('abort', handleMediaError);
+          mediaElement.addEventListener('stalled', () => {
+            console.warn('[RemoteTrackPlayer] ⚠️ Video stalled');
+          });
+          
+          // Verificar si el video ya está listo
+          if (mediaElement.readyState >= 3) {
+            handleVideoLoaded();
           }
           
-          // Configurar event listeners para diferentes etapas de carga
-          mediaElement.oncanplay = handleVideoLoaded;
-          mediaElement.oncanplaythrough = handleVideoLoaded;
-          
-          // Manejar onLoadedData con el callback combinado
-          const combinedLoadedDataHandler = (event: Event) => {
-            if (onLoadedData) {
-              onLoadedData(event as unknown as React.SyntheticEvent<HTMLMediaElement, Event>);
-            }
-            handleVideoLoaded();
+          return () => {
+            mediaElement.removeEventListener('loadeddata', handleVideoLoaded);
+            mediaElement.removeEventListener('canplay', handleVideoLoaded);
+            mediaElement.removeEventListener('canplaythrough', handleVideoLoaded);
+            mediaElement.removeEventListener('playing', handleVideoLoaded);
+            mediaElement.removeEventListener('error', handleMediaError);
+            mediaElement.removeEventListener('abort', handleMediaError);
+            mediaElement.removeEventListener('stalled', () => {});
           };
-          
-          mediaElement.onloadeddata = combinedLoadedDataHandler;
-          
-          // Log para debug
-          console.log('[RemoteTrackPlayer] 🎬 Configurando event listeners para video:', {
-            trackSid: track.sid,
-            readyState: mediaElement.readyState,
-            videoWidth: mediaElement.videoWidth,
-            videoHeight: mediaElement.videoHeight
-          });
-        } else if (onLoadedData) {
-          // Solo configurar onLoadedData si no es video o no hay onVideoLoaded
-          mediaElement.onloadeddata = (event) => onLoadedData(event as unknown as React.SyntheticEvent<HTMLMediaElement, Event>);
+        }
+        
+        // Agregar listener para loadeddata sin video callback
+        if (onLoadedData) {
+          mediaElement.addEventListener('loadeddata', handleLoadedData);
+          return () => {
+            mediaElement.removeEventListener('loadeddata', handleLoadedData);
+          };
         }
       }
     }
-    
-    return () => {
-        if (currentContainer) {
-            const mediaElement = currentContainer.firstChild as HTMLMediaElement | null;
-            if (mediaElement) {
-                mediaElement.onloadeddata = null;
-                mediaElement.oncanplay = null;
-                mediaElement.oncanplaythrough = null;
-            }
-        }
-    }
-  }, [track, autoPlay, muted, id, playsInline, onLoadedData, onVideoLoaded]);
+  }, [track, autoPlay, muted, playsInline, id, onLoadedData, onVideoLoaded, handleMediaError]);
 
   return (
     <div 
       ref={containerRef} 
       className={className}
-      style={{ position: 'relative' }}
+      style={{ 
+        display: hasError ? 'none' : 'block',
+        width: '100%', 
+        height: '100%' 
+      }}
     />
   );
 };

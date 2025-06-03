@@ -134,100 +134,104 @@ export function useLiveKitDataChannelEvents({
     if (kind === DataPacket_Kind.RELIABLE && participant && isValidAgent(participant.identity)) {
       try {
         const rawData = new TextDecoder().decode(payload);
+        console.log(`[DataChannel] Mensaje recibido del backend: Participante='${participant.identity}', Payload='${rawData}'`);
+        
         const event = JSON.parse(rawData);
 
         // Mapear eventos de Tavus al formato esperado
         let mappedEvent = event;
         
         if (event.message_type && event.event_type) {
+          console.log(`[DataChannel] Procesando evento Tavus: tipo='${event.message_type}', evento='${event.event_type}'`);
+          
           // Mapear eventos de Tavus a nuestro formato
           switch (event.event_type) {
             case 'conversation.replica.started_speaking':
               mappedEvent = {
                 type: 'tts_started',
-                payload: {
-                  messageId: event.inference_id || `tavus-${Date.now()}`,
-                  timestamp: new Date().toISOString()
-                }
+                messageId: event.inference_id,
+                payload: event
               };
-              
-              // Para Tavus, cuando empieza a hablar, crear un mensaje placeholder
-              if (isProcessing) {
-                const aiMessage: Message = { 
-                  id: mappedEvent.payload.messageId,
-                  text: "María está respondiendo...",
-                  isUser: false, 
-                  timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true })
-                };
-                dispatch({ type: 'ADD_MESSAGE', payload: aiMessage });
-                dispatch({ type: 'SET_THINKING', payload: false });
-                dispatch({ type: 'SET_PROCESSING', payload: false });
-              }
+              console.log(`[DataChannel] Mapeando started_speaking -> tts_started:`, mappedEvent);
               break;
               
             case 'conversation.replica.stopped_speaking':
               mappedEvent = {
                 type: 'tts_ended',
+                messageId: event.inference_id,
                 payload: {
-                  messageId: event.inference_id || `tavus-${Date.now()}`,
-                  isClosing: false,
-                  timestamp: new Date().toISOString()
+                  messageId: event.inference_id,
+                  isClosing: event.properties?.isClosing || false
                 }
               };
+              console.log(`[DataChannel] Mapeando stopped_speaking -> tts_ended:`, mappedEvent);
               break;
               
-            case 'conversation.user.started_speaking':
-            case 'conversation.user.stopped_speaking':
-              return; // No procesar, es solo informativo
-              
-            case 'conversation.response':
             case 'conversation.replica.response':
-              // Si Tavus envía el texto de la respuesta en este evento
-              if (event.properties && event.properties.text) {
-                mappedEvent = {
-                  type: 'ai_response_generated',
-                  payload: {
-                    id: event.inference_id || `tavus-text-${Date.now()}`,
-                    text: event.properties.text,
-                    timestamp: new Date().toISOString()
-                  }
-                };
-              } else {
-                return;
-              }
+              mappedEvent = {
+                type: 'ai_response_generated',
+                payload: {
+                  id: event.inference_id,
+                  text: event.properties?.text || '',
+                  isInitialGreeting: event.properties?.isInitialGreeting || false,
+                  suggestedVideo: event.properties?.suggestedVideo
+                }
+              };
+              console.log(`[DataChannel] Mapeando response -> ai_response_generated:`, mappedEvent);
               break;
-              
+
+            // Eventos del sistema - manejar sin warnings
             case 'system.replica_joined':
+              console.log(`[DataChannel] Sistema: Avatar se unió a la conversación`);
+              return; // No procesar más, solo log
+              
             case 'system.replica_present':
-              return; // No procesar estos eventos
+              // Este es un evento de heartbeat/confirmación de presencia
+              // Solo mostrar log cada 5 intentos para reducir spam
+              const attempt = event.properties?.attempt || 1;
+              if (attempt === 1 || attempt % 5 === 0) {
+                console.log(`[DataChannel] Sistema: Avatar presente (intento ${attempt})`);
+              }
+              return; // No procesar más
+              
+            case 'system.shutdown':
+              console.log(`[DataChannel] Sistema: Conversación terminada`, event.properties);
+              return; // No procesar más
               
             default:
-              // Evento no mapeado
-              mappedEvent = null;
+              // Para otros eventos de sistema no reconocidos, solo hacer log sin warning
+              if (event.message_type === 'system') {
+                console.log(`[DataChannel] Evento de sistema no manejado: ${event.event_type}`, event);
+                return;
+              }
+              
+              console.warn(`[DataChannel] ❌ Formato de mensaje no reconocido. Tipo: '${event.type}', Tavus tipo: '${event.message_type}', Tavus evento: '${event.event_type}'`);
+              return;
           }
-        }
-        
-        // Verificar si el evento fue mapeado correctamente
-        if (!mappedEvent) {
+        } else if (event.type) {
+          // Evento en formato directo (no Tavus)
+          console.log(`[DataChannel] Evento directo recibido: tipo='${event.type}'`);
+          mappedEvent = event;
+        } else {
+          console.warn(`[DataChannel] ⚠️ Formato de mensaje no reconocido:`, {
+            tieneMessageType: !!event.message_type,
+            tieneEventType: !!event.event_type,
+            tieneType: !!event.type,
+            evento: event
+          });
           return;
         }
         
+        // Verificar si el evento fue mapeado correctamente
+        if (!mappedEvent || !mappedEvent.type) {
+          console.warn(`[DataChannel] ⚠️ Evento no pudo ser mapeado correctamente:`, mappedEvent);
+          return;
+        }
+        
+        console.log(`[DataChannel] Procesando evento mapeado: tipo='${mappedEvent.type}'`);
+        
         // Procesar el evento mapeado
         switch (mappedEvent.type) {
-          case 'initial_greeting_message':
-            if (mappedEvent.payload && mappedEvent.payload.text) {
-              const greetingMsg: Message = {
-                id: mappedEvent.payload.id || `greeting-${Date.now()}`,
-                text: mappedEvent.payload.text,
-                isUser: false,
-                timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }),
-              };
-              
-              dispatch({ type: 'SET_MESSAGES', payload: [greetingMsg] });
-              dispatch({ type: 'SET_GREETING_MESSAGE_ID', payload: greetingMsg.id });
-            }
-            break;
-            
           case 'user_transcription_result':
             if (mappedEvent.payload && mappedEvent.payload.transcript) {
               const userMessage: Message = { 
@@ -236,7 +240,10 @@ export function useLiveKitDataChannelEvents({
                 isUser: true, 
                 timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true })
               };
-              dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
+              
+              // Solo agregar si no existe ya un mensaje similar reciente (evitar duplicados)
+              // Esto pasa cuando el backend procesa el mensaje del usuario y lo reenvía
+              console.log(`[DataChannel] Transcripción del usuario recibida del backend:`, userMessage);
               
               if (isListening) {
                 dispatch({ type: 'SET_LISTENING', payload: false });
@@ -255,17 +262,40 @@ export function useLiveKitDataChannelEvents({
             }
             
             if (mappedEvent.payload && mappedEvent.payload.text && mappedEvent.payload.text.trim()) {
+              const messageId = mappedEvent.payload.id || `ai-${Date.now()}`;
+              const messageText = mappedEvent.payload.text.trim();
+              
+              // Verificar si ya existe un mensaje con este ID (mensaje placeholder)
+              const existingMessageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+              
               const aiMessage: Message = { 
-                  id: mappedEvent.payload.id || `ai-${Date.now()}`, 
-                  text: mappedEvent.payload.text.trim(), 
+                  id: messageId, 
+                  text: messageText, 
                   isUser: false, 
                   timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }), 
                   suggestedVideo: mappedEvent.payload.suggestedVideo || undefined 
               };
-              dispatch({ type: 'ADD_MESSAGE', payload: aiMessage });
+              
+              console.log(`[DataChannel] ${existingMessageElement ? 'Actualizando' : 'Agregando'} respuesta de IA:`, aiMessage);
+              
+              if (existingMessageElement) {
+                // Actualizar mensaje existente
+                dispatch({ type: 'UPDATE_MESSAGE', payload: aiMessage });
+              } else {
+                // Agregar nuevo mensaje
+                dispatch({ type: 'ADD_MESSAGE', payload: aiMessage });
+              }
+              
+              // Si es el saludo inicial, establecer greetingMessageId
+              if (mappedEvent.payload.isInitialGreeting && !greetingMessageId) {
+                console.log('[DataChannel] 📢 Recibido saludo inicial, estableciendo greetingMessageId:', aiMessage.id);
+                dispatch({ type: 'SET_GREETING_MESSAGE_ID', payload: aiMessage.id });
+              }
+              
               dispatch({ type: 'SET_THINKING', payload: false });
-              dispatch({ type: 'SET_PROCESSING', payload: false }); // Limpiar estado de procesamiento
+              dispatch({ type: 'SET_PROCESSING', payload: false });
             } else {
+              console.warn(`[DataChannel] Respuesta de IA sin texto válido:`, mappedEvent.payload);
               dispatch({ type: 'SET_THINKING', payload: false });
               dispatch({ type: 'SET_PROCESSING', payload: false });
             }
@@ -273,11 +303,14 @@ export function useLiveKitDataChannelEvents({
             
           case 'tts_started':
             if (mappedEvent.payload && mappedEvent.payload.messageId) {
+              console.log(`[DataChannel] TTS iniciado para mensaje:`, mappedEvent.payload.messageId);
               dispatch({ type: 'SET_CURRENT_SPEAKING_ID', payload: mappedEvent.payload.messageId });
               dispatch({ type: 'SET_SPEAKING', payload: true });
               dispatch({ type: 'SET_THINKING', payload: false });
-              dispatch({ type: 'SET_PROCESSING', payload: false }); // Limpiar procesamiento cuando inicia TTS
+              dispatch({ type: 'SET_PROCESSING', payload: false });
+              
               if (mappedEvent.payload.messageId === greetingMessageId && !isReadyToStart) {
+                console.log(`[DataChannel] Saludo inicial comenzó a reproducirse, marcando como listo`);
                 dispatch({ type: 'SET_READY_TO_START', payload: true });
               }
             }
@@ -285,6 +318,8 @@ export function useLiveKitDataChannelEvents({
             
           case 'tts_ended':
             if (mappedEvent.payload && mappedEvent.payload.messageId) {
+              console.log(`[DataChannel] TTS terminado para mensaje:`, mappedEvent.payload.messageId);
+              
               if (currentSpeakingId === mappedEvent.payload.messageId) {
                 dispatch({ type: 'SET_SPEAKING', payload: false });
                 dispatch({ type: 'SET_CURRENT_SPEAKING_ID', payload: null });
@@ -294,12 +329,14 @@ export function useLiveKitDataChannelEvents({
                     !isListening && 
                     !isProcessing && 
                     !isSessionClosed) {
+                  console.log(`[DataChannel] Saludo inicial terminó, activando modo de escucha`);
                   setTimeout(() => {
                     dispatch({ type: 'SET_LISTENING', payload: true });
                   }, 500);
                 }
 
                 if (mappedEvent.payload.isClosing) {
+                  console.log(`[DataChannel] Sesión marcada para cerrar`);
                   endSession(); 
                 }
               }
@@ -309,7 +346,6 @@ export function useLiveKitDataChannelEvents({
           default:
             if (mappedEvent.type && mappedEvent.type !== 'undefined') {
               const expectedEvents = [
-                'initial_greeting_message', 
                 'user_transcription_result', 
                 'ai_response_generated', 
                 'tts_started', 
@@ -317,19 +353,19 @@ export function useLiveKitDataChannelEvents({
               ];
               
               if (!expectedEvents.includes(mappedEvent.type)) {
-                console.log(`[LiveKit] 🆕 Nuevo tipo de evento recibido: ${mappedEvent.type}`, mappedEvent.payload);
+                console.log(`[DataChannel] 🆕 Nuevo tipo de evento recibido: ${mappedEvent.type}`, mappedEvent.payload);
               }
             } else {
-              console.warn('[LiveKit] ⚠️ Evento recibido sin tipo válido:', mappedEvent);
+              console.warn('[DataChannel] ⚠️ Evento recibido sin tipo válido:', mappedEvent);
             }
         }
       } catch (e) {
-        console.error("[DataChannelHook] ❌ Error procesando DataChannel del agente Maria:", e);
-        console.error("Raw payload:", new TextDecoder().decode(payload));
-        setAppError('agent', 'Error procesando datos del agente.'); // Especificar tipo de error
+        console.error("[DataChannel] ❌ Error procesando mensaje del agente:", e);
+        console.error("[DataChannel] Raw payload:", new TextDecoder().decode(payload));
+        setAppError('agent', 'Error procesando datos del agente.');
       }
     } else {
-      console.log('[handleDataReceived] Datos ignorados - no son del agente esperado:', {
+      console.log('[DataChannel] Datos ignorados - no son del agente esperado:', {
         kind,
         participantIdentity: participant?.identity,
         expectedIdentity: AGENT_IDENTITY,
@@ -405,17 +441,16 @@ export function useLiveKitDataChannelEvents({
       console.log(`[handleSendTextMessage] ✅ Condiciones cumplidas, enviando texto: "${trimmedInput}"`);
       console.log(`[handleSendTextMessage] Session ID activa: ${activeSessionId}`);
       
-      // Primero agregar el mensaje del usuario a la UI
+      // Agregar el mensaje del usuario a la UI inmediatamente
       const userMessage: Message = { 
-        id: `user-text-${Date.now()}`,
-        text: trimmedInput,
-        isUser: true,
+        id: `user-sent-${Date.now()}`, 
+        text: trimmedInput, 
+        isUser: true, 
         timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true })
       };
       
-      console.log('[handleSendTextMessage] 📝 Agregando mensaje del usuario a la UI:', userMessage);
+      console.log(`[handleSendTextMessage] 📝 Agregando mensaje del usuario a la UI:`, userMessage);
       dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
-      dispatch({ type: 'SET_TEXT_INPUT', payload: '' }); // Limpiar input inmediatamente
       
       // Marcar como procesando ANTES de enviar
       dispatch({ type: 'SET_PROCESSING', payload: true });

@@ -57,6 +57,7 @@ export type VoiceChatAction =
   | { type: 'SET_CURRENT_SPEAKING_ID'; payload: string | null }
   | { type: 'SET_TEXT_INPUT'; payload: string }
   | { type: 'ADD_MESSAGE'; payload: Message }
+  | { type: 'UPDATE_MESSAGE'; payload: Message }
   | { type: 'SET_MESSAGES'; payload: Message[] }
   | { type: 'SET_GREETING_MESSAGE_ID'; payload: string | null }
   | { type: 'SET_READY_TO_START'; payload: boolean }

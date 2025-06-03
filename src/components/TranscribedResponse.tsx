@@ -12,6 +12,7 @@ interface TranscribedResponseProps {
   suggestedVideo?: { title: string; url: string };
   avatarUrl?: string;
   userName?: string | null;
+  messageId?: string;
 }
 
 const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
@@ -23,6 +24,7 @@ const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
   suggestedVideo,
   avatarUrl,
   userName,
+  messageId,
 }) => {
   // Renderizar las etiquetas con colores según categoría
   const renderTags = () => {
@@ -112,6 +114,7 @@ const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
       <div className={`max-w-[75%] md:max-w-[65%] ${isUser ? 'order-1' : 'order-2'}`}>
         {/* Contenedor del mensaje */}
         <div 
+          data-message-id={messageId}
           className={`rounded-xl px-4 py-3 ${
             isUser 
               ? 'bg-primary-600 text-white shadow-md' 
@@ -166,4 +169,4 @@ const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
   );
 };
 
-export default TranscribedResponse; 
+export default TranscribedResponse;

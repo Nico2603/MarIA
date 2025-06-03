@@ -39,6 +39,13 @@ export function voiceChatReducer(state: VoiceChatState, action: VoiceChatAction)
       return { ...state, textInput: action.payload };
     case 'ADD_MESSAGE':
       return { ...state, messages: [...state.messages, action.payload] };
+    case 'UPDATE_MESSAGE':
+      return {
+        ...state,
+        messages: state.messages.map(msg =>
+          msg.id === action.payload.id ? { ...msg, ...action.payload } : msg
+        )
+      };
     case 'SET_MESSAGES':
       return { ...state, messages: action.payload };
     case 'SET_GREETING_MESSAGE_ID':

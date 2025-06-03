@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
-import { Mic, Loader2, VideoOff, ChevronsLeft, ChevronsRight, UserIcon } from 'lucide-react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { Mic, Loader2, VideoOff, ChevronsLeft, ChevronsRight, UserIcon, Play } from 'lucide-react';
 import RemoteTrackPlayer from './RemoteTrackPlayer';
 import type { ActiveTrackInfo } from '@/hooks/voicechat/useLiveKitTrackManagement';
 
@@ -19,6 +19,9 @@ interface VideoPanelProps {
   isPushToTalkActive: boolean;
   toggleChatVisibility?: () => void;
   onVideoLoaded?: () => void;
+  isReadyToStart?: boolean;
+  authStatus?: string;
+  handleStartConversation?: () => Promise<void>;
 }
 
 // Componente de indicador de estado consolidado
@@ -49,29 +52,118 @@ const StatusIndicator: React.FC<{
   </div>
 );
 
-// Placeholder minimalista simplificado
+// Avatar placeholder mejorado con preloader
 const AvatarPlaceholder: React.FC<{ 
   size?: 'small' | 'large';
-}> = ({ size = 'large' }) => {
+  handleStartConversation?: () => Promise<void>;
+  isReadyToStart?: boolean;
+  authStatus?: string;
+  conversationActive?: boolean;
+  isLoading?: boolean;
+}> = ({ 
+  size = 'large', 
+  handleStartConversation, 
+  isReadyToStart, 
+  authStatus, 
+  conversationActive, 
+  isLoading = false 
+}) => {
   const sizeClasses = size === 'small' 
     ? 'w-16 h-16' 
     : 'w-24 h-24';
   
   return (
     <div className="flex flex-col items-center justify-center space-y-4">
-      {/* Avatar círculo con gradiente suave */}
+      {/* Avatar círculo con gradiente suave y indicador de carga */}
       <div className={`${sizeClasses} rounded-full bg-gradient-to-br from-blue-500/20 to-purple-600/20 border-2 border-blue-400/30 flex items-center justify-center relative overflow-hidden`}>
-        <UserIcon className={`${size === 'small' ? 'w-8 h-8' : 'w-12 h-12'} text-blue-400/60`} />
+        {isLoading ? (
+          <Loader2 className={`${size === 'small' ? 'w-8 h-8' : 'w-12 h-12'} text-blue-400/60 animate-spin`} />
+        ) : (
+          <UserIcon className={`${size === 'small' ? 'w-8 h-8' : 'w-12 h-12'} text-blue-400/60`} />
+        )}
         
         {/* Animación de pulso sutil */}
         <div className={`absolute inset-0 rounded-full bg-blue-400/10 animate-pulse`}></div>
       </div>
       
-      {/* Texto minimalista */}
+      {/* Texto de estado mejorado */}
       <div className="text-center space-y-1">
         <p className="text-neutral-300 text-sm font-medium">MarIA</p>
-        <p className="text-neutral-500 text-xs">Preparando avatar...</p>
+        <p className="text-neutral-500 text-xs">
+          {isLoading 
+            ? 'Cargando avatar...' 
+            : !conversationActive && isReadyToStart && authStatus === 'authenticated' 
+              ? 'Lista para conversar' 
+              : 'Preparando experiencia...'}
+        </p>
       </div>
+      
+      {/* Botón de iniciar conversación */}
+      {!conversationActive && isReadyToStart && authStatus === 'authenticated' && handleStartConversation && !isLoading && (
+        <button
+          onClick={handleStartConversation}
+          className="mt-4 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg text-sm font-semibold shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-primary-500/50 flex items-center space-x-2"
+        >
+          <Play className="w-4 h-4" />
+          <span>Iniciar Conversación</span>
+        </button>
+      )}
+    </div>
+  );
+};
+
+// Componente de video optimizado
+const OptimizedVideoDisplay: React.FC<{
+  tavusTrackInfo: ActiveTrackInfo;
+  onVideoLoaded?: () => void;
+}> = ({ tavusTrackInfo, onVideoLoaded }) => {
+  const [videoError, setVideoError] = useState(false);
+  const [videoLoading, setVideoLoading] = useState(true);
+  
+  const handleVideoLoadedData = useCallback(() => {
+    console.log('[VideoPanel] 🎬 Video de Tavus cargado exitosamente');
+    setVideoLoading(false);
+    setVideoError(false);
+    onVideoLoaded?.();
+  }, [onVideoLoaded]);
+  
+  const handleVideoError = useCallback(() => {
+    console.error('[VideoPanel] ❌ Error al cargar video de Tavus');
+    setVideoError(true);
+    setVideoLoading(false);
+  }, []);
+  
+  if (videoError) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+        <div className="text-center">
+          <VideoOff className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+          <p className="text-gray-400 text-sm">Error al cargar el video</p>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="relative w-full h-full bg-black overflow-hidden">
+      {videoLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900 z-10">
+          <div className="text-center">
+            <Loader2 className="w-16 h-16 text-blue-400 animate-spin mx-auto mb-4" />
+            <p className="text-gray-300 text-sm">Cargando avatar...</p>
+          </div>
+        </div>
+      )}
+      
+      <RemoteTrackPlayer
+        track={tavusTrackInfo.publication.track!}
+        className="w-full h-full object-cover"
+        autoPlay={true}
+        muted={false}
+        playsInline={true}
+        onLoadedData={handleVideoLoadedData}
+        onVideoLoaded={handleVideoLoadedData}
+      />
     </div>
   );
 };
@@ -79,7 +171,11 @@ const AvatarPlaceholder: React.FC<{
 // Componente de skeleton consolidado y minimalista
 const VideoPanelSkeleton: React.FC<{ 
   isChatVisible?: boolean;
-}> = ({ isChatVisible }) => (
+  handleStartConversation?: () => Promise<void>;
+  isReadyToStart?: boolean;
+  authStatus?: string;
+  conversationActive?: boolean;
+}> = ({ isChatVisible, handleStartConversation, isReadyToStart, authStatus, conversationActive }) => (
   <div className="relative w-full h-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex flex-col items-center justify-center transition-all duration-300 ease-in-out overflow-hidden">
     {/* Contenedor del video con tamaño optimizado */}
     <div className={`transition-all duration-300 ease-in-out ${
@@ -87,7 +183,13 @@ const VideoPanelSkeleton: React.FC<{
         ? 'w-full h-full rounded-lg bg-gradient-to-br from-gray-800/50 to-gray-700/50' 
         : 'w-full max-w-2xl h-full max-h-[70vh] aspect-video bg-gradient-to-br from-gray-800/50 to-gray-700/50 rounded-lg shadow-xl border border-gray-700/50'
     } flex items-center justify-center backdrop-blur-sm`}>
-      <AvatarPlaceholder size={isChatVisible ? 'large' : 'large'} />
+      <AvatarPlaceholder 
+        size={isChatVisible ? 'large' : 'large'} 
+        handleStartConversation={handleStartConversation}
+        isReadyToStart={isReadyToStart}
+        authStatus={authStatus}
+        conversationActive={conversationActive}
+      />
     </div>
     
     {/* Indicador de estado optimizado */}
@@ -140,11 +242,28 @@ const VideoPanel: React.FC<VideoPanelProps> = ({
   isPushToTalkActive,
   toggleChatVisibility,
   onVideoLoaded,
+  handleStartConversation,
+  isReadyToStart,
+  authStatus,
 }) => {
-  // Si no hay track info, mostrar skeleton
+  const [isVideoLoading, setIsVideoLoading] = useState(true);
+
+  // Callback optimizado para cuando el video se carga
+  const handleVideoLoadedCallback = useCallback(() => {
+    setIsVideoLoading(false);
+    onVideoLoaded?.();
+  }, [onVideoLoaded]);
+
+  // Si no hay track info, mostrar skeleton con indicador de carga
   if (!tavusTrackInfo?.participant || !tavusTrackInfo.publication?.track) {
     return (
-      <VideoPanelSkeleton isChatVisible={isChatVisible} />
+      <VideoPanelSkeleton
+        isChatVisible={isChatVisible}
+        handleStartConversation={handleStartConversation}
+        isReadyToStart={isReadyToStart}
+        authStatus={authStatus}
+        conversationActive={conversationActive}
+      />
     );
   }
 
@@ -165,13 +284,9 @@ const VideoPanel: React.FC<VideoPanelProps> = ({
           ? 'w-full h-full rounded-lg overflow-hidden' 
           : 'w-full max-w-2xl h-full max-h-[70vh] aspect-video rounded-lg overflow-hidden shadow-xl border border-gray-700/50'
       }`}>
-        <RemoteTrackPlayer
-          track={tavusTrackInfo.publication.track}
-          className="w-full h-full object-cover object-top"
-          autoPlay={true}
-          muted={false}
-          playsInline={true}
-          onVideoLoaded={onVideoLoaded}
+        <OptimizedVideoDisplay
+          tavusTrackInfo={tavusTrackInfo}
+          onVideoLoaded={handleVideoLoadedCallback}
         />
         
         <StatusIndicator 

@@ -65,7 +65,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
             "Escribe tu mensaje o pulsa [Espacio] para hablar..."
           }
           rows={1}
-          className="flex-1 resize-none p-3 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-neutral-700/80 text-neutral-800 dark:text-neutral-100 placeholder-neutral-500 dark:placeholder-neutral-400 disabled:opacity-60 disabled:cursor-not-allowed text-base shadow-sm"
+          className="flex-1 resize-none p-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-neutral-700/80 text-neutral-800 dark:text-neutral-100 placeholder-neutral-500 dark:placeholder-neutral-400 disabled:opacity-60 disabled:cursor-not-allowed text-xs shadow-sm"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();

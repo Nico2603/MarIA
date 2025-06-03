@@ -68,6 +68,7 @@ interface VoiceChatLayoutProps {
   handleSendTextMessage: (text: string) => Promise<void>;
   dispatch: React.Dispatch<any>; // Considerar un tipo más específico si es posible
   onTavusVideoLoaded?: () => void;
+  handleStartConversation: () => Promise<void>;
 }
 
 export default function VoiceChatLayout({
@@ -103,6 +104,7 @@ export default function VoiceChatLayout({
   handleSendTextMessage,
   dispatch,
   onTavusVideoLoaded,
+  handleStartConversation,
 }: VoiceChatLayoutProps) {
   const { data: session } = useSession();
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -110,7 +112,7 @@ export default function VoiceChatLayout({
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
   return (
-    <div className="relative flex flex-col h-screen overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+    <div className="relative flex flex-col h-[calc(100vh-4rem)] overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 text-white">
       <AnimatePresence>
         {appError && appError.type === 'livekit' && appError.message && (
           <motion.div
@@ -136,7 +138,7 @@ export default function VoiceChatLayout({
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               className={cn(
-                "flex-none bg-white dark:bg-gray-900 h-full border-r border-gray-300 dark:border-gray-700 flex flex-col max-h-screen",
+                "flex-none bg-white dark:bg-gray-900 h-full border-r border-gray-300 dark:border-gray-700 flex flex-col max-h-full",
                 // Responsivo: full width en mobile, 1/3 en desktop
                 "w-full md:w-2/5 lg:w-1/3 xl:w-1/3",
                 // En mobile, tomar toda la pantalla excepto cuando está colapsado
@@ -181,13 +183,17 @@ export default function VoiceChatLayout({
             ? "flex-1 md:w-3/5 lg:w-2/3 xl:w-2/3" 
             : "w-full",
           // En mobile: full width siempre
-          "w-full md:w-auto"
+          "w-full md:w-auto",
+          // Asegurar min-width para evitar colapso excesivo
+          "min-w-0"
         )}>
           {/* Contenedor del video con altura optimizada */}
           <div className="flex-1 flex items-center justify-center relative p-2 md:p-4 min-h-0">
             <div className={cn(
               "relative w-full h-full rounded-lg overflow-hidden bg-gradient-to-br from-neutral-900 to-neutral-800 flex items-center justify-center",
-              "max-h-[calc(100vh-1rem)] md:max-h-[calc(100vh-2rem)]"
+              "max-h-full",
+              // Asegurar que el contenido sea visible
+              "min-h-[300px]"
             )}>
               {tavusVideoTrackPublication && discoveredTargetParticipant ? (
                 <>
@@ -226,6 +232,21 @@ export default function VoiceChatLayout({
                       }}
                     />
                   </div>
+                  
+                  {/* Botón de Iniciar Conversación - aparece cuando el avatar está listo pero la conversación no está activa */}
+                  {!conversationActive && isReadyToStart && authStatus === 'authenticated' && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                      <motion.button
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        onClick={handleStartConversation}
+                        className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-primary-500/50"
+                      >
+                        Iniciar Conversación con María
+                      </motion.button>
+                    </div>
+                  )}
                 </>
               ) : connectionState === LiveKitConnectionState.Connected ? (
                 <DynamicVideoPanel
@@ -242,9 +263,18 @@ export default function VoiceChatLayout({
                   isPushToTalkActive={isPushToTalkActive}
                   toggleChatVisibility={toggleChatVisibility}
                   onVideoLoaded={onTavusVideoLoaded}
+                  handleStartConversation={handleStartConversation}
+                  isReadyToStart={isReadyToStart}
+                  authStatus={authStatus}
                 />
               ) : (
-                <VideoPanelSkeleton />
+                <VideoPanelSkeleton 
+                  isChatVisible={isChatVisible}
+                  handleStartConversation={handleStartConversation}
+                  isReadyToStart={isReadyToStart}
+                  authStatus={authStatus}
+                  conversationActive={conversationActive}
+                />
               )}
             </div>
           </div>

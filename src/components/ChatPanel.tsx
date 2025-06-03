@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Loader2 } from 'lucide-react';
 import TranscribedResponse from './TranscribedResponse';
@@ -131,6 +131,32 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     });
   }
 
+  useEffect(() => {
+    if (chatContainerRef && chatContainerRef.current) {
+      const container = chatContainerRef.current;
+      const messagesContainer = container.querySelector('.flex-1.overflow-y-auto');
+      if (messagesContainer) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+    }
+  }, [messages, chatContainerRef]);
+
+  // Auto-scroll cuando se agreguen mensajes nuevos - solo dentro del contenedor de chat
+  useEffect(() => {
+    if (chatEndRef.current && chatContainerRef.current) {
+      const container = chatContainerRef.current;
+      const messagesContainer = container.querySelector('.flex-1.overflow-y-auto');
+      if (messagesContainer) {
+        // Usar scrollIntoView pero limitado al contenedor padre
+        chatEndRef.current.scrollIntoView({ 
+          behavior: 'smooth',
+          block: 'end',
+          inline: 'nearest'
+        });
+      }
+    }
+  }, [messages.length, isThinking, chatEndRef, chatContainerRef]);
+
   return (
     <div
       ref={chatContainerRef}
@@ -187,6 +213,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               return (
                 <TranscribedResponse
                   key={msg.id}
+                  messageId={msg.id}
                   text={msg.text}
                   isUser={msg.isUser}
                   timestamp={msg.timestamp}
