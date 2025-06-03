@@ -1,9 +1,0 @@
----
-description: 
-globs: 
-alwaysApply: true
----
-# 1. Global Response Rule
-Always respond in Español.
-(This is global and if anywhere it appears otherwise, replace it with Español.)
-

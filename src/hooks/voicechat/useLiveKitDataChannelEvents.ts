@@ -5,7 +5,7 @@ import { DataPacket_Kind, RemoteParticipant, Room, LocalParticipant, Track, Trac
 import { Room as LiveKitRoom } from 'livekit-client';
 import type { Message, VoiceChatAction, VoiceChatState, ExtendedUserProfile } from '@/types'; // Actualizado para usar types consolidados
 import { useError } from '@/contexts/ErrorContext'; // Asegúrate que la ruta es correcta
-import { AGENT_IDENTITY, isValidAgent } from '../../lib/constants';
+import { AGENT_IDENTITY, isValidAgent } from '@/lib/constants';
 
 interface UseLiveKitDataChannelEventsProps {
   dispatch: Dispatch<VoiceChatAction>; // Usar dispatch
