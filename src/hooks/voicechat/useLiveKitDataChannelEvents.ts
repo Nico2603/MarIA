@@ -149,8 +149,9 @@ export function useLiveKitDataChannelEvents({
             case 'conversation.replica.started_speaking':
               mappedEvent = {
                 type: 'tts_started',
-                messageId: event.inference_id,
-                payload: event
+                payload: {
+                  messageId: event.inference_id || `speaking-${Date.now()}`
+                }
               };
               console.log(`[DataChannel] Mapeando started_speaking -> tts_started:`, mappedEvent);
               break;
@@ -158,9 +159,8 @@ export function useLiveKitDataChannelEvents({
             case 'conversation.replica.stopped_speaking':
               mappedEvent = {
                 type: 'tts_ended',
-                messageId: event.inference_id,
                 payload: {
-                  messageId: event.inference_id,
+                  messageId: event.inference_id || `speaking-${Date.now()}`,
                   isClosing: event.properties?.isClosing || false
                 }
               };
@@ -182,30 +182,43 @@ export function useLiveKitDataChannelEvents({
 
             // Eventos del sistema - manejar sin warnings
             case 'system.replica_joined':
-              console.log(`[DataChannel] Sistema: Avatar se unió a la conversación`);
+              console.log(`[DataChannel] ✅ Sistema: Avatar se unió a la conversación`);
               return; // No procesar más, solo log
               
             case 'system.replica_present':
               // Este es un evento de heartbeat/confirmación de presencia
-              // Solo mostrar log cada 5 intentos para reducir spam
+              // Solo mostrar log cada 10 intentos para reducir spam
               const attempt = event.properties?.attempt || 1;
-              if (attempt === 1 || attempt % 5 === 0) {
-                console.log(`[DataChannel] Sistema: Avatar presente (intento ${attempt})`);
+              if (attempt === 1 || attempt % 10 === 0) {
+                console.log(`[DataChannel] ✅ Sistema: Avatar presente (intento ${attempt})`);
               }
               return; // No procesar más
               
             case 'system.shutdown':
-              console.log(`[DataChannel] Sistema: Conversación terminada`, event.properties);
+              console.log(`[DataChannel] ✅ Sistema: Conversación terminada`, event.properties);
+              return; // No procesar más
+              
+            case 'system.replica_ready':
+              console.log(`[DataChannel] ✅ Sistema: Avatar listo para interacción`);
+              return; // No procesar más
+              
+            case 'system.heartbeat':
+              // Heartbeat silencioso
               return; // No procesar más
               
             default:
-              // Para otros eventos de sistema no reconocidos, solo hacer log sin warning
+              // Para otros eventos de sistema no reconocidos, solo hacer log informativo sin warning
               if (event.message_type === 'system') {
-                console.log(`[DataChannel] Evento de sistema no manejado: ${event.event_type}`, event);
+                console.log(`[DataChannel] ℹ️ Evento de sistema no manejado: ${event.event_type}`, event);
                 return;
               }
               
-              console.warn(`[DataChannel] ❌ Formato de mensaje no reconocido. Tipo: '${event.type}', Tavus tipo: '${event.message_type}', Tavus evento: '${event.event_type}'`);
+              // Solo mostrar warning para eventos de conversación no reconocidos
+              if (event.message_type === 'conversation') {
+                console.warn(`[DataChannel] ⚠️ Evento de conversación no reconocido: '${event.event_type}'`, event);
+              } else {
+                console.log(`[DataChannel] ℹ️ Evento desconocido: tipo='${event.message_type}', evento='${event.event_type}'`, event);
+              }
               return;
           }
         } else if (event.type) {
@@ -213,7 +226,7 @@ export function useLiveKitDataChannelEvents({
           console.log(`[DataChannel] Evento directo recibido: tipo='${event.type}'`);
           mappedEvent = event;
         } else {
-          console.warn(`[DataChannel] ⚠️ Formato de mensaje no reconocido:`, {
+          console.log(`[DataChannel] ℹ️ Mensaje recibido sin formato estándar:`, {
             tieneMessageType: !!event.message_type,
             tieneEventType: !!event.event_type,
             tieneType: !!event.type,
@@ -224,7 +237,7 @@ export function useLiveKitDataChannelEvents({
         
         // Verificar si el evento fue mapeado correctamente
         if (!mappedEvent || !mappedEvent.type) {
-          console.warn(`[DataChannel] ⚠️ Evento no pudo ser mapeado correctamente:`, mappedEvent);
+          console.log(`[DataChannel] ℹ️ Evento no pudo ser mapeado:`, mappedEvent);
           return;
         }
         
@@ -356,7 +369,7 @@ export function useLiveKitDataChannelEvents({
                 console.log(`[DataChannel] 🆕 Nuevo tipo de evento recibido: ${mappedEvent.type}`, mappedEvent.payload);
               }
             } else {
-              console.warn('[DataChannel] ⚠️ Evento recibido sin tipo válido:', mappedEvent);
+              console.log('[DataChannel] ℹ️ Evento recibido sin tipo válido:', mappedEvent);
             }
         }
       } catch (e) {
@@ -365,13 +378,14 @@ export function useLiveKitDataChannelEvents({
         setAppError('agent', 'Error procesando datos del agente.');
       }
     } else {
-      console.log('[DataChannel] Datos ignorados - no son del agente esperado:', {
-        kind,
-        participantIdentity: participant?.identity,
-        expectedIdentity: AGENT_IDENTITY,
-        isValidAgent: participant ? isValidAgent(participant.identity) : false,
-        isReliable: kind === DataPacket_Kind.RELIABLE
-      });
+      // Reducir spam de logs para participantes no válidos
+      if (participant && !isValidAgent(participant.identity) && participant.identity !== 'tavus-avatar-agent') {
+        console.log('[DataChannel] Datos ignorados - participante no válido:', {
+          kind,
+          participantIdentity: participant?.identity,
+          isReliable: kind === DataPacket_Kind.RELIABLE
+        });
+      }
     }
   }, [
     dispatch, 
@@ -379,11 +393,11 @@ export function useLiveKitDataChannelEvents({
     greetingMessageId, 
     currentSpeakingId, 
     endSession, 
+    isProcessing, 
+    isListening, 
+    isSessionClosed, 
     setAppError,
-    isReadyToStart,
-    isListening,
-    isProcessing,
-    isSessionClosed,
+    isReadyToStart
   ]);
 
   const handleSendTextMessage = useCallback(async (messageText: string) => {

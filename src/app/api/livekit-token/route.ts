@@ -118,7 +118,21 @@ export async function GET(request: Request) {
   if (userId) tokenMetadata.userId = userId;
   if (username) tokenMetadata.username = username;
   if (latestSummary) tokenMetadata.latestSummary = latestSummary;
-  if (chatSessionId) tokenMetadata.chatSessionId = chatSessionId;
+  
+  // Manejar chatSessionId con mejor logging
+  if (chatSessionId) {
+    tokenMetadata.chatSessionId = chatSessionId;
+    
+    // Detectar si es una sesión temporal
+    const isTempSession = chatSessionId.startsWith('temp_session_');
+    console.log(`[Token API] ${isTempSession ? 'Sesión temporal' : 'Sesión activa'} - chatSessionId: ${chatSessionId}`);
+    
+    if (isTempSession) {
+      console.log(`[Token API] Usando sesión temporal para participante ${participantName}. Una sesión real se asignará cuando inicie la conversación.`);
+    }
+  } else {
+    console.warn(`[Token API] No se proporcionó chatSessionId para ${participantName}`);
+  }
 
   const at = new AccessToken(apiKey, apiSecret, {
     identity: participantName,

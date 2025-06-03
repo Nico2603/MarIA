@@ -142,12 +142,16 @@ export function useLiveKitConnectionManager({
       if (userProfileRef.current?.username) {
         queryParams.set('username', userProfileRef.current.username);
       }
-      if (activeSessionIdRef.current) {
-        queryParams.set('chatSessionId', activeSessionIdRef.current);
-      }
+      
+      // Manejar chatSessionId: usar el activo o generar uno temporal si es null
+      const chatSessionId = activeSessionIdRef.current || `temp_session_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      queryParams.set('chatSessionId', chatSessionId);
+      
       if (initialContextRef.current) {
         queryParams.set('latestSummary', initialContextRef.current);
       }
+
+      console.log(`[LKCM] Generando token con chatSessionId: ${chatSessionId}`);
 
       const response = await fetch(`/api/livekit-token?${queryParams.toString()}`, {
         method: 'GET',
@@ -442,6 +446,37 @@ export function useLiveKitConnectionManager({
       disconnectFromLiveKit();
     }
   }, [session?.user?.id, authStatus, connectToRoom, disconnectFromLiveKit]);
+
+  // Effect para detectar cambios en activeSessionId y notificar al agente
+  useEffect(() => {
+    const currentSessionId = activeSessionIdRef.current;
+    const room = currentRoomRef.current;
+    
+    // Solo proceder si hay una sala conectada y un sessionId válido (no temporal)
+    if (room && currentSessionId && !currentSessionId.startsWith('temp_session_')) {
+      console.log(`[LKCM] Enviando sessionId actualizado al agente: ${currentSessionId}`);
+      
+      try {
+        // Enviar el nuevo sessionId al agente via data channel
+        const sessionUpdateData = {
+          type: 'session_update',
+          chatSessionId: currentSessionId,
+          timestamp: Date.now(),
+          userId: userProfileRef.current?.id,
+          username: userProfileRef.current?.username,
+        };
+        
+        const encoder = new TextEncoder();
+        const data = encoder.encode(JSON.stringify(sessionUpdateData));
+        
+        room.localParticipant.publishData(data, { reliable: true, topic: 'session_update' });
+        console.log(`[LKCM] Datos de sesión enviados al agente exitosamente`);
+        
+      } catch (error) {
+        console.error('[LKCM] Error enviando sessionId actualizado al agente:', error);
+      }
+    }
+  }, [activeSessionId]); // Solo depende de activeSessionId
 
   return { room, connectionState, disconnectFromLiveKit, targetParticipant };
 } 
