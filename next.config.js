@@ -6,10 +6,9 @@ const nextConfig = {
   poweredByHeader: false,
   productionBrowserSourceMaps: false,
   
-  // Optimizaciones para HTTP/2
+  // Configuración específica para Prisma
   experimental: {
-    // optimizeCss: true,
-    // optimizeServerReact: true,
+    serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
   },
   
   // Configuración para manejo de imágenes
@@ -56,9 +55,15 @@ const nextConfig = {
     ]
   },
 
-  webpack(config) {
+  webpack: (config, { isServer }) => {
     const path = require('path');
     config.resolve.alias['@'] = path.resolve(__dirname, 'src');
+    
+    // Configuración específica para Prisma
+    if (isServer) {
+      config.externals.push('@prisma/client');
+    }
+    
     return config;
   },
 }

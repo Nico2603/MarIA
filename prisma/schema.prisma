@@ -6,6 +6,8 @@ datasource db {
 generator client {
   provider        = "prisma-client-js"
   output          = "../node_modules/.prisma/client"
+  engineType      = "library"
+  binaryTargets   = ["native", "rhel-openssl-1.0.x"]
   // previewFeatures = ["referentialIntegrity"] // Añadir si usas versiones antiguas o necesitas esta feature
 }
 

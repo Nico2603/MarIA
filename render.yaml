@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: maria-frontend
+    runtime: node
+    buildCommand: |
+      npm ci &&
+      npx prisma generate &&
+      npm run build
+    startCommand: npm start
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PRISMA_CLI_BINARY_TARGETS
+        value: rhel-openssl-1.0.x,native
+      - key: DATABASE_URL
+        fromDatabase:
+          name: maria-db
+          property: connectionString
+    autoDeploy: false 

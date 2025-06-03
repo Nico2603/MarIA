@@ -198,52 +198,83 @@ AI-Mental-Health/
    
    # OpenAI
    OPENAI_API_KEY=
-   OPENAI_MODEL=gpt-4.1-mini-2025-04-14
-   OPENAI_HISTORY_MODEL=gpt-3.5-turbo
-   OPENAI_TTS_MODEL=gpt-4o-mini-tts
    
-   # Deepgram
-   DEEPGRAM_API_KEY=
-   DEEPGRAM_MODEL=nova-2
-   
-   # Autenticación
-   GOOGLE_CLIENT_ID=
-   GOOGLE_CLIENT_SECRET=
-   NEXTAUTH_SECRET=
-   NEXTAUTH_URL=
+   # Prisma (para producción)
+   PRISMA_CLI_BINARY_TARGETS="rhel-openssl-1.0.x,native"
    ```
 
-4. **Aplica migraciones de Prisma**:
-   ```bash
-   npx prisma migrate dev --name init
-   ```
-
-5. **Genera el cliente Prisma**:
+4. **Configura Prisma**:
    ```bash
    npx prisma generate
+   npx prisma db push
    ```
 
-## ▶️ Uso en desarrollo
+5. **Ejecuta en desarrollo**:
+   ```bash
+   npm run dev
+   ```
 
-Inicia el servidor de desarrollo:
-```bash
-npm run dev
+## 🚀 Despliegue en Render
+
+### Configuración automática con render.yaml
+
+El proyecto incluye un archivo `render.yaml` para despliegue automático:
+
+```yaml
+services:
+  - type: web
+    name: maria-frontend
+    runtime: node
+    buildCommand: |
+      npm ci &&
+      npx prisma generate &&
+      npm run build
+    startCommand: npm start
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PRISMA_CLI_BINARY_TARGETS
+        value: rhel-openssl-1.0.x,native
+      - key: DATABASE_URL
+        fromDatabase:
+          name: maria-db
+          property: connectionString
 ```
-Luego, navega a `http://localhost:3000` para ver la aplicación.
 
-## 🚀 Despliegue en producción
+### Variables de entorno requeridas en Render
 
-1. **Construye la aplicación**:
-   ```bash
-   npm run build
-   ```
+Configura estas variables en el dashboard de Render:
 
-2. **Inicia el servidor**:
-   ```bash
-   npm run start
-   ```
+- `DATABASE_URL`: URL de conexión a PostgreSQL
+- `NEXTAUTH_URL`: URL de tu aplicación en Render
+- `NEXTAUTH_SECRET`: Clave secreta para NextAuth
+- `GOOGLE_CLIENT_ID`: ID del cliente de Google OAuth
+- `GOOGLE_CLIENT_SECRET`: Secreto del cliente de Google OAuth
+- `OPENAI_API_KEY`: Clave de API de OpenAI
+- `LIVEKIT_API_KEY`: Clave de API de LiveKit
+- `LIVEKIT_API_SECRET`: Secreto de API de LiveKit
+- `LIVEKIT_URL`: URL del servidor LiveKit
+- `PRISMA_CLI_BINARY_TARGETS`: `rhel-openssl-1.0.x,native`
 
-La aplicación está actualmente desplegada en: [https://ai-mental-health-zyb6.onrender.com](https://ai-mental-health-zyb6.onrender.com)
+### Solución de problemas comunes
+
+#### Error: ENOENT wasm-engine-edge.js
+
+Este error se resuelve con las siguientes configuraciones ya incluidas en el proyecto:
+
+1. **Schema de Prisma actualizado** con `engineType = "library"` y `binaryTargets`
+2. **Scripts de build mejorados** con `prebuild` y `postbuild`
+3. **Configuración de Next.js** con `serverComponentsExternalPackages`
+4. **Variables de entorno** con `PRISMA_CLI_BINARY_TARGETS`
+
+#### Pasos de troubleshooting:
+
+1. Verifica que todas las variables de entorno estén configuradas
+2. Asegúrate de que la versión de Node.js sea compatible (v20.11.0)
+3. Revisa los logs de build en Render para errores específicos
+4. Verifica que la base de datos esté accesible
 
 ## 📄 Licencia
 

@@ -5,9 +5,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "prisma generate",
+    "prebuild": "prisma generate",
+    "postbuild": "node -e \"console.log('Build completado con éxito')\""
   },
   "repository": {
     "type": "git",
@@ -81,6 +84,7 @@
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.28",
     "eslint-import-resolver-typescript": "^4.3.4",
+    "prisma": "^6.7.0",
     "typescript": "^5.2.2"
   }
 }
