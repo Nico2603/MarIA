@@ -55,18 +55,30 @@ const nextConfig = {
     ]
   },
 
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
     const path = require('path');
     
-    // Configuración más robusta del alias @
+    // Configuración más robusta del alias @ para todos los entornos
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': path.resolve(__dirname, 'src'),
     };
     
+    // Asegurar que las extensiones se resuelvan correctamente
+    config.resolve.extensions = ['.ts', '.tsx', '.js', '.jsx', '.json', ...config.resolve.extensions];
+    
     // Configuración específica para Prisma
     if (isServer) {
       config.externals.push('@prisma/client');
+    }
+    
+    // Configuración adicional para producción
+    if (!dev) {
+      // Optimizaciones adicionales para producción
+      config.optimization = {
+        ...config.optimization,
+        moduleIds: 'deterministic',
+      };
     }
     
     return config;
