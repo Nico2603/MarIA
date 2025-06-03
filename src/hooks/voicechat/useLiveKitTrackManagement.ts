@@ -10,7 +10,7 @@ import {
   Participant,
   TrackPublication,
 } from 'livekit-client';
-import { AGENT_IDENTITY, isValidAgent } from '@/lib/constants/agents';
+import { AGENT_IDENTITY, isValidAgent } from '@/lib/constants';
 
 export interface LiveKitTrack {
   identity: string;
