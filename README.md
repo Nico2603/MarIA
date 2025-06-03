@@ -12,8 +12,6 @@
 
 MarIA es un **chatbot de salud mental** impulsado por inteligencia artificial que integra **Next.js**, **TypeScript**, y las APIs más avanzadas para ofrecer soporte emocional y técnicas de relajación personalizadas en tiempo real. Diseñado para brindar empatía, guías de mindfulness y análisis de voz, MarIA acompaña a los usuarios en momentos de ansiedad, estrés o para fomentar su bienestar mental general.
 
-[![Teilur Banner](public/img/teilur-banner.png)](https://www.teilur.ai/)
-
 ## 🔍 Características principales
 
 - **Chat terapéutico**: Respuestas empáticas generadas por GPT-4.1-mini para sostener conversaciones profundas y seguras
@@ -23,29 +21,6 @@ MarIA es un **chatbot de salud mental** impulsado por inteligencia artificial qu
 - **Historial de sesiones**: Registro seguro de conversaciones y recomendaciones en PostgreSQL mediante Prisma
 - **TTS y STT**: Conversión de texto a voz (GPT-4o-mini-tts) y voz a texto (Deepgram Nova-2) para una experiencia más natural
 - **Autenticación segura**: Integración con Google OAuth y NextAuth para proteger los datos de los usuarios
-
-## 📸 Capturas de pantalla
-
-<div align="center">
-  <table>
-    <tr>
-      <td align="center"><strong>Landing Page</strong></td>
-      <td align="center"><strong>Chat Principal</strong></td>
-    </tr>
-    <tr>
-      <td><img src="public/img/landingpage.png" alt="Landing Page" width="350px"></td>
-      <td><img src="public/img/chatbot.png" alt="Chatbot Interface" width="350px"></td>
-    </tr>
-    <tr>
-      <td align="center"><strong>Perfiles de Usuario</strong></td>
-      <td align="center"><strong>Funcionalidades</strong></td>
-    </tr>
-    <tr>
-      <td><img src="public/img/profiles.png" alt="User Profiles" width="350px"></td>
-      <td><img src="public/img/chatbot.png" alt="Features" width="350px"></td>
-    </tr>
-  </table>
-</div>
 
 ## 🚀 Tecnologías
 
@@ -72,99 +47,6 @@ MarIA es un **chatbot de salud mental** impulsado por inteligencia artificial qu
 
 - **Despliegue**:
   - Render.com
-
-## 📂 Estructura del proyecto
-
-```bash
-AI-Mental-Health/
-│
-├── README.md
-├── next.config.js
-├── tailwind.config.js
-├── package-lock.json
-├── package.json
-├── components.json
-├── .gitignore
-├── prompt.txt
-├── next-env.d.ts
-├── tsconfig.json
-├── postcss.config.js
-│
-├── .git/
-├── .vscode/
-├── .cursor/
-│
-├── public/
-│   ├── favicon.ico
-│   ├── img/
-│   │   ├── teilur-banner.png
-│   │   ├── MarIA.png
-│   │   ├── chatbot.png
-│   │   ├── profiles.png
-│   │   └── landingpage.png
-│   ├── assets/
-│   │   ├── main.js
-│   │   └── main.css
-│   ├── videos/
-│   │   ├── voz.mp4
-│   │   └── mute.mp4
-│   ├── scripts/
-│   └── styles/
-│
-├── prisma/
-│   ├── schema.prisma
-│   ├── migrations/
-│   │   ├── migration_lock.toml
-│   │   ├── 20250430063310_rename_session_to_chatsession/
-│   │   ├── 20250430054609_add_nextauth_models/
-│   │   └── 20250430040007_init/
-│
-├── types/
-│   └── next-auth.d.ts
-│
-├── src/
-    ├── middleware.ts
-    ├── lib/
-    │   ├── auth.ts
-    │   ├── utils.ts
-    │   └── prisma.ts
-    ├── types/
-    │   └── profile.ts
-    ├── app/
-        ├── globals.css
-        ├── page.tsx
-        ├── layout.tsx
-        ├── api/
-        │   ├── sessions/
-        │   ├── chat-sessions/
-        │   ├── messages/
-        │   ├── summarize/
-        │   ├── profile/
-        │   ├── auth/
-        │   ├── tts/
-        │   ├── openai/
-        │   ├── audio/
-        │   ├── stt/
-        │   └── livekit-token/
-        ├── dashboard/
-        ├── chat/
-        ├── consejos/
-        ├── contacto/
-        ├── legal/
-        │   ├── limitaciones/
-        │   ├── aviso-legal/
-        │   ├── cookies/
-        │   ├── privacidad/
-        │   └── terminos/
-        ├── recursos/
-        │   ├── page.tsx
-        │   ├── profesionales/
-        │   ├── crisis/
-        │   ├── tecnicas/
-        │   └── ansiedad/
-        └── settings/
-            └── profile/
-```
 
 ## 🛠️ Instalación
 
@@ -199,8 +81,11 @@ AI-Mental-Health/
    # OpenAI
    OPENAI_API_KEY=
    
-   # Prisma (para producción)
-   PRISMA_CLI_BINARY_TARGETS="rhel-openssl-1.0.x,native"
+   # Autenticación
+   GOOGLE_CLIENT_ID=
+   GOOGLE_CLIENT_SECRET=
+   NEXTAUTH_SECRET=
+   NEXTAUTH_URL=http://localhost:3000
    ```
 
 4. **Configura Prisma**:
@@ -236,7 +121,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: PRISMA_CLI_BINARY_TARGETS
-        value: rhel-openssl-1.0.x,native
+        value: native,rhel-openssl-3.0.x
       - key: DATABASE_URL
         fromDatabase:
           name: maria-db
@@ -247,41 +132,97 @@ services:
 
 Configura estas variables en el dashboard de Render:
 
+**Variables obligatorias:**
 - `DATABASE_URL`: URL de conexión a PostgreSQL
-- `NEXTAUTH_URL`: URL de tu aplicación en Render
-- `NEXTAUTH_SECRET`: Clave secreta para NextAuth
+- `NEXTAUTH_URL`: URL de tu aplicación en Render (ej: https://tu-app.onrender.com)
+- `NEXTAUTH_SECRET`: Clave secreta para NextAuth (genera una aleatoria)
+- `NODE_ENV`: `production`
+
+**Variables para funcionalidades específicas:**
 - `GOOGLE_CLIENT_ID`: ID del cliente de Google OAuth
 - `GOOGLE_CLIENT_SECRET`: Secreto del cliente de Google OAuth
 - `OPENAI_API_KEY`: Clave de API de OpenAI
 - `LIVEKIT_API_KEY`: Clave de API de LiveKit
 - `LIVEKIT_API_SECRET`: Secreto de API de LiveKit
 - `LIVEKIT_URL`: URL del servidor LiveKit
-- `PRISMA_CLI_BINARY_TARGETS`: `rhel-openssl-1.0.x,native`
+
+**Variables técnicas (opcionales):**
+- `PRISMA_CLI_BINARY_TARGETS`: `native,rhel-openssl-3.0.x`
 
 ### Solución de problemas comunes
 
-#### Error: ENOENT wasm-engine-edge.js
+#### ✅ Error SOLUCIONADO: ENOENT wasm-engine-edge.js
 
-Este error se resuelve con las siguientes configuraciones ya incluidas en el proyecto:
+Este error se ha resuelto con las siguientes configuraciones incluidas:
 
-1. **Schema de Prisma actualizado** con `engineType = "library"` y `binaryTargets`
-2. **Scripts de build mejorados** con `prebuild` y `postbuild`
-3. **Configuración de Next.js** con `serverComponentsExternalPackages`
-4. **Variables de entorno** con `PRISMA_CLI_BINARY_TARGETS`
+1. **Schema de Prisma actualizado** con binary targets correctos
+2. **Configuración simplificada** sin engineType y output personalizado
+3. **Scripts de build optimizados** con prebuild y postbuild
+4. **Configuración de Next.js** con serverComponentsExternalPackages
+5. **Soporte multi-plataforma** (Windows para desarrollo, Linux para producción)
 
-#### Pasos de troubleshooting:
+#### ✅ Error SOLUCIONADO: OpenSSL 1.x deprecated
 
-1. Verifica que todas las variables de entorno estén configuradas
-2. Asegúrate de que la versión de Node.js sea compatible (v20.11.0)
-3. Revisa los logs de build en Render para errores específicos
-4. Verifica que la base de datos esté accesible
+Actualizado a OpenSSL 3.x:
+- Binary targets actualizados a `rhel-openssl-3.0.x`
+- Variables de entorno configuradas correctamente
+
+#### Pasos de troubleshooting adicionales:
+
+1. **Verifica variables de entorno**: Asegúrate de que todas las variables obligatorias estén configuradas
+2. **Versión de Node.js**: Usa Node.js 20.11.0 (especificado en `.nvmrc`)
+3. **Logs de build**: Revisa los logs de build en Render para errores específicos
+4. **Base de datos**: Verifica que la base de datos esté accesible y la URL sea correcta
+5. **Health check**: El endpoint `/api/health` debe responder correctamente
+
+#### Comandos útiles para debugging:
+
+```bash
+# Regenerar cliente de Prisma
+npx prisma generate
+
+# Verificar build local
+npm run build
+
+# Verificar conexión a BD
+npx prisma db pull
+```
+
+### Proceso de despliegue
+
+1. **Pushea los cambios**:
+   ```bash
+   git add .
+   git commit -m "feat: configurar para despliegue en Render"
+   git push origin main
+   ```
+
+2. **Configura variables en Render**:
+   - Ve a tu dashboard de Render
+   - Añade las variables de entorno necesarias
+   - Asegúrate de que `DATABASE_URL` apunte a tu base de datos
+
+3. **Despliega**:
+   - Render detectará automáticamente el `render.yaml`
+   - El build se ejecutará automáticamente
+   - El health check verificará que la app esté funcionando
 
 ## 📄 Licencia
 
-Este proyecto está licenciado bajo © [Teilur, Inc.](https://www.teilur.ai/)
+Este proyecto está bajo la Licencia ISC. Ver el archivo `LICENSE` para más detalles.
 
----
+## 🤝 Contribuir
 
-<div align="center">
-  <p>Desarrollado con ❤️ por <a href="https://github.com/Nico2603">Nico2603</a></p>
-  <p>© 2025 Teilur, Inc. Todos los derechos reservados</p
+Las contribuciones son bienvenidas. Por favor:
+
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
+
+## 👥 Contacto
+
+**Proyecto Link**: [https://github.com/Nico2603/MarIA](https://github.com/Nico2603/MarIA)
+
+**Demo en vivo**: [https://ai-mental-health-zyb6.onrender.com](https://ai-mental-health-zyb6.onrender.com) 

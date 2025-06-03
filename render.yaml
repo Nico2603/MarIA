@@ -13,7 +13,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: PRISMA_CLI_BINARY_TARGETS
-        value: rhel-openssl-1.0.x,native
+        value: native,rhel-openssl-3.0.x
       - key: DATABASE_URL
         fromDatabase:
           name: maria-db
