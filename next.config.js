@@ -57,7 +57,12 @@ const nextConfig = {
 
   webpack: (config, { isServer }) => {
     const path = require('path');
-    config.resolve.alias['@'] = path.resolve(__dirname, 'src');
+    
+    // Configuración más robusta del alias @
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': path.resolve(__dirname, 'src'),
+    };
     
     // Configuración específica para Prisma
     if (isServer) {
