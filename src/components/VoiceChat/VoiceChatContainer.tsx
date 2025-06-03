@@ -39,7 +39,7 @@ import { VideoTrack } from '@livekit/components-react';
 import VoiceChatLayout from './VoiceChatLayout';
 import { useParticipantDiscovery } from '@/hooks/voicechat/useParticipantDiscovery';
 import { useReadyToStart } from '@/hooks/voicechat/useReadyToStart';
-import { AGENT_IDENTITY, isValidAgent } from '@/lib/constants';
+import { AGENT_IDENTITY, isValidAgent } from '../../lib/constants';
 
 const DynamicChatPanel = dynamic(() => import('../ChatPanel'), { 
   ssr: false
