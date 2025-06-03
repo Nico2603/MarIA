@@ -202,7 +202,7 @@ export default function VoiceChatLayout({
                     <button
                       onClick={toggleChatVisibility}
                       className={cn(
-                        "absolute z-30 p-2.5 bg-white/90 dark:bg-neutral-800/90 rounded-full shadow-lg hover:bg-white dark:hover:bg-neutral-700 transition-all duration-300 ease-in-out backdrop-blur-sm border border-neutral-200 dark:border-neutral-600",
+                        "absolute z-30 w-10 h-10 bg-white/90 dark:bg-neutral-800/90 rounded-full shadow-lg hover:bg-white dark:hover:bg-neutral-700 transition-all duration-300 ease-in-out backdrop-blur-sm border border-neutral-200 dark:border-neutral-600 flex items-center justify-center",
                         // Posición responsive
                         "top-3 right-3 md:top-4 md:left-4"
                       )}
@@ -210,9 +210,9 @@ export default function VoiceChatLayout({
                       title={isChatVisible ? "Ocultar chat de texto" : "Mostrar chat de texto"}
                     >
                       {isChatVisible ? (
-                        <ChevronsLeft className="h-4 w-4 md:h-5 md:w-5 text-neutral-700 dark:text-neutral-200" />
+                        <ChevronsLeft className="h-4 w-4 text-neutral-700 dark:text-neutral-200" />
                       ) : (
-                        <ChevronsRight className="h-4 w-4 md:h-5 md:w-5 text-neutral-700 dark:text-neutral-200" />
+                        <ChevronsRight className="h-4 w-4 text-neutral-700 dark:text-neutral-200" />
                       )}
                     </button>
                   )}

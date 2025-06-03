@@ -215,7 +215,7 @@ const ChatToggle: React.FC<{
   return (
     <button
         onClick={toggleChatVisibility}
-        className={`absolute top-6 right-6 z-30 p-3 bg-white/10 backdrop-blur-md rounded-xl shadow-lg hover:bg-white/20 transition-all duration-300 ease-in-out border border-white/20`}
+        className={`absolute bottom-6 right-6 z-30 w-12 h-12 bg-white/10 backdrop-blur-md rounded-full shadow-lg hover:bg-white/20 transition-all duration-300 ease-in-out border border-white/20 flex items-center justify-center`}
         aria-label={isChatVisible ? "Ocultar chat" : "Mostrar chat"}
         title={isChatVisible ? "Ocultar chat de texto" : "Mostrar chat de texto"}
     >
