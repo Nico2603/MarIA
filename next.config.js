@@ -67,6 +67,13 @@ const nextConfig = {
     // Asegurar que las extensiones se resuelvan correctamente
     config.resolve.extensions = ['.ts', '.tsx', '.js', '.jsx', '.json', ...config.resolve.extensions];
     
+    // Asegurar que el directorio base se resuelva correctamente
+    config.resolve.modules = [
+      path.resolve(__dirname, 'src'),
+      'node_modules',
+      ...(config.resolve.modules || [])
+    ];
+    
     // Configuración específica para Prisma
     if (isServer) {
       config.externals.push('@prisma/client');
