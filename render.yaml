@@ -2,10 +2,7 @@ services:
   - type: web
     name: maria-frontend
     runtime: node
-    buildCommand: |
-      npm ci &&
-      npx prisma generate &&
-      npm run build
+    buildCommand: npm run render-build
     startCommand: npm start
     plan: starter
     healthCheckPath: /api/health
@@ -13,9 +10,35 @@ services:
       - key: NODE_ENV
         value: production
       - key: PRISMA_CLI_BINARY_TARGETS
-        value: native,rhel-openssl-3.0.x
+        value: native,debian-openssl-3.0.x,rhel-openssl-3.0.x
+      - key: PORT
+        value: 3000
       - key: DATABASE_URL
         fromDatabase:
           name: maria-db
           property: connectionString
-    autoDeploy: false 
+      - key: NEXTAUTH_URL
+        sync: false
+      - key: NEXTAUTH_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
+      - key: LIVEKIT_URL
+        sync: false
+      - key: NEXT_PUBLIC_LIVEKIT_URL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: NEXT_PUBLIC_API_BASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+    autoDeploy: true 

@@ -9,7 +9,9 @@
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
-    "prebuild": "prisma generate"
+    "prebuild": "prisma generate",
+    "verify": "node scripts/verify-build.js && npm run lint && next build",
+    "render-build": "npm ci && npx prisma generate && npm run build"
   },
   "repository": {
     "type": "git",
