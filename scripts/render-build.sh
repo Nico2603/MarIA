@@ -28,6 +28,17 @@ echo "✅ Cliente de Prisma generado correctamente"
 
 # Build de Next.js
 echo "🏗️ Construyendo aplicación Next.js..."
-npm run build
+if npm run build; then
+    echo "✅ Build completado exitosamente"
+else
+    echo "❌ Error: Build de Next.js falló"
+    exit 1
+fi
 
-echo "✅ Build completado exitosamente" 
+# Verificar que el build existe
+if [ ! -d ".next" ]; then
+    echo "❌ Error: Directorio .next no encontrado"
+    exit 1
+fi
+
+echo "✅ Verificación de build completada" 
