@@ -11,7 +11,7 @@
     "postinstall": "prisma generate",
     "prebuild": "prisma generate",
     "verify": "node scripts/verify-build.js && npm run lint && next build",
-    "render-build": "npm ci && npx prisma generate && npm run build"
+    "render-build": "chmod +x scripts/render-build.sh && ./scripts/render-build.sh"
   },
   "repository": {
     "type": "git",

@@ -10,7 +10,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: PRISMA_CLI_BINARY_TARGETS
-        value: native,debian-openssl-3.0.x,rhel-openssl-3.0.x
+        value: debian-openssl-3.0.x,rhel-openssl-3.0.x
       - key: PORT
         value: 3000
       - key: DATABASE_URL
