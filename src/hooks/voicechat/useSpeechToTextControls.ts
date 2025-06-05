@@ -12,6 +12,7 @@ interface UseSpeechToTextControlsProps {
   conversationActive: boolean;
   roomRef: RefObject<Room | null>;
   setIsListening: (value: boolean) => void;
+  tavusVideoLoaded?: boolean; // << NUEVO: Para verificar si el avatar está cargado
 }
 
 export function useSpeechToTextControls({
@@ -22,11 +23,14 @@ export function useSpeechToTextControls({
   conversationActive,
   roomRef,
   setIsListening,
+  tavusVideoLoaded = true, // << NUEVO: Por defecto true para compatibilidad
 }: UseSpeechToTextControlsProps) {
   const { setError: setAppError, clearError } = useError();
 
   const handleStartListening = useCallback(async () => {
-    if (!isListening && !isProcessing && !isSpeaking && !isSessionClosed && conversationActive && roomRef.current?.localParticipant) {
+    // Verificar que el avatar esté completamente cargado antes de permitir usar el micrófono
+    if (!isListening && !isProcessing && !isSpeaking && !isSessionClosed && 
+        conversationActive && roomRef.current?.localParticipant && tavusVideoLoaded) {
       setIsListening(true);
       
       try {
@@ -53,7 +57,7 @@ export function useSpeechToTextControls({
         }
       }
     }
-  }, [isListening, isProcessing, isSpeaking, isSessionClosed, conversationActive, roomRef, setIsListening]);
+  }, [isListening, isProcessing, isSpeaking, isSessionClosed, conversationActive, roomRef, setIsListening, tavusVideoLoaded]);
 
   const handleStopListening = useCallback(async () => {
     if (isListening) {

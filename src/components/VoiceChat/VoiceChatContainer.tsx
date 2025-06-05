@@ -27,7 +27,7 @@ import { useError } from '@/contexts/ErrorContext';
 import { useNotifications } from '@/utils/notifications';
 import NotificationDisplay from '@/components/ui/NotificationDisplay';
 import ErrorDisplay from '@/components/ui/ErrorDisplay';
-import { VideoPanelSkeleton } from './VideoPanel';
+// import { VideoPanelSkeleton } from './VideoPanel'; // Comentado - no se usa
 import type { Message } from "@/types";
 import { useLiveKitTrackManagement, ActiveTrackInfo } from '@/hooks/voicechat/useLiveKitTrackManagement';
 import RemoteTrackPlayer from './RemoteTrackPlayer';
@@ -90,8 +90,15 @@ function VoiceChatContainer() {
   const processingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialized = useRef(false);
 
+  // TEMPORALMENTE DESHABILITADO - Solo funcionalidad por voz
+  // const toggleChatVisibility = useCallback(() => {
+  //   dispatch({ type: 'TOGGLE_CHAT_VISIBILITY' });
+  // }, []);
+  
+  // Función temporal para mantener la compatibilidad
   const toggleChatVisibility = useCallback(() => {
-    dispatch({ type: 'TOGGLE_CHAT_VISIBILITY' });
+    // No hacer nada - chat siempre oculto para funcionalidad solo por voz
+    console.log('Toggle chat deshabilitado - solo funcionalidad por voz');
   }, []);
 
   const handleTavusVideoLoaded = useCallback(() => {
@@ -128,22 +135,7 @@ function VoiceChatContainer() {
     .filter(t => t.kind === Track.Kind.Audio && t.publication && t.publication.track)
     .map(t => t.publication.track!), [activeTracks]);
 
-  const handleStartListening = useCallback(() => {
-    if (!state.isSessionClosed && 
-        state.conversationActive && 
-        roomRef.current?.localParticipant && 
-        !state.isListening && 
-        !state.isSpeaking && 
-        !state.isProcessing) {
-      dispatch({ type: 'SET_LISTENING', payload: true });
-    }
-  }, [state.isSessionClosed, state.conversationActive, state.isListening, state.isSpeaking, state.isProcessing]);
-
-  const handleStopListening = useCallback(() => {
-    if (state.isListening) {
-      dispatch({ type: 'SET_LISTENING', payload: false });
-    }
-  }, [state.isListening]);
+  // Las funciones handleStartListening y handleStopListening ahora se obtienen del hook useSpeechToTextControls
 
   const onConnectedCallback = useCallback((connectedRoom: Room) => {
     roomRef.current = connectedRoom;
@@ -403,6 +395,7 @@ function VoiceChatContainer() {
     conversationActive: state.conversationActive,
     roomRef,
     setIsListening,
+    tavusVideoLoaded: tavusVideoLoaded, // << NUEVO: Pasar estado de carga del video
   }), [
     state.isListening, 
     state.isProcessing, 
@@ -410,6 +403,7 @@ function VoiceChatContainer() {
     state.isSessionClosed, 
     state.conversationActive,
     setIsListening,
+    tavusVideoLoaded, // << NUEVO: Incluir en dependencias
   ]);
 
   const {
@@ -425,9 +419,10 @@ function VoiceChatContainer() {
     isThinking: state.isThinking,
     conversationActive: state.conversationActive,
     isSessionClosed: state.isSessionClosed,
-    onStartListening: handleStartListening,
-    onStopListening: handleStopListening,
+    onStartListening: sttHandleStartListening, // << CORREGIDO: Usar las funciones que realmente controlan el micrófono
+    onStopListening: sttHandleStopListening,   // << CORREGIDO: Usar las funciones que realmente controlan el micrófono
     setIsPushToTalkActive,
+    tavusVideoLoaded: tavusVideoLoaded, // << NUEVO: Pasar estado de carga del video
   });
 
   // Session timeout
@@ -534,6 +529,7 @@ function VoiceChatContainer() {
         dispatch={dispatch}
         onTavusVideoLoaded={handleTavusVideoLoaded}
         handleStartConversation={handleStartConversation}
+        isAvatarLoaded={tavusVideoLoaded}
       />
     </>
   );

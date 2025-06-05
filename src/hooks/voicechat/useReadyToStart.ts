@@ -54,7 +54,7 @@ export function useReadyToStart({
       return true;
     }
 
-    // Criterios básicos
+    // Criterios básicos para que el sistema esté listo
     const basicCriteria = 
       authStatus === 'authenticated' && 
       connectionState === LiveKitConnectionState.Connected &&
@@ -66,11 +66,12 @@ export function useReadyToStart({
     }
 
     // Si hay Tavus disponible, esperar a que el video esté cargado
+    // PERO NO auto-iniciar la conversación - solo permitir que el usuario inicie manualmente
     if (hasTavusVideoTrack) {
-      return tavusVideoLoaded;
+      return tavusVideoLoaded; // Solo indica que está listo para que el usuario inicie
     }
 
-    // Si no hay Tavus o el video ya está cargado, está listo
+    // Si no hay Tavus, está listo para que el usuario inicie manualmente
     return true;
   }, [
     authStatus, 

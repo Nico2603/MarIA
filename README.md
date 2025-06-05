@@ -225,4 +225,71 @@ Las contribuciones son bienvenidas. Por favor:
 
 **Proyecto Link**: [https://github.com/Nico2603/MarIA](https://github.com/Nico2603/MarIA)
 
-**Demo en vivo**: [https://ai-mental-health-zyb6.onrender.com](https://ai-mental-health-zyb6.onrender.com) 
+**Demo en vivo**: [https://ai-mental-health-zyb6.onrender.com](https://ai-mental-health-zyb6.onrender.com)
+
+## ⚠️ CONFIGURACIÓN TEMPORAL: MODO SOLO VOZ
+
+**Estado actual:** La aplicación está configurada temporalmente para funcionar únicamente como bot conversacional por voz.
+
+### Funcionalidades Activas ✅
+- 🎤 **Botón de micrófono** para activar/desactivar grabación por click
+- ⌨️ **Push-to-talk** con tecla `[Espacio]` 
+- 🎥 **Video avatar** de Tavus para respuestas visuales
+- 🔊 **Procesamiento de audio** y respuestas por voz en tiempo real
+- 📱 **Interfaz responsive** optimizada para modo solo voz
+
+### Funcionalidades Temporalmente Deshabilitadas 🚫
+- 💬 Chat de texto (textarea y botón de envío)
+- 🔄 Botones de toggle de visibilidad del chat  
+- 📋 Panel lateral del chat (siempre oculto)
+- ⚡ Minimización del chat
+
+### Instrucciones de Uso
+1. **Iniciar conversación:** Hacer click en el botón "Comenzar conversación"
+2. **Hablar:** 
+   - Click en el botón de micrófono 🎤, o
+   - Mantener presionada la tecla `[Espacio]` (push-to-talk)
+3. **Escuchar:** María responderá por voz y con gestos en el avatar
+
+### Restaurar Funcionalidades de Texto
+Para volver a habilitar el chat de texto en el futuro:
+
+1. **Cambiar estado inicial del chat:**
+   ```typescript
+   // En src/reducers/voiceChatReducer.ts
+   isChatVisible: true, // Cambiar de false a true
+   ```
+
+2. **Descomentar toggle del chat:**
+   ```typescript
+   // En src/components/VoiceChat/VoiceChatContainer.tsx
+   const toggleChatVisibility = useCallback(() => {
+     dispatch({ type: 'TOGGLE_CHAT_VISIBILITY' });
+   }, []);
+   ```
+
+3. **Restaurar controles de texto:**
+   ```typescript
+   // En src/components/ChatInput.tsx
+   // Descomentar la sección "ENTRADA DE TEXTO TEMPORALMENTE DESHABILITADA"
+   ```
+
+4. **Habilitar botones de toggle:**
+   ```typescript
+   // En src/components/VoiceChat/VoiceChatLayout.tsx y VideoPanel.tsx
+   // Descomentar los componentes ChatToggle
+   ```
+
+### Archivos Modificados
+- `src/reducers/voiceChatReducer.ts` - Estado inicial isChatVisible = false
+- `src/components/VoiceChat/VoiceChatContainer.tsx` - Toggle deshabilitado
+- `src/components/VoiceChat/VoiceChatLayout.tsx` - Botón toggle comentado
+- `src/components/VoiceChat/VideoPanel.tsx` - Botón toggle comentado  
+- `src/components/ChatInput.tsx` - Entrada de texto comentada
+- `src/app/chat/page.tsx` - Documentación agregada
+
+---
+
+## Instalación y Configuración
+
+// ... existing code ... 

@@ -26,6 +26,10 @@ const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
   userName,
   messageId,
 }) => {
+  // Debug para verificar que el suggestedVideo llega correctamente
+  if (!isUser && suggestedVideo) {
+    console.log(`[TranscribedResponse] 🎥 Renderizando botón de video:`, suggestedVideo);
+  }
   // Renderizar las etiquetas con colores según categoría
   const renderTags = () => {
     if (!tags || tags.length === 0) return null;
@@ -150,17 +154,34 @@ const TranscribedResponse: React.FC<TranscribedResponseProps> = ({
           )}
 
           {/* Botón para video sugerido */}
-          {!isUser && suggestedVideo && (
-            <div className="mt-3 pt-3 border-t border-neutral-200">
+          {!isUser && suggestedVideo && suggestedVideo.url && suggestedVideo.title && (
+            <div className="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-600">
               <a 
                 href={suggestedVideo.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-secondary-600 hover:bg-secondary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary-500 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                title={`Ver video: ${suggestedVideo.title}`}
               >
-                <Video className="-ml-0.5 mr-1.5 h-4 w-4" aria-hidden="true" />
-                {suggestedVideo.title}
+                <Video className="h-4 w-4" aria-hidden="true" />
+                <span>Ver en YouTube</span>
+                <svg 
+                  className="h-3 w-3" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" 
+                  />
+                </svg>
               </a>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                {suggestedVideo.title}
+              </p>
             </div>
           )}
         </div>

@@ -290,6 +290,7 @@ export function useLiveKitDataChannelEvents({
               };
               
               console.log(`[DataChannel] ${existingMessageElement ? 'Actualizando' : 'Agregando'} respuesta de IA:`, aiMessage);
+              console.log(`[DataChannel] 🎥 Video detectado en payload:`, mappedEvent.payload.suggestedVideo);
               
               if (existingMessageElement) {
                 // Actualizar mensaje existente

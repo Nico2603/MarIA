@@ -46,11 +46,14 @@ const ChatInput: React.FC<ChatInputProps> = ({
     <div className="p-4 bg-transparent">
       <form onSubmit={(e) => { 
         e.preventDefault(); 
-        if (safeTextInput.trim() && conversationActive && !isSessionClosed && !isProcessing && !isSpeaking) {
-          console.log('[ChatInput] 📝 Enviando mensaje por formulario:', safeTextInput);
-          handleSendTextMessage(safeTextInput);
-        }
+        // FUNCIONALIDAD DE TEXTO TEMPORALMENTE DESHABILITADA
+        // if (safeTextInput.trim() && conversationActive && !isSessionClosed && !isProcessing && !isSpeaking) {
+        //   console.log('[ChatInput] 📝 Enviando mensaje por formulario:', safeTextInput);
+        //   handleSendTextMessage(safeTextInput);
+        // }
       }} className="flex items-center space-x-3">
+        
+        {/* ENTRADA DE TEXTO TEMPORALMENTE DESHABILITADA - Solo funcionalidad por voz
         <textarea
           ref={textAreaRef}
           value={safeTextInput}
@@ -81,7 +84,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
           disabled={!conversationActive || isSessionClosed || isProcessing || isSpeaking}
         />
         
-        {/* Botón de envío de texto */}
         <button
           type="submit"
           disabled={!conversationActive || isSessionClosed || isProcessing || isSpeaking || !safeTextInput.trim()}
@@ -94,6 +96,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
         >
           <Send className="h-5 w-5" />
         </button>
+        */}
 
         {/* Botón de micrófono */}
         <button 
@@ -118,6 +121,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
           {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mic className="h-5 w-5" />}
         </button>
       </form>
+      
       {isSessionClosed ? (
         <div className="text-center mt-3">
           <Link 

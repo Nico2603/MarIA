@@ -10,6 +10,7 @@ interface UsePushToTalkProps {
   onStartListening: () => void;
   onStopListening: () => void;
   setIsPushToTalkActive: (isActive: boolean) => void;
+  tavusVideoLoaded?: boolean; // << NUEVO: Para verificar si el avatar está cargado
 }
 
 export function usePushToTalk({
@@ -22,6 +23,7 @@ export function usePushToTalk({
   onStartListening,
   onStopListening,
   setIsPushToTalkActive,
+  tavusVideoLoaded = true, // << NUEVO: Por defecto true para compatibilidad
 }: UsePushToTalkProps) {
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     const targetElement = event.target as HTMLElement;
@@ -33,7 +35,10 @@ export function usePushToTalk({
 
     if (event.code === 'Space' && !isInputFocused) {
       event.preventDefault(); // Prevenir scroll u otras acciones por defecto de la barra espaciadora
-      if (!isListening && !isProcessing && !isSpeaking && !isThinking && conversationActive && !isSessionClosed) {
+      
+      // Verificar que el avatar esté completamente cargado antes de permitir PTT
+      if (!isListening && !isProcessing && !isSpeaking && !isThinking && 
+          conversationActive && !isSessionClosed && tavusVideoLoaded) {
         setIsPushToTalkActive(true);
         onStartListening();
       }
@@ -46,7 +51,8 @@ export function usePushToTalk({
     conversationActive, 
     isSessionClosed, 
     setIsPushToTalkActive, 
-    onStartListening
+    onStartListening,
+    tavusVideoLoaded // << NUEVO
   ]);
 
   const handleKeyUp = useCallback((event: KeyboardEvent) => {
@@ -61,9 +67,10 @@ export function usePushToTalk({
     // y la tecla liberada es Espacio, y no hay un input enfocado.
     if (event.code === 'Space' && isListening && !isInputFocused) { 
       event.preventDefault();
+      setIsPushToTalkActive(false); // << CORREGIDO: Desactivar PTT al soltar
       onStopListening(); 
     }
-  }, [isListening, onStopListening]);
+  }, [isListening, onStopListening, setIsPushToTalkActive]); // << CORREGIDO: Agregar setIsPushToTalkActive
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown, true); // Usar capturing phase

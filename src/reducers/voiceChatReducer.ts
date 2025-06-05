@@ -12,7 +12,7 @@ export const initialState: VoiceChatState = {
   isReadyToStart: false,
   conversationActive: false,
   isPushToTalkActive: false,
-  isChatVisible: true,
+  isChatVisible: false,
   sessionStartTime: null,
   isFirstInteraction: true,
   isSessionClosed: false,
@@ -57,7 +57,8 @@ export function voiceChatReducer(state: VoiceChatState, action: VoiceChatAction)
     case 'SET_PUSH_TO_TALK_ACTIVE':
       return { ...state, isPushToTalkActive: action.payload };
     case 'TOGGLE_CHAT_VISIBILITY':
-      return { ...state, isChatVisible: !state.isChatVisible };
+      console.log('Toggle chat deshabilitado - modo solo voz activo');
+      return state;
     case 'SET_SESSION_START_TIME':
       return { ...state, sessionStartTime: action.payload };
     case 'SET_FIRST_INTERACTION':

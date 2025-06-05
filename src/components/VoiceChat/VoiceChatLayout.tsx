@@ -9,7 +9,6 @@ import type { Message, AppError } from "@/types";
 import { ConnectionState as LiveKitConnectionState, Track, type RemoteTrackPublication, Participant, RemoteParticipant } from 'livekit-client';
 import ErrorDisplay from '@/components/ui/ErrorDisplay';
 import NotificationDisplay from '@/components/ui/NotificationDisplay';
-import { VideoPanelSkeleton } from './VideoPanel';
 import { VideoTrack } from '@livekit/components-react';
 import type { ActiveTrackInfo } from '@/hooks/voicechat/useLiveKitTrackManagement';
 import { cn } from '@/lib/utils';
@@ -25,11 +24,6 @@ const DynamicChatPanel = dynamic(() => import('../ChatPanel'), {
       <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
     </div>
   )
-});
-
-const DynamicVideoPanel = dynamic(() => import('./VideoPanel'), {
-  ssr: false,
-  loading: () => <VideoPanelSkeleton />,
 });
 
 interface VoiceChatLayoutProps {
@@ -69,6 +63,7 @@ interface VoiceChatLayoutProps {
   dispatch: React.Dispatch<any>; // Considerar un tipo más específico si es posible
   onTavusVideoLoaded?: () => void;
   handleStartConversation: () => Promise<void>;
+  isAvatarLoaded?: boolean; // << NUEVO: Para verificar si el avatar está cargado
 }
 
 export default function VoiceChatLayout({
@@ -105,6 +100,7 @@ export default function VoiceChatLayout({
   dispatch,
   onTavusVideoLoaded,
   handleStartConversation,
+  isAvatarLoaded,
 }: VoiceChatLayoutProps) {
   const { data: session } = useSession();
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -128,7 +124,7 @@ export default function VoiceChatLayout({
       <NotificationDisplay notification={notification} />
 
       <div className="flex flex-1 h-full overflow-hidden">
-        {/* Panel del chat - 1/3 del espacio a la izquierda en desktop, full width en mobile */}
+        {/* Panel del chat - TEMPORALMENTE OCULTO EN MODO SOLO VOZ */}
         <AnimatePresence>
           {isChatVisible && (
             <motion.aside
@@ -175,133 +171,46 @@ export default function VoiceChatLayout({
           )}
         </AnimatePresence>
 
-        {/* Contenedor principal del video - 2/3 del espacio a la derecha en desktop, ajustado en mobile */}
-        <div className={cn(
-          "relative flex flex-col transition-all duration-300 ease-in-out bg-gray-900",
-          // En desktop: 2/3 cuando chat visible, full cuando no
-          isChatVisible 
-            ? "flex-1 md:w-3/5 lg:w-2/3 xl:w-2/3" 
-            : "w-full",
-          // En mobile: full width siempre
-          "w-full md:w-auto",
-          // Asegurar min-width para evitar colapso excesivo
-          "min-w-0"
-        )}>
-          {/* Contenedor del video con altura optimizada */}
-          <div className="flex-1 flex items-center justify-center relative p-2 md:p-4 min-h-0">
-            <div className={cn(
-              "relative w-full h-full rounded-lg overflow-hidden bg-gradient-to-br from-neutral-900 to-neutral-800 flex items-center justify-center",
-              "max-h-full",
-              // Asegurar que el contenido sea visible
-              "min-h-[300px]"
-            )}>
-              {tavusVideoTrackPublication && discoveredTargetParticipant ? (
-                <>
-                  {/* Botón de toggle del chat - posición responsive */}
-                  {conversationActive && (
-                    <button
-                      onClick={toggleChatVisibility}
-                      className={cn(
-                        "absolute z-30 w-10 h-10 bg-white/90 dark:bg-neutral-800/90 rounded-full shadow-lg hover:bg-white dark:hover:bg-neutral-700 transition-all duration-300 ease-in-out backdrop-blur-sm border border-neutral-200 dark:border-neutral-600 flex items-center justify-center",
-                        // Posición responsive
-                        "top-3 right-3 md:top-4 md:left-4"
-                      )}
-                      aria-label={isChatVisible ? "Ocultar chat" : "Mostrar chat"}
-                      title={isChatVisible ? "Ocultar chat de texto" : "Mostrar chat de texto"}
-                    >
-                      {isChatVisible ? (
-                        <ChevronsLeft className="h-4 w-4 text-neutral-700 dark:text-neutral-200" />
-                      ) : (
-                        <ChevronsRight className="h-4 w-4 text-neutral-700 dark:text-neutral-200" />
-                      )}
-                    </button>
-                  )}
-                  
-                  {/* Video track optimizado */}
-                  <div className="w-full h-full">
-                    <VideoTrack
-                      trackRef={{
-                        participant: discoveredTargetParticipant,
-                        publication: tavusVideoTrackPublication,
-                        source: tavusVideoTrackPublication.source,
-                      }}
-                      className="w-full h-full object-cover rounded-lg"
-                      style={{
-                        objectFit: 'cover',
-                        objectPosition: 'center top',
-                      }}
-                    />
-                  </div>
-                  
-                  {/* Botón de Iniciar Conversación - aparece cuando el avatar está listo pero la conversación no está activa */}
-                  {!conversationActive && isReadyToStart && authStatus === 'authenticated' && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-                      <motion.button
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        onClick={handleStartConversation}
-                        className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-primary-500/50"
-                      >
-                        Iniciar Conversación con María
-                      </motion.button>
-                    </div>
-                  )}
-                </>
-              ) : connectionState === LiveKitConnectionState.Connected ? (
-                <DynamicVideoPanel
-                  isChatVisible={isChatVisible}
-                  tavusTrackInfo={tavusVideoTrack}
-                  isSpeaking={isSpeaking}
-                  isListening={isListening}
-                  isProcessing={isProcessing}
-                  isThinking={isThinking}
-                  isSessionClosed={isSessionClosed}
-                  conversationActive={conversationActive}
-                  handleStartListening={handleStartListening}
-                  handleStopListening={handleStopListening}
-                  isPushToTalkActive={isPushToTalkActive}
-                  toggleChatVisibility={toggleChatVisibility}
-                  onVideoLoaded={onTavusVideoLoaded}
-                  handleStartConversation={handleStartConversation}
-                  isReadyToStart={isReadyToStart}
-                  authStatus={authStatus}
-                />
-              ) : (
-                <VideoPanelSkeleton 
-                  isChatVisible={isChatVisible}
-                  handleStartConversation={handleStartConversation}
-                  isReadyToStart={isReadyToStart}
-                  authStatus={authStatus}
-                  conversationActive={conversationActive}
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Controles e indicadores en la parte inferior - posición responsive */}
-          <div className="absolute bottom-4 md:bottom-6 left-1/2 transform -translate-x-1/2 flex flex-col items-center space-y-2 md:space-y-3 z-20 px-4">
-            {isPushToTalkActive && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className="bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-full shadow-lg text-xs md:text-sm font-semibold border border-blue-500"
-              >
-                Habla ahora (mantén pulsado Espacio)
-              </motion.div>
-            )}
-            {appError && appError.type !== 'livekit' && appError.message && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
-                className="w-full max-w-md"
-              >
-                <ErrorDisplay error={{ message: appError.message, type: appError.type || undefined }} onClose={() => clearError()} />
-              </motion.div>
-            )}
-          </div>
+        {/* Contenedor principal optimizado para modo solo voz */}
+        <div className="w-full h-full flex items-center justify-center bg-gray-900">
+          {/* Video Panel - ahora maneja todo el layout internamente */}
+          {tavusVideoTrack ? (
+            <VideoPanel
+              isChatVisible={isChatVisible}
+              tavusTrackInfo={tavusVideoTrack}
+              isSpeaking={isSpeaking}
+              isListening={isListening}
+              isProcessing={isProcessing}
+              isThinking={isThinking}
+              isSessionClosed={isSessionClosed}
+              conversationActive={conversationActive}
+              handleStartListening={handleStartListening}
+              handleStopListening={handleStopListening}
+              isPushToTalkActive={isPushToTalkActive}
+              onVideoLoaded={onTavusVideoLoaded}
+              handleStartConversation={handleStartConversation}
+              isReadyToStart={isReadyToStart}
+              authStatus={authStatus}
+              isAvatarLoaded={isAvatarLoaded}
+            />
+          ) : (
+            <VideoPanel
+              isChatVisible={isChatVisible}
+              isSpeaking={isSpeaking}
+              isListening={isListening}
+              isProcessing={isProcessing}
+              isThinking={isThinking}
+              isSessionClosed={isSessionClosed}
+              conversationActive={conversationActive}
+              handleStartListening={handleStartListening}
+              handleStopListening={handleStopListening}
+              isPushToTalkActive={isPushToTalkActive}
+              handleStartConversation={handleStartConversation}
+              isReadyToStart={isReadyToStart}
+              authStatus={authStatus}
+              isAvatarLoaded={isAvatarLoaded}
+            />
+          )}
         </div>
       </div>
     </div>
