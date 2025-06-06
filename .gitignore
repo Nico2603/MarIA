@@ -76,7 +76,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/ # COMENTADO - estaba ignorando src/lib de Next.js
 lib64/
 parts/
 sdist/
@@ -86,6 +86,11 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
+
+# Python específico - solo ignorar lib en contextos de Python
+**/site-packages/
+**/Lib/
+LiveKit_Agent_MarIA/lib/
 
 # Entornos virtuales Python
 venv/
