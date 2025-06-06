@@ -24,6 +24,5 @@ export const authOptions: AuthOptions = {
       return session;
     },
   },
-  // Puedes añadir páginas personalizadas si quieres
-  // pages: { ... }
+  
 }; 
