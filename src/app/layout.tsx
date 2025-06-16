@@ -36,6 +36,25 @@ export default function RootLayout({
     <html lang="es" className={`${inter.variable} ${montserrat.variable} h-full`}>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        {/* Google Analytics */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-BRQ072QNBC"
+          strategy="afterInteractive"
+        />
+        <Script
+          id="gtag-script"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-BRQ072QNBC');
+            `,
+          }}
+        />
+        {/* End Google Analytics */}
+
         {/* Google Tag Manager */}
         <Script
           id="gtm-script"
