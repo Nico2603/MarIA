@@ -96,3 +96,66 @@ export async function PUT(request: NextRequest) { // Cambiado a NextRequest
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }
+
+// PATCH /api/profile - Actualizar campos específicos del usuario (como phoneNumber para feedback)
+export async function PATCH(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+
+  if (!session || !session.user?.email) {
+    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    const { phoneNumber } = body;
+
+    // Validación del número telefónico colombiano
+    if (phoneNumber !== undefined) {
+      if (typeof phoneNumber !== 'string') {
+        return NextResponse.json({ error: "Número telefónico debe ser una cadena" }, { status: 400 });
+      }
+      
+      const cleanPhone = phoneNumber.replace(/\D/g, '');
+      if (cleanPhone.length !== 10 || !cleanPhone.startsWith('3')) {
+        return NextResponse.json({ 
+          error: "Número telefónico inválido. Debe tener 10 dígitos y empezar con 3" 
+        }, { status: 400 });
+      }
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+    }
+
+    const dataToUpdate: { phoneNumber?: string | null } = {};
+    if (phoneNumber !== undefined) {
+      dataToUpdate.phoneNumber = phoneNumber ? phoneNumber.replace(/\D/g, '') : null;
+    }
+
+    if (Object.keys(dataToUpdate).length === 0) {
+      return NextResponse.json({ error: "No hay datos para actualizar" }, { status: 400 });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: dataToUpdate,
+      select: { id: true, phoneNumber: true },
+    });
+
+    return NextResponse.json({ 
+      success: true, 
+      phoneNumber: updatedUser.phoneNumber 
+    });
+  } catch (error) {
+    console.error("Error al actualizar usuario en /api/profile PATCH:", error);
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: "Formato de solicitud inválido" }, { status: 400 });
+    }
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
+  }
+}

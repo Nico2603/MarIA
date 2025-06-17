@@ -23,6 +23,7 @@ interface UseConversationSessionManagerProps {
   setAppError: ReturnType<typeof useError>['setError'];
   showNotification: ReturnType<typeof useNotifications>['showNotification'];
   dispatch: Dispatch<VoiceChatAction>; // Usar dispatch
+  onShowFeedbackModal?: () => void; // Callback para mostrar modal de feedback
 }
 
 export function useConversationSessionManager({
@@ -39,6 +40,7 @@ export function useConversationSessionManager({
   setAppError,
   showNotification,
   dispatch, // Recibir dispatch
+  onShowFeedbackModal, // Recibir callback para modal
 }: UseConversationSessionManagerProps) {
   const { clearError } = useError();
   const router = useRouter();
@@ -157,17 +159,33 @@ export function useConversationSessionManager({
       showNotification(message, "info");
     }
 
-    // Redirigir al perfil después del cierre de sesión si está habilitado
+    // Mostrar modal de feedback o redirigir al perfil
     if (shouldRedirect) {
-      console.log("Redirigiendo al perfil del usuario...");
-      setTimeout(() => {
-        router.push('/settings/profile');
-      }, 1000); // Delay de 1 segundo para permitir que se muestren las notificaciones
+      console.log("Preparando redirección al perfil del usuario...");
+      
+      // Si hay callback para mostrar modal de feedback, usarlo en lugar de redirección directa
+      if (onShowFeedbackModal) {
+        console.log("Mostrando modal de feedback antes de redirección");
+        setTimeout(() => {
+          onShowFeedbackModal();
+        }, 1000); // Delay de 1 segundo para permitir que se muestren las notificaciones
+      } else {
+        // Redirección directa si no hay modal
+        console.log("Redirigiendo directamente al perfil del usuario...");
+        setTimeout(() => {
+          router.push('/settings/profile');
+        }, 1000);
+      }
     }
   }, [
     activeSessionId, isSessionClosed, disconnectFromLiveKit, roomRef, audioStreamRef,
-    setAppError, showNotification, dispatch, router // Añadir router a las dependencias
+    setAppError, showNotification, dispatch, router, onShowFeedbackModal // Añadir onShowFeedbackModal a las dependencias
   ]);
 
-  return { handleStartConversation, endSession };
+  const redirectToProfile = useCallback(() => {
+    console.log("Redirigiendo al perfil del usuario desde modal...");
+    router.push('/settings/profile');
+  }, [router]);
+
+  return { handleStartConversation, endSession, redirectToProfile };
 } 

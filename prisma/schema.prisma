@@ -55,6 +55,7 @@ model User {
   createdAt     DateTime  @default(now()) // Ya existía
   updatedAt     DateTime  @updatedAt     // Ya existía
   profile       Profile?              // Ya existía
+  phoneNumber   String?              // Campo para número telefónico de feedback
 
   // Mantener índices si existían o añadir si son necesarios
   @@index([email]) // Ejemplo si se busca frecuentemente por email

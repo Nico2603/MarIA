@@ -41,6 +41,7 @@ import VoiceChatLayout from './VoiceChatLayout';
 import { useParticipantDiscovery } from '@/hooks/voicechat/useParticipantDiscovery';
 import { useReadyToStart } from '@/hooks/voicechat/useReadyToStart';
 import { AGENT_IDENTITY, isValidAgent } from '@/lib/constants';
+import { FeedbackPaymentModal } from '@/components/ui/FeedbackPaymentModal';
 
 const DynamicChatPanel = dynamic(() => import('../ChatPanel'), { 
   ssr: false
@@ -60,6 +61,7 @@ function VoiceChatContainer() {
   const [discoveredTargetParticipant, setDiscoveredTargetParticipant] = useState<RemoteParticipant | null>(null);
   const [initializationPhase, setInitializationPhase] = useState<'auth' | 'connecting' | 'ready' | 'complete'>('auth');
   const [tavusVideoLoaded, setTavusVideoLoaded] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   
   const dataReceivedHandlerRef = useRef<((...args: any[]) => void) | null>(null);
   
@@ -266,6 +268,11 @@ function VoiceChatContainer() {
     }
   }, [authStatus, session?.user?.id, session?.user?.email, userProfile]);
 
+  // Callback para mostrar modal de feedback
+  const handleShowFeedbackModal = useCallback(() => {
+    setShowFeedbackModal(true);
+  }, []);
+
   // Conversation session management
   const conversationManagerProps = useMemo(() => ({
     session,
@@ -281,6 +288,7 @@ function VoiceChatContainer() {
     setAppError,
     showNotification,
     dispatch,
+    onShowFeedbackModal: handleShowFeedbackModal,
   }), [
     session?.user?.id,
     authStatus, 
@@ -291,13 +299,33 @@ function VoiceChatContainer() {
     state.isSessionClosed,
     disconnectFromLiveKit, 
     setAppError, 
-    showNotification
+    showNotification,
+    handleShowFeedbackModal
   ]);
 
   const {
     endSession,
     handleStartConversation,
+    redirectToProfile,
   } = useConversationSessionManager(conversationManagerProps);
+
+  // Handlers para el modal de feedback
+  const handleCloseFeedbackModal = useCallback(() => {
+    setShowFeedbackModal(false);
+    // Redirigir sin guardar número
+    redirectToProfile();
+  }, [redirectToProfile]);
+
+  const handleCompleteFeedbackModal = useCallback((phoneNumber?: string) => {
+    setShowFeedbackModal(false);
+    
+    if (phoneNumber) {
+      showNotification("¡Gracias! Tu número ha sido guardado.", "success", 3000);
+    }
+    
+    // Redirigir al perfil después de completar
+    redirectToProfile();
+  }, [redirectToProfile, showNotification]);
 
   // Data channel events
   const dataChannelEventsProps = useMemo(() => ({
@@ -532,6 +560,14 @@ function VoiceChatContainer() {
         onTavusVideoLoaded={handleTavusVideoLoaded}
         handleStartConversation={handleStartConversation}
         isAvatarLoaded={tavusVideoLoaded}
+      />
+      
+      {/* Modal de feedback y pago */}
+      <FeedbackPaymentModal
+        isOpen={showFeedbackModal}
+        onClose={handleCloseFeedbackModal}
+        onComplete={handleCompleteFeedbackModal}
+        userName={session?.user?.name || userProfile?.username || undefined}
       />
     </>
   );
