@@ -19,6 +19,7 @@ import { Send, AlertCircle, Mic, ChevronsLeft, ChevronsRight, MessageSquare, Loa
 import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useLiveKitConnectionManager } from '@/hooks/voicechat/useLiveKitConnectionManager';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
@@ -51,6 +52,7 @@ const DynamicVideoPanel = dynamic(() => import('./VideoPanel'), {
 
 function VoiceChatContainer() {
   const { data: session, status: authStatus } = useSession();
+  const router = useRouter();
   const { error: appError, setError: setAppError, clearError } = useError();
   const { notification, showNotification } = useNotifications();
 
@@ -376,7 +378,7 @@ function VoiceChatContainer() {
   );
 
   const onTimeoutCallback = useCallback(() => {
-    endSession(false);
+    endSession(false, "inactividad", false); // No redirigir en timeout por inactividad
     showNotification("Sesión finalizada por inactividad.", "warning", 5000);
     dispatch({ type: 'SET_TIME_RUNNING_OUT', payload: false });
   }, [endSession, showNotification]);

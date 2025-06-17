@@ -3,6 +3,7 @@
 import { useCallback, useRef, Dispatch } from 'react';
 import { Room, LocalParticipant } from 'livekit-client';
 import { Session } from 'next-auth';
+import { useRouter } from 'next/navigation';
 import { useError } from '@/contexts/ErrorContext';
 import { useNotifications } from '@/utils/notifications';
 import type { Message, VoiceChatAction } from '@/types';
@@ -40,6 +41,7 @@ export function useConversationSessionManager({
   dispatch, // Recibir dispatch
 }: UseConversationSessionManagerProps) {
   const { clearError } = useError();
+  const router = useRouter();
 
   const handleStartConversation = useCallback(async () => {
     if (!session?.user?.id || authStatus !== 'authenticated') {
@@ -108,7 +110,7 @@ export function useConversationSessionManager({
     setAppError, showNotification, dispatch // Añadir dispatch a las dependencias
   ]);
 
-  const endSession = useCallback(async (notify = true, reason?: string) => {
+  const endSession = useCallback(async (notify = true, reason?: string, shouldRedirect = true) => {
     if (isSessionClosed) {
       console.log("La sesión ya está marcada como cerrada localmente. No se tomarán más acciones en endSession.");
       return;
@@ -154,9 +156,17 @@ export function useConversationSessionManager({
         : "Sesión terminada.";
       showNotification(message, "info");
     }
+
+    // Redirigir al perfil después del cierre de sesión si está habilitado
+    if (shouldRedirect) {
+      console.log("Redirigiendo al perfil del usuario...");
+      setTimeout(() => {
+        router.push('/settings/profile');
+      }, 1000); // Delay de 1 segundo para permitir que se muestren las notificaciones
+    }
   }, [
     activeSessionId, isSessionClosed, disconnectFromLiveKit, roomRef, audioStreamRef,
-    setAppError, showNotification, dispatch // Añadir dispatch a las dependencias
+    setAppError, showNotification, dispatch, router // Añadir router a las dependencias
   ]);
 
   return { handleStartConversation, endSession };

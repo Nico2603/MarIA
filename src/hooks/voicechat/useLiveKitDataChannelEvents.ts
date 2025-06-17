@@ -12,7 +12,7 @@ interface UseLiveKitDataChannelEventsProps {
   conversationActive: boolean; // Para la lógica de isReadyToStart
   greetingMessageId: string | null; // Para la lógica de isReadyToStart
   currentSpeakingId: string | null; // Para la lógica de tts_ended
-  endSession: (notify?: boolean, reason?: string) => void; // Para session_should_end_signal y tts_ended isClosing
+  endSession: (notify?: boolean, reason?: string, shouldRedirect?: boolean) => void; // Para session_should_end_signal y tts_ended isClosing
   isProcessing: boolean; // Necesario para la lógica de envío
   isListening: boolean;
   isSpeaking: boolean; // Prop requerida para la lógica de envío
@@ -350,8 +350,8 @@ export function useLiveKitDataChannelEvents({
                 }
 
                 if (mappedEvent.payload.isClosing) {
-                  console.log(`[DataChannel] Sesión marcada para cerrar`);
-                  endSession(); 
+                  console.log(`[DataChannel] Sesión marcada para cerrar por palabras de despedida`);
+                  endSession(true, "conversación completada", true); // Notificar, dar razón, y redirigir
                 }
               }
             }
