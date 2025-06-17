@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, FormEvent, useCallback, useRef } from 'react';
+import React, { useState, useEffect, FormEvent, useCallback, useRef, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,10 +49,33 @@ interface PaginatedHistoryResponse {
   };
 }
 
+// Componente separado para manejar search params
+function FeedbackModalHandler({ 
+  onShowFeedbackModal 
+}: { 
+  onShowFeedbackModal: () => void 
+}) {
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const fromChat = searchParams?.get('fromChat');
+    const showFeedback = searchParams?.get('showFeedback');
+    
+    if (fromChat === 'true' && showFeedback === 'true') {
+      console.log('[ProfilePage] Detectado que viene del chat, mostrando modal de feedback');
+      // Pequeño delay para que la página se cargue antes de mostrar el modal
+      setTimeout(() => {
+        onShowFeedbackModal();
+      }, 1000);
+    }
+  }, [searchParams, onShowFeedbackModal]);
+
+  return null; // Este componente solo maneja efectos
+}
+
 export default function ProfilePage() {
   const { data: session, status: authStatus } = useSession();
   const queryClient = useQueryClient();
-  const searchParams = useSearchParams();
 
   const [usernameForm, setUsernameForm] = useState('');
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -71,19 +94,10 @@ export default function ProfilePage() {
     enabled: authStatus === 'authenticated',
   });
 
-  // Detectar si viene del chat y mostrar modal de feedback
-  useEffect(() => {
-    const fromChat = searchParams?.get('fromChat');
-    const showFeedback = searchParams?.get('showFeedback');
-    
-    if (fromChat === 'true' && showFeedback === 'true') {
-      console.log('[ProfilePage] Detectado que viene del chat, mostrando modal de feedback');
-      // Pequeño delay para que la página se cargue antes de mostrar el modal
-      setTimeout(() => {
-        setShowFeedbackModal(true);
-      }, 1000);
-    }
-  }, [searchParams]);
+  // Callback para mostrar el modal de feedback
+  const handleShowFeedbackModal = useCallback(() => {
+    setShowFeedbackModal(true);
+  }, []);
 
   // Efecto para manejar el éxito o error de la carga del perfil
   useEffect(() => {
@@ -651,6 +665,11 @@ export default function ProfilePage() {
           onComplete={handleCompleteFeedbackModal}
           userName={session?.user?.name || profile?.username || undefined}
         />
+
+        {/* Handler para detectar search params y mostrar modal */}
+        <Suspense fallback={null}>
+          <FeedbackModalHandler onShowFeedbackModal={handleShowFeedbackModal} />
+        </Suspense>
     </div>
   );
 } 
