@@ -270,6 +270,7 @@ function VoiceChatContainer() {
 
   // Callback para mostrar modal de feedback
   const handleShowFeedbackModal = useCallback(() => {
+    console.log(`[VoiceChatContainer] 🎯 Activando modal de feedback`);
     setShowFeedbackModal(true);
   }, []);
 
@@ -311,12 +312,16 @@ function VoiceChatContainer() {
 
   // Handlers para el modal de feedback
   const handleCloseFeedbackModal = useCallback(() => {
+    console.log(`[VoiceChatContainer] ❌ Modal de feedback cerrado sin completar`);
     setShowFeedbackModal(false);
     // Redirigir sin guardar número
-    redirectToProfile();
+    setTimeout(() => {
+      redirectToProfile();
+    }, 500);
   }, [redirectToProfile]);
 
   const handleCompleteFeedbackModal = useCallback((phoneNumber?: string) => {
+    console.log(`[VoiceChatContainer] ✅ Modal de feedback completado`, phoneNumber ? 'con número' : 'sin número');
     setShowFeedbackModal(false);
     
     if (phoneNumber) {
@@ -324,7 +329,9 @@ function VoiceChatContainer() {
     }
     
     // Redirigir al perfil después de completar
-    redirectToProfile();
+    setTimeout(() => {
+      redirectToProfile();
+    }, 1000);
   }, [redirectToProfile, showNotification]);
 
   // Data channel events

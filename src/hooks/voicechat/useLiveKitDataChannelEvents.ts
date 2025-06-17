@@ -333,10 +333,21 @@ export function useLiveKitDataChannelEvents({
           case 'tts_ended':
             if (mappedEvent.payload && mappedEvent.payload.messageId) {
               console.log(`[DataChannel] TTS terminado para mensaje:`, mappedEvent.payload.messageId);
+              console.log(`[DataChannel] 🔍 isClosing flag:`, mappedEvent.payload.isClosing); // Log adicional para debug
               
               if (currentSpeakingId === mappedEvent.payload.messageId) {
                 dispatch({ type: 'SET_SPEAKING', payload: false });
                 dispatch({ type: 'SET_CURRENT_SPEAKING_ID', payload: null });
+
+                // Verificar si es mensaje de cierre ANTES de otras lógicas
+                if (mappedEvent.payload.isClosing === true) {
+                  console.log(`[DataChannel] 🚪 DETECTADO MENSAJE DE CIERRE - Activando finalización de sesión`);
+                  // Usar setTimeout para dar tiempo a que termine el TTS completamente
+                  setTimeout(() => {
+                    endSession(true, "conversación completada", true); // Notificar, dar razón, y redirigir
+                  }, 1000); // 1 segundo de delay
+                  return; // Salir temprano para evitar otras lógicas
+                }
 
                 if (mappedEvent.payload.messageId === greetingMessageId && 
                     conversationActive && 
@@ -347,11 +358,6 @@ export function useLiveKitDataChannelEvents({
                   setTimeout(() => {
                     dispatch({ type: 'SET_LISTENING', payload: true });
                   }, 500);
-                }
-
-                if (mappedEvent.payload.isClosing) {
-                  console.log(`[DataChannel] Sesión marcada para cerrar por palabras de despedida`);
-                  endSession(true, "conversación completada", true); // Notificar, dar razón, y redirigir
                 }
               }
             }

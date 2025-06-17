@@ -26,6 +26,9 @@ export function FeedbackPaymentModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  // Debug logging
+  console.log(`[FeedbackPaymentModal] Estado del modal:`, { isOpen, userName });
+
   const validatePhoneNumber = (phone: string) => {
     // Remover espacios y caracteres especiales
     const cleanPhone = phone.replace(/\D/g, '');
@@ -83,7 +86,7 @@ export function FeedbackPaymentModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
