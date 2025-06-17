@@ -62,6 +62,7 @@ function VoiceChatContainer() {
   const [initializationPhase, setInitializationPhase] = useState<'auth' | 'connecting' | 'ready' | 'complete'>('auth');
   const [tavusVideoLoaded, setTavusVideoLoaded] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [autoRedirectInProgress, setAutoRedirectInProgress] = useState(false);
   
   const dataReceivedHandlerRef = useRef<((...args: any[]) => void) | null>(null);
   
@@ -290,6 +291,7 @@ function VoiceChatContainer() {
     showNotification,
     dispatch,
     onShowFeedbackModal: handleShowFeedbackModal,
+    setAutoRedirectInProgress,
   }), [
     session?.user?.id,
     authStatus, 
@@ -301,7 +303,8 @@ function VoiceChatContainer() {
     disconnectFromLiveKit, 
     setAppError, 
     showNotification,
-    handleShowFeedbackModal
+    handleShowFeedbackModal,
+    setAutoRedirectInProgress,
   ]);
 
   const {
@@ -314,11 +317,17 @@ function VoiceChatContainer() {
   const handleCloseFeedbackModal = useCallback(() => {
     console.log(`[VoiceChatContainer] ❌ Modal de feedback cerrado sin completar`);
     setShowFeedbackModal(false);
-    // Redirigir sin guardar número
-    setTimeout(() => {
-      redirectToProfile();
-    }, 500);
-  }, [redirectToProfile]);
+    
+    // Solo redirigir si no hay redirección automática en progreso
+    if (!autoRedirectInProgress) {
+      console.log(`[VoiceChatContainer] 🔄 Redirección manual desde modal cancelado`);
+      setTimeout(() => {
+        redirectToProfile();
+      }, 500);
+    } else {
+      console.log(`[VoiceChatContainer] ⏩ Redirección automática en progreso - omitiendo redirección manual`);
+    }
+  }, [redirectToProfile, autoRedirectInProgress]);
 
   const handleCompleteFeedbackModal = useCallback((phoneNumber?: string) => {
     console.log(`[VoiceChatContainer] ✅ Modal de feedback completado`, phoneNumber ? 'con número' : 'sin número');
@@ -328,11 +337,16 @@ function VoiceChatContainer() {
       showNotification("¡Gracias! Tu número ha sido guardado.", "success", 3000);
     }
     
-    // Redirigir al perfil después de completar
-    setTimeout(() => {
-      redirectToProfile();
-    }, 1000);
-  }, [redirectToProfile, showNotification]);
+    // Solo redirigir si no hay redirección automática en progreso
+    if (!autoRedirectInProgress) {
+      console.log(`[VoiceChatContainer] 🔄 Redirección manual desde modal completado`);
+      setTimeout(() => {
+        redirectToProfile();
+      }, 1000);
+    } else {
+      console.log(`[VoiceChatContainer] ⏩ Redirección automática en progreso - omitiendo redirección manual`);
+    }
+  }, [redirectToProfile, showNotification, autoRedirectInProgress]);
 
   // Data channel events
   const dataChannelEventsProps = useMemo(() => ({

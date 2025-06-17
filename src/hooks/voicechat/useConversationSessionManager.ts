@@ -24,6 +24,7 @@ interface UseConversationSessionManagerProps {
   showNotification: ReturnType<typeof useNotifications>['showNotification'];
   dispatch: Dispatch<VoiceChatAction>; // Usar dispatch
   onShowFeedbackModal?: () => void; // Callback para mostrar modal de feedback
+  setAutoRedirectInProgress?: (value: boolean) => void; // Nuevo: para controlar redirecciones automáticas
 }
 
 export function useConversationSessionManager({
@@ -41,6 +42,7 @@ export function useConversationSessionManager({
   showNotification,
   dispatch, // Recibir dispatch
   onShowFeedbackModal, // Recibir callback para modal
+  setAutoRedirectInProgress, // Recibir setAutoRedirectInProgress
 }: UseConversationSessionManagerProps) {
   const { clearError } = useError();
   const router = useRouter();
@@ -168,38 +170,75 @@ export function useConversationSessionManager({
 
     // Mostrar modal de feedback o redirigir al perfil
     if (shouldRedirect) {
-      console.log(`[ConversationSessionManager] 🎯 shouldRedirect=true, ejecutando redirección FORZADA`);
+      console.log(`[ConversationSessionManager] 🎯 shouldRedirect=true, ejecutando redirección`);
       
-      // REDIRECCIÓN DIRECTA E INMEDIATA - Sin depender del modal
-      console.log(`[ConversationSessionManager] ↗️ Redirigiendo DIRECTAMENTE al perfil del usuario`);
-      setTimeout(() => {
+      // REDIRECCIÓN ROBUSTA - Directa con fallback
+      const executeRedirection = () => {
+        console.log(`[ConversationSessionManager] ↗️ Ejecutando redirección al perfil del usuario`);
         try {
           router.push('/settings/profile?fromChat=true&showFeedback=true');
-          console.log(`[ConversationSessionManager] ✅ Redirección ejecutada exitosamente`);
+          console.log(`[ConversationSessionManager] ✅ Redirección con router.push() exitosa`);
         } catch (error) {
-          console.error(`[ConversationSessionManager] ❌ Error en redirección:`, error);
-          // Fallback: recargar la página hacia el perfil
-          window.location.href = '/settings/profile?fromChat=true&showFeedback=true';
+          console.error(`[ConversationSessionManager] ❌ Error en router.push():`, error);
+          console.log(`[ConversationSessionManager] 🔄 Intentando fallback con window.location.href`);
+          // Fallback robusto
+          try {
+            window.location.href = '/settings/profile?fromChat=true&showFeedback=true';
+            console.log(`[ConversationSessionManager] ✅ Redirección con window.location.href exitosa`);
+          } catch (fallbackError) {
+            console.error(`[ConversationSessionManager] ❌ Error crítico en redirección:`, fallbackError);
+          }
         }
-      }, 1000); // Delay reducido a 1 segundo
+      };
       
-      // Opcional: Si hay callback para mostrar modal, intentarlo también (secundario)
-      if (onShowFeedbackModal) {
-        console.log(`[ConversationSessionManager] 📋 También intentando activar modal de feedback como backup`);
+      // Para cierres automáticos (cuando María termina de hablar), redirección inmediata
+      if (reason === "conversación completada") {
+        console.log(`[ConversationSessionManager] 🤖 Cierre automático detectado - Activando flag y redirección inmediata`);
+        
+        // Activar flag para prevenir redirecciones conflictivas
+        if (setAutoRedirectInProgress) {
+          setAutoRedirectInProgress(true);
+          console.log(`[ConversationSessionManager] 🚩 Flag de redirección automática activado`);
+        }
+        
         setTimeout(() => {
+          executeRedirection();
+          
+          // Limpiar flag después de ejecutar redirección
+          if (setAutoRedirectInProgress) {
+            setTimeout(() => {
+              setAutoRedirectInProgress(false);
+              console.log(`[ConversationSessionManager] 🏁 Flag de redirección automática desactivado`);
+            }, 2000); // Delay extra para asegurar que la redirección termine
+          }
+        }, 1500); // Tiempo suficiente para que termine el audio
+      } else {
+        // Para otros tipos de cierre, intentar modal primero, luego redirección
+        console.log(`[ConversationSessionManager] 👤 Cierre manual/otro - Priorizando experiencia de usuario`);
+        if (onShowFeedbackModal) {
+          console.log(`[ConversationSessionManager] 📋 Mostrando modal de feedback primero`);
           try {
             onShowFeedbackModal();
-          } catch (error) {
-            console.log(`[ConversationSessionManager] ⚠️ Modal de feedback falló, pero redirección directa ya está en marcha`);
+            // Redirección de respaldo por si el modal falla
+            setTimeout(() => {
+              console.log(`[ConversationSessionManager] ⏰ Redirección de respaldo ejecutada`);
+              executeRedirection();
+            }, 10000); // 10 segundos de respaldo
+          } catch (modalError) {
+            console.log(`[ConversationSessionManager] ⚠️ Modal falló, redirección inmediata`);
+            setTimeout(executeRedirection, 1000);
           }
-        }, 500);
+        } else {
+          // Sin modal disponible, redirección directa
+          setTimeout(executeRedirection, 1000);
+        }
       }
     } else {
       console.log(`[ConversationSessionManager] 🚫 shouldRedirect=false, no se realizará redirección`);
     }
   }, [
     activeSessionId, isSessionClosed, disconnectFromLiveKit, roomRef, audioStreamRef,
-    setAppError, showNotification, dispatch, router, onShowFeedbackModal // Añadir onShowFeedbackModal a las dependencias
+    setAppError, showNotification, dispatch, router, onShowFeedbackModal, setAutoRedirectInProgress // Añadir onShowFeedbackModal y setAutoRedirectInProgress a las dependencias
   ]);
 
   const redirectToProfile = useCallback(() => {

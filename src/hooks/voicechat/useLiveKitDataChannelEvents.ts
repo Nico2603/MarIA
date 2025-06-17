@@ -342,11 +342,11 @@ export function useLiveKitDataChannelEvents({
                 // Verificar si es mensaje de cierre ANTES de otras lógicas
                 if (mappedEvent.payload.isClosing === true) {
                   console.log(`[DataChannel] 🚪 DETECTADO MENSAJE DE CIERRE - Activando finalización de sesión`);
-                  // Usar setTimeout para dar tiempo a que termine el TTS completamente
+                  // Dar tiempo a que termine el TTS completamente antes de ejecutar endSession
                   setTimeout(() => {
-                    console.log(`[DataChannel] 🚀 Ejecutando endSession con redirección forzada`);
-                    endSession(true, "conversación completada", true); // Notificar, dar razón, y redirigir
-                  }, 2000); // Aumentar a 2 segundos para asegurar que el TTS termine
+                    console.log(`[DataChannel] 🚀 Ejecutando endSession con redirección automática`);
+                    endSession(true, "conversación completada", true); // Notificar, dar razón específica, y redirigir
+                  }, 1000); // Reducido a 1 segundo ya que la redirección tiene su propio delay de 1.5s
                   return; // Salir temprano para evitar otras lógicas
                 }
 
