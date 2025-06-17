@@ -344,8 +344,9 @@ export function useLiveKitDataChannelEvents({
                   console.log(`[DataChannel] 🚪 DETECTADO MENSAJE DE CIERRE - Activando finalización de sesión`);
                   // Usar setTimeout para dar tiempo a que termine el TTS completamente
                   setTimeout(() => {
+                    console.log(`[DataChannel] 🚀 Ejecutando endSession con redirección forzada`);
                     endSession(true, "conversación completada", true); // Notificar, dar razón, y redirigir
-                  }, 1000); // 1 segundo de delay
+                  }, 2000); // Aumentar a 2 segundos para asegurar que el TTS termine
                   return; // Salir temprano para evitar otras lógicas
                 }
 

@@ -168,20 +168,31 @@ export function useConversationSessionManager({
 
     // Mostrar modal de feedback o redirigir al perfil
     if (shouldRedirect) {
-      console.log(`[ConversationSessionManager] 🎯 shouldRedirect=true, evaluando opciones...`);
+      console.log(`[ConversationSessionManager] 🎯 shouldRedirect=true, ejecutando redirección FORZADA`);
       
-      // Si hay callback para mostrar modal de feedback, usarlo en lugar de redirección directa
-      if (onShowFeedbackModal) {
-        console.log(`[ConversationSessionManager] 📋 Activando modal de feedback con delay de 1 segundo`);
-        setTimeout(() => {
-          onShowFeedbackModal();
-        }, 1000); // Delay de 1 segundo para permitir que se muestren las notificaciones
-      } else {
-        // Redirección directa si no hay modal
-        console.log(`[ConversationSessionManager] ↗️ Sin modal disponible, redirigiendo directamente al perfil`);
-        setTimeout(() => {
+      // REDIRECCIÓN DIRECTA E INMEDIATA - Sin depender del modal
+      console.log(`[ConversationSessionManager] ↗️ Redirigiendo DIRECTAMENTE al perfil del usuario`);
+      setTimeout(() => {
+        try {
           router.push('/settings/profile?fromChat=true&showFeedback=true');
-        }, 1000);
+          console.log(`[ConversationSessionManager] ✅ Redirección ejecutada exitosamente`);
+        } catch (error) {
+          console.error(`[ConversationSessionManager] ❌ Error en redirección:`, error);
+          // Fallback: recargar la página hacia el perfil
+          window.location.href = '/settings/profile?fromChat=true&showFeedback=true';
+        }
+      }, 1000); // Delay reducido a 1 segundo
+      
+      // Opcional: Si hay callback para mostrar modal, intentarlo también (secundario)
+      if (onShowFeedbackModal) {
+        console.log(`[ConversationSessionManager] 📋 También intentando activar modal de feedback como backup`);
+        setTimeout(() => {
+          try {
+            onShowFeedbackModal();
+          } catch (error) {
+            console.log(`[ConversationSessionManager] ⚠️ Modal de feedback falló, pero redirección directa ya está en marcha`);
+          }
+        }, 500);
       }
     } else {
       console.log(`[ConversationSessionManager] 🚫 shouldRedirect=false, no se realizará redirección`);

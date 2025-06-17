@@ -48,7 +48,7 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             // NOTA: 'unsafe-eval' se añade para GSAP. 'unsafe-inline' puede ser necesario para estilos/scripts inline.
             // Considera ajustar estas directivas según tus necesidades específicas y entorno (desarrollo vs producción).
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: lh3.googleusercontent.com https://www.google-analytics.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://mentalia.digital https://*.livekit.cloud wss://*.livekit.cloud https://www.google-analytics.com https://analytics.google.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';".replace(/\s{2,}/g, ' ').trim(),
+            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://static.hotjar.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: lh3.googleusercontent.com https://www.google-analytics.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://mentalia.digital https://*.livekit.cloud wss://*.livekit.cloud https://www.google-analytics.com https://analytics.google.com https://*.hotjar.com https://*.hotjar.io; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';".replace(/\s{2,}/g, ' ').trim(),
           },
         ],
       },
