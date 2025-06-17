@@ -24,6 +24,7 @@ export function useReadyToStart({
   tavusVideoLoaded = false,
 }: UseReadyToStartProps): boolean {
   const [isSystemStable, setIsSystemStable] = useState(false);
+  const [fallbackReady, setFallbackReady] = useState(false);
 
   // Verificar si hay video tracks de Tavus disponibles
   const hasTavusVideoTrack = useMemo(() => {
@@ -39,13 +40,27 @@ export function useReadyToStart({
     if (connectionState === LiveKitConnectionState.Connected && discoveredParticipant) {
       const stabilizationTimer = setTimeout(() => {
         setIsSystemStable(true);
-      }, 1500); // Dar tiempo para que todo se estabilice
+      }, 2000); // Incremento a 2 segundos para dar más tiempo
 
       return () => clearTimeout(stabilizationTimer);
     } else {
       setIsSystemStable(false);
     }
   }, [connectionState, discoveredParticipant]);
+
+  // Fallback timeout - si el sistema lleva mucho tiempo sin estar listo, forzar ready
+  useEffect(() => {
+    if (connectionState === LiveKitConnectionState.Connected && discoveredParticipant && isSystemStable) {
+      const fallbackTimer = setTimeout(() => {
+        console.log('[useReadyToStart] Timeout de seguridad activado - forzando ready state');
+        setFallbackReady(true);
+      }, 8000); // 8 segundos total desde que está estable
+
+      return () => clearTimeout(fallbackTimer);
+    } else {
+      setFallbackReady(false);
+    }
+  }, [connectionState, discoveredParticipant, isSystemStable]);
 
   // Lógica mejorada para determinar si está listo
   const isReady = useMemo(() => {
@@ -65,10 +80,22 @@ export function useReadyToStart({
       return false;
     }
 
-    // Si hay Tavus disponible, esperar a que el video esté cargado
-    // PERO NO auto-iniciar la conversación - solo permitir que el usuario inicie manualmente
+    // Si el fallback está activado, forzar ready sin importar otras condiciones
+    if (fallbackReady) {
+      return true;
+    }
+
+    // Si hay Tavus disponible, preferir esperar a que el video esté cargado,
+    // pero si pasan 5 segundos desde que está estable, permitir continuar de todos modos
     if (hasTavusVideoTrack) {
-      return tavusVideoLoaded; // Solo indica que está listo para que el usuario inicie
+      // Si el video está cargado, está listo
+      if (tavusVideoLoaded) {
+        return true;
+      }
+      
+      // Si no está cargado pero el sistema lleva tiempo estable, continuar
+      // Esto evita quedarse esperando indefinidamente
+      return isSystemStable; // Ya incluye un delay de 2s, suficiente para la mayoría de casos
     }
 
     // Si no hay Tavus, está listo para que el usuario inicie manualmente
@@ -80,32 +107,37 @@ export function useReadyToStart({
     conversationActive,
     isSystemStable,
     hasTavusVideoTrack,
-    tavusVideoLoaded
+    tavusVideoLoaded,
+    fallbackReady
   ]);
 
   // Log para debugging (solo en desarrollo)
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[useReadyToStart] Estado:', {
-        authStatus,
-        connectionState,
-        hasParticipant: !!discoveredParticipant,
-        conversationActive,
-        isSystemStable,
-        hasTavusVideoTrack,
-        tavusVideoLoaded,
-        isReady
-      });
-    }
+    console.log('[useReadyToStart] Estado detallado:', {
+      authStatus,
+      connectionState: connectionState.toString(),
+      hasParticipant: !!discoveredParticipant,
+      participantIdentity: discoveredParticipant?.identity,
+      conversationActive,
+      isSystemStable,
+      fallbackReady,
+      hasTavusVideoTrack,
+      tavusVideoLoaded,
+      isReady,
+      activeTracksCount: activeTracks.length,
+      activeTracks: activeTracks.map(t => ({ identity: t.identity, kind: t.kind, source: t.source }))
+    });
   }, [
     authStatus, 
     connectionState, 
     discoveredParticipant, 
     conversationActive, 
     isSystemStable,
+    fallbackReady,
     hasTavusVideoTrack,
     tavusVideoLoaded,
-    isReady
+    isReady,
+    activeTracks
   ]);
 
   return isReady;
