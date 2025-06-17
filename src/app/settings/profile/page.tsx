@@ -17,6 +17,8 @@ import { ArrowRight } from 'lucide-react';
 import type { Profile, ChatSession } from '@prisma/client';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { FeedbackPaymentModal } from '@/components/ui/FeedbackPaymentModal';
+import { useSearchParams } from 'next/navigation';
 import {
   Dialog,
   DialogContent,
@@ -50,8 +52,10 @@ interface PaginatedHistoryResponse {
 export default function ProfilePage() {
   const { data: session, status: authStatus } = useSession();
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
 
   const [usernameForm, setUsernameForm] = useState('');
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   const { data: profile, isLoading: isLoadingProfile, error: profileError, refetch: refetchProfile } = useQuery<Profile, Error>({
     queryKey: ['profile', session?.user?.email],
@@ -66,6 +70,20 @@ export default function ProfilePage() {
     },
     enabled: authStatus === 'authenticated',
   });
+
+  // Detectar si viene del chat y mostrar modal de feedback
+  useEffect(() => {
+    const fromChat = searchParams?.get('fromChat');
+    const showFeedback = searchParams?.get('showFeedback');
+    
+    if (fromChat === 'true' && showFeedback === 'true') {
+      console.log('[ProfilePage] Detectado que viene del chat, mostrando modal de feedback');
+      // Pequeño delay para que la página se cargue antes de mostrar el modal
+      setTimeout(() => {
+        setShowFeedbackModal(true);
+      }, 1000);
+    }
+  }, [searchParams]);
 
   // Efecto para manejar el éxito o error de la carga del perfil
   useEffect(() => {
@@ -571,6 +589,21 @@ export default function ProfilePage() {
 
   // --- Renderizado Principal ---
 
+  // Handlers para el modal de feedback
+  const handleCloseFeedbackModal = useCallback(() => {
+    console.log('[ProfilePage] ❌ Modal de feedback cerrado sin completar');
+    setShowFeedbackModal(false);
+  }, []);
+
+  const handleCompleteFeedbackModal = useCallback((phoneNumber?: string) => {
+    console.log('[ProfilePage] ✅ Modal de feedback completado', phoneNumber ? 'con número' : 'sin número');
+    setShowFeedbackModal(false);
+    
+    if (phoneNumber) {
+      toast.success('¡Gracias! Tu número ha sido guardado.');
+    }
+  }, []);
+
   if (authStatus === 'loading') {
     return renderSkeletonState();
   }
@@ -609,6 +642,14 @@ export default function ProfilePage() {
           ref={decorativeElementRef}
           className="h-1.5 w-full bg-gradient-to-r from-primary/50 via-secondary/50 to-primary/50 dark:from-primary/40 dark:via-secondary/40 dark:to-primary/40 rounded-full opacity-70"
           style={{ backgroundSize: "400% 100%" }}
+        />
+
+        {/* Modal de feedback y pago */}
+        <FeedbackPaymentModal
+          isOpen={showFeedbackModal}
+          onClose={handleCloseFeedbackModal}
+          onComplete={handleCompleteFeedbackModal}
+          userName={session?.user?.name || profile?.username || undefined}
         />
     </div>
   );

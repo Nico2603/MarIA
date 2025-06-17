@@ -180,7 +180,7 @@ export function useConversationSessionManager({
         // Redirección directa si no hay modal
         console.log(`[ConversationSessionManager] ↗️ Sin modal disponible, redirigiendo directamente al perfil`);
         setTimeout(() => {
-          router.push('/settings/profile');
+          router.push('/settings/profile?fromChat=true&showFeedback=true');
         }, 1000);
       }
     } else {
@@ -193,7 +193,7 @@ export function useConversationSessionManager({
 
   const redirectToProfile = useCallback(() => {
     console.log("Redirigiendo al perfil del usuario desde modal...");
-    router.push('/settings/profile');
+    router.push('/settings/profile?fromChat=true&showFeedback=true');
   }, [router]);
 
   return { handleStartConversation, endSession, redirectToProfile };
