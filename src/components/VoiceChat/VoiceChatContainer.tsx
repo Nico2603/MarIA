@@ -271,8 +271,9 @@ function VoiceChatContainer() {
 
   // Callback para mostrar modal de feedback
   const handleShowFeedbackModal = useCallback(() => {
-    console.log(`[VoiceChatContainer] 🎯 Activando modal de feedback`);
+    console.log(`[VoiceChatContainer] 🎯 Activando modal de feedback - showFeedbackModal será true`);
     setShowFeedbackModal(true);
+    console.log(`[VoiceChatContainer] ✅ Modal de feedback activado - estado actualizado`);
   }, []);
 
   // Conversation session management
@@ -318,15 +319,17 @@ function VoiceChatContainer() {
     console.log(`[VoiceChatContainer] ❌ Modal de feedback cerrado sin completar`);
     setShowFeedbackModal(false);
     
-    // Solo redirigir si no hay redirección automática en progreso
-    if (!autoRedirectInProgress) {
-      console.log(`[VoiceChatContainer] 🔄 Redirección manual desde modal cancelado`);
-      setTimeout(() => {
-        redirectToProfile();
-      }, 500);
-    } else {
-      console.log(`[VoiceChatContainer] ⏩ Redirección automática en progreso - omitiendo redirección manual`);
+    // Limpiar flag automático si estaba activo
+    if (autoRedirectInProgress) {
+      setAutoRedirectInProgress(false);
+      console.log(`[VoiceChatContainer] 🏁 Flag de redirección automática limpiado`);
     }
+    
+    // Siempre redirigir al cerrar el modal (con o sin datos)
+    console.log(`[VoiceChatContainer] 🔄 Redirección después de cerrar modal`);
+    setTimeout(() => {
+      redirectToProfile();
+    }, 500);
   }, [redirectToProfile, autoRedirectInProgress]);
 
   const handleCompleteFeedbackModal = useCallback((phoneNumber?: string) => {
@@ -337,15 +340,17 @@ function VoiceChatContainer() {
       showNotification("¡Gracias! Tu número ha sido guardado.", "success", 3000);
     }
     
-    // Solo redirigir si no hay redirección automática en progreso
-    if (!autoRedirectInProgress) {
-      console.log(`[VoiceChatContainer] 🔄 Redirección manual desde modal completado`);
-      setTimeout(() => {
-        redirectToProfile();
-      }, 1000);
-    } else {
-      console.log(`[VoiceChatContainer] ⏩ Redirección automática en progreso - omitiendo redirección manual`);
+    // Limpiar flag automático si estaba activo
+    if (autoRedirectInProgress) {
+      setAutoRedirectInProgress(false);
+      console.log(`[VoiceChatContainer] 🏁 Flag de redirección automática limpiado`);
     }
+    
+    // Siempre redirigir al completar el modal
+    console.log(`[VoiceChatContainer] 🔄 Redirección después de completar modal`);
+    setTimeout(() => {
+      redirectToProfile();
+    }, 1000);
   }, [redirectToProfile, showNotification, autoRedirectInProgress]);
 
   // Data channel events
@@ -502,6 +507,9 @@ function VoiceChatContainer() {
 
   // Loading states
   const isLoading = authStatus === 'loading' || (!userProfile && session?.user?.id);
+
+  // Log de debugging para el modal
+  console.log(`[VoiceChatContainer] 🎭 Estado del modal: showFeedbackModal=${showFeedbackModal}, autoRedirectInProgress=${autoRedirectInProgress}`);
 
   // Simplificado: solo verificar autenticación básica
   if (authStatus === 'loading') {

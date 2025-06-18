@@ -169,31 +169,31 @@ export function useConversationSessionManager({
     }
 
     // Mostrar modal de feedback o redirigir al perfil
-    if (shouldRedirect) {
-      console.log(`[ConversationSessionManager] 🎯 shouldRedirect=true, ejecutando redirección`);
-      
-      // REDIRECCIÓN ROBUSTA - Directa con fallback
-      const executeRedirection = () => {
-        console.log(`[ConversationSessionManager] ↗️ Ejecutando redirección al perfil del usuario`);
+    // REDIRECCIÓN ROBUSTA - Directa con fallback
+    const executeRedirection = () => {
+      console.log(`[ConversationSessionManager] ↗️ Ejecutando redirección al perfil del usuario`);
+      try {
+        router.push('/settings/profile?fromChat=true&showFeedback=true');
+        console.log(`[ConversationSessionManager] ✅ Redirección con router.push() exitosa`);
+      } catch (error) {
+        console.error(`[ConversationSessionManager] ❌ Error en router.push():`, error);
+        console.log(`[ConversationSessionManager] 🔄 Intentando fallback con window.location.href`);
+        // Fallback robusto
         try {
-          router.push('/settings/profile?fromChat=true&showFeedback=true');
-          console.log(`[ConversationSessionManager] ✅ Redirección con router.push() exitosa`);
-        } catch (error) {
-          console.error(`[ConversationSessionManager] ❌ Error en router.push():`, error);
-          console.log(`[ConversationSessionManager] 🔄 Intentando fallback con window.location.href`);
-          // Fallback robusto
-          try {
-            window.location.href = '/settings/profile?fromChat=true&showFeedback=true';
-            console.log(`[ConversationSessionManager] ✅ Redirección con window.location.href exitosa`);
-          } catch (fallbackError) {
-            console.error(`[ConversationSessionManager] ❌ Error crítico en redirección:`, fallbackError);
-          }
+          window.location.href = '/settings/profile?fromChat=true&showFeedback=true';
+          console.log(`[ConversationSessionManager] ✅ Redirección con window.location.href exitosa`);
+        } catch (fallbackError) {
+          console.error(`[ConversationSessionManager] ❌ Error crítico en redirección:`, fallbackError);
         }
-      };
+      }
+    };
+    
+    if (reason === "conversación completada") {
+      console.log(`[ConversationSessionManager] 🤖 Conversación completada - Mostrando modal de feedback obligatorio`);
       
-      // Para cierres automáticos (cuando María termina de hablar), redirección inmediata
-      if (reason === "conversación completada") {
-        console.log(`[ConversationSessionManager] 🤖 Cierre automático detectado - Activando flag y redirección inmediata`);
+      // Para conversaciones completadas por María, SIEMPRE mostrar modal de feedback
+      if (onShowFeedbackModal) {
+        console.log(`[ConversationSessionManager] 📋 Activando modal de feedback`);
         
         // Activar flag para prevenir redirecciones conflictivas
         if (setAutoRedirectInProgress) {
@@ -201,37 +201,42 @@ export function useConversationSessionManager({
           console.log(`[ConversationSessionManager] 🚩 Flag de redirección automática activado`);
         }
         
+        try {
+          onShowFeedbackModal();
+          console.log(`[ConversationSessionManager] ✅ Modal de feedback activado exitosamente`);
+        } catch (modalError) {
+          console.error(`[ConversationSessionManager] ❌ Error al mostrar modal:`, modalError);
+          // Si el modal falla, redirección de emergencia
+          console.log(`[ConversationSessionManager] 🆘 Redirección de emergencia`);
+          setTimeout(() => {
+            executeRedirection();
+          }, 1000);
+        }
+      } else {
+        console.log(`[ConversationSessionManager] ⚠️ onShowFeedbackModal no disponible - Redirección directa`);
         setTimeout(() => {
           executeRedirection();
-          
-          // Limpiar flag después de ejecutar redirección
-          if (setAutoRedirectInProgress) {
-            setTimeout(() => {
-              setAutoRedirectInProgress(false);
-              console.log(`[ConversationSessionManager] 🏁 Flag de redirección automática desactivado`);
-            }, 2000); // Delay extra para asegurar que la redirección termine
-          }
-        }, 1500); // Tiempo suficiente para que termine el audio
-      } else {
-        // Para otros tipos de cierre, intentar modal primero, luego redirección
-        console.log(`[ConversationSessionManager] 👤 Cierre manual/otro - Priorizando experiencia de usuario`);
-        if (onShowFeedbackModal) {
-          console.log(`[ConversationSessionManager] 📋 Mostrando modal de feedback primero`);
-          try {
-            onShowFeedbackModal();
-            // Redirección de respaldo por si el modal falla
-            setTimeout(() => {
-              console.log(`[ConversationSessionManager] ⏰ Redirección de respaldo ejecutada`);
-              executeRedirection();
-            }, 10000); // 10 segundos de respaldo
-          } catch (modalError) {
-            console.log(`[ConversationSessionManager] ⚠️ Modal falló, redirección inmediata`);
-            setTimeout(executeRedirection, 1000);
-          }
-        } else {
-          // Sin modal disponible, redirección directa
+        }, 1000);
+      }
+    } else if (shouldRedirect) {
+      // Para otros tipos de cierre con redirección solicitada
+      console.log(`[ConversationSessionManager] 👤 Cierre manual/otro - Priorizando experiencia de usuario`);
+      if (onShowFeedbackModal) {
+        console.log(`[ConversationSessionManager] 📋 Mostrando modal de feedback primero`);
+        try {
+          onShowFeedbackModal();
+          // Redirección de respaldo por si el modal falla
+          setTimeout(() => {
+            console.log(`[ConversationSessionManager] ⏰ Redirección de respaldo ejecutada`);
+            executeRedirection();
+          }, 10000); // 10 segundos de respaldo
+        } catch (modalError) {
+          console.log(`[ConversationSessionManager] ⚠️ Modal falló, redirección inmediata`);
           setTimeout(executeRedirection, 1000);
         }
+      } else {
+        // Sin modal disponible, redirección directa
+        setTimeout(executeRedirection, 1000);
       }
     } else {
       console.log(`[ConversationSessionManager] 🚫 shouldRedirect=false, no se realizará redirección`);

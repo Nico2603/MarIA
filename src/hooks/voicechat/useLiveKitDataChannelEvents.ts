@@ -341,12 +341,22 @@ export function useLiveKitDataChannelEvents({
 
                 // Verificar si es mensaje de cierre ANTES de otras lógicas
                 if (mappedEvent.payload.isClosing === true) {
-                  console.log(`[DataChannel] 🚪 DETECTADO MENSAJE DE CIERRE - Activando finalización de sesión`);
-                  // Dar tiempo a que termine el TTS completamente antes de ejecutar endSession
+                  console.log(`[DataChannel] 🚪 DETECTADO MENSAJE DE CIERRE - Iniciando secuencia de finalización`);
+                  
+                  // 1. BLOQUEAR INMEDIATAMENTE toda interacción del usuario
+                  dispatch({ type: 'SET_SESSION_CLOSED', payload: true });
+                  dispatch({ type: 'SET_CONVERSATION_ACTIVE', payload: false });
+                  dispatch({ type: 'SET_LISTENING', payload: false });
+                  dispatch({ type: 'SET_PROCESSING', payload: false });
+                  
+                  console.log(`[DataChannel] 🔒 Estados de bloqueo activados - Usuario no puede continuar interactuando`);
+                  
+                  // 2. Ejecutar endSession con parámetros específicos para mostrar modal
                   setTimeout(() => {
-                    console.log(`[DataChannel] 🚀 Ejecutando endSession con redirección automática`);
-                    endSession(true, "conversación completada", true); // Notificar, dar razón específica, y redirigir
-                  }, 1000); // Reducido a 1 segundo ya que la redirección tiene su propio delay de 1.5s
+                    console.log(`[DataChannel] 🎯 Ejecutando endSession para mostrar modal de feedback`);
+                    endSession(true, "conversación completada", false); // NO redirigir automáticamente, mostrar modal primero
+                  }, 1000); // Tiempo mínimo para que termine el TTS
+                  
                   return; // Salir temprano para evitar otras lógicas
                 }
 
