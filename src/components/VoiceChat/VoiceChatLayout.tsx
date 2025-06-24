@@ -59,7 +59,7 @@ interface VoiceChatLayoutProps {
   toggleChatVisibility: () => void;
   handleStartListening: () => void;
   handleStopListening: () => void;
-  handleSendTextMessage: (text: string) => Promise<void>;
+  handleSendTextMessage: (text: string, clearTextInput?: () => void) => Promise<void>;
   dispatch: React.Dispatch<any>; // Considerar un tipo más específico si es posible
   onTavusVideoLoaded?: () => void;
   handleStartConversation: () => Promise<void>;
@@ -157,7 +157,7 @@ export default function VoiceChatLayout({
                 currentSessionTitle={currentSessionTitle}
                 textInput={textInput}
                 setTextInput={setTextInput}
-                handleSendTextMessage={handleSendTextMessage}
+                handleSendTextMessage={(text: string) => handleSendTextMessage(text, () => setTextInput(''))}
                 handleStartListening={handleStartListening}
                 handleStopListening={handleStopListening}
                 isListening={isListening}

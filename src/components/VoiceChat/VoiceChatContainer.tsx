@@ -245,6 +245,13 @@ function VoiceChatInner() {
     .filter(t => t.kind === Track.Kind.Audio && t.publication && t.publication.track)
     .map(t => t.publication.track!), [activeTracks]);
 
+  // Callback para eventos de DataChannel
+  const onDataReceivedLiveKitCallback = useCallback((...args: any[]) => {
+    if (dataReceivedHandlerRef.current) {
+      dataReceivedHandlerRef.current(...args);
+    }
+  }, []);
+
   // CRÍTICO: Configurar eventos de tracks de LiveKit
   useEffect(() => {
     if (!room) {
@@ -276,8 +283,10 @@ function VoiceChatInner() {
     room.on(RoomEvent.TrackSubscribed, onTrackSubscribed);
     room.on(RoomEvent.TrackUnsubscribed, onTrackUnsubscribed);
     room.on(RoomEvent.ParticipantDisconnected, onParticipantDisconnected);
+    room.on(RoomEvent.DataReceived, onDataReceivedLiveKitCallback);
 
-    console.log('[VoiceChatContainer] ✅ Eventos de tracks configurados exitosamente');
+    console.log('[VoiceChatContainer] ✅ Eventos de tracks y DataReceived configurados exitosamente');
+    console.log('[VoiceChatContainer] 🔗 DataReceived handler registrado - el chat debería funcionar correctamente');
 
     // Cleanup
     return () => {
@@ -285,8 +294,9 @@ function VoiceChatInner() {
       room.off(RoomEvent.TrackSubscribed, onTrackSubscribed);
       room.off(RoomEvent.TrackUnsubscribed, onTrackUnsubscribed);
       room.off(RoomEvent.ParticipantDisconnected, onParticipantDisconnected);
+      room.off(RoomEvent.DataReceived, onDataReceivedLiveKitCallback);
     };
-  }, [room, handleTrackSubscribed, handleTrackUnsubscribed, handleParticipantDisconnected]);
+  }, [room, handleTrackSubscribed, handleTrackUnsubscribed, handleParticipantDisconnected, onDataReceivedLiveKitCallback]);
 
   const onConnectedCallback = useCallback((connectedRoom: Room) => {
     roomRef.current = connectedRoom;
@@ -310,12 +320,6 @@ function VoiceChatInner() {
     setAppError('livekit', `Error de conexión: ${err.message}`);
     setInitializationPhase('auth');
   }, [setAppError]);
-
-  const onDataReceivedLiveKitCallback = useCallback((...args: any[]) => {
-    if (dataReceivedHandlerRef.current) {
-      dataReceivedHandlerRef.current(...args);
-    }
-  }, []);
 
   // Como ahora usamos LiveKitRoom, necesitamos obtener la conexión de manera diferente
   const connectionState = room?.state || LiveKitConnectionState.Disconnected;

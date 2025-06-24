@@ -131,10 +131,18 @@ export function useLiveKitDataChannelEvents({
   }, [room, clearError, conversationActive]);
 
   const handleDataReceived = useCallback((payload: Uint8Array, participant?: RemoteParticipant, kind?: DataPacket_Kind) => {
+    console.log(`[DataChannel] 📨 Datos recibidos:`, {
+      hasParticipant: !!participant,
+      participantIdentity: participant?.identity,
+      isReliable: kind === DataPacket_Kind.RELIABLE,
+      payloadSize: payload?.length || 0,
+      isValidAgent: participant ? isValidAgent(participant.identity) : false
+    });
+    
     if (kind === DataPacket_Kind.RELIABLE && participant && isValidAgent(participant.identity)) {
       try {
         const rawData = new TextDecoder().decode(payload);
-        console.log(`[DataChannel] Mensaje recibido del backend: Participante='${participant.identity}', Payload='${rawData}'`);
+        console.log(`[DataChannel] ✅ Mensaje VÁLIDO recibido del backend: Participante='${participant.identity}', Payload='${rawData}'`);
         
         const event = JSON.parse(rawData);
 
@@ -425,7 +433,7 @@ export function useLiveKitDataChannelEvents({
     isReadyToStart
   ]);
 
-  const handleSendTextMessage = useCallback(async (messageText: string) => {
+  const handleSendTextMessage = useCallback(async (messageText: string, clearTextInput?: () => void) => {
     const trimmedInput = messageText.trim();
     
     console.log('[handleSendTextMessage] 🔍 Iniciando envío de texto:', {
@@ -479,6 +487,12 @@ export function useLiveKitDataChannelEvents({
     try {
       console.log(`[handleSendTextMessage] ✅ Condiciones cumplidas, enviando texto: "${trimmedInput}"`);
       console.log(`[handleSendTextMessage] Session ID activa: ${activeSessionId}`);
+      
+      // LIMPIAR EL CAMPO DE TEXTO INMEDIATAMENTE DESPUÉS DE LA VALIDACIÓN
+      if (clearTextInput) {
+        console.log('[handleSendTextMessage] 🧹 Limpiando campo de texto...');
+        clearTextInput();
+      }
       
       // Agregar el mensaje del usuario a la UI inmediatamente
       const userMessage: Message = { 
