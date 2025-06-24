@@ -256,7 +256,11 @@ export function useLiveKitDataChannelEvents({
               
               // Solo agregar si no existe ya un mensaje similar reciente (evitar duplicados)
               // Esto pasa cuando el backend procesa el mensaje del usuario y lo reenvía
-              console.log(`[DataChannel] Transcripción del usuario recibida del backend:`, userMessage);
+              console.log(`[DataChannel] 📝 Transcripción del usuario recibida del backend:`, userMessage);
+              console.log(`[DataChannel] 🔍 Texto transcrito exacto: "${mappedEvent.payload.transcript}"`);
+              
+              // Agregar el mensaje del usuario al chat para mantener el flujo visual
+              dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
               
               if (isListening) {
                 dispatch({ type: 'SET_LISTENING', payload: false });
@@ -290,6 +294,8 @@ export function useLiveKitDataChannelEvents({
               };
               
               console.log(`[DataChannel] ${existingMessageElement ? 'Actualizando' : 'Agregando'} respuesta de IA:`, aiMessage);
+              console.log(`[DataChannel] 🎤 Texto EXACTO que se mostrará en chat: "${messageText}"`);
+              console.log(`[DataChannel] 🔊 Este mismo texto será convertido a voz por el sistema TTS`);
               console.log(`[DataChannel] 🎥 Video detectado en payload:`, mappedEvent.payload.suggestedVideo);
               
               if (existingMessageElement) {
@@ -303,6 +309,7 @@ export function useLiveKitDataChannelEvents({
               // Si es el saludo inicial, establecer greetingMessageId
               if (mappedEvent.payload.isInitialGreeting && !greetingMessageId) {
                 console.log('[DataChannel] 📢 Recibido saludo inicial, estableciendo greetingMessageId:', aiMessage.id);
+                console.log('[DataChannel] 🎯 SALUDO INICIAL - Texto que se muestra en chat y se convierte a voz:', messageText);
                 dispatch({ type: 'SET_GREETING_MESSAGE_ID', payload: aiMessage.id });
               }
               
@@ -482,6 +489,8 @@ export function useLiveKitDataChannelEvents({
       };
       
       console.log(`[handleSendTextMessage] 📝 Agregando mensaje del usuario a la UI:`, userMessage);
+      console.log(`[handleSendTextMessage] 💬 Texto EXACTO que escribió el usuario: "${trimmedInput}"`);
+      console.log(`[handleSendTextMessage] 🔄 Este texto se enviará al backend y aparecerá en el chat`);
       dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
       
       // Marcar como procesando ANTES de enviar
