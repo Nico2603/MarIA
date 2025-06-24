@@ -206,11 +206,38 @@ function VoiceChatInner() {
     roomRef
   });
 
-  const tavusVideoTrack = useMemo(() => activeTracks.find(t => 
-    t.kind === Track.Kind.Video && 
-    t.identity === 'tavus-avatar-agent' && 
-    t.source === Track.Source.Camera
-  ), [activeTracks]);
+  const tavusVideoTrack = useMemo(() => {
+    const foundTrack = activeTracks.find(t => 
+      t.kind === Track.Kind.Video && 
+      t.identity === 'tavus-avatar-agent' && 
+      t.source === Track.Source.Camera
+    );
+    
+    // DEBUGGING: Log detallado sobre el track de video de Tavus
+    console.log(`[VoiceChatContainer] 🔍 Buscando track de video de Tavus:`);
+    console.log(`  - Tracks activos totales: ${activeTracks.length}`);
+    console.log(`  - Tracks de Tavus:`, activeTracks.filter(t => t.identity === 'tavus-avatar-agent'));
+    console.log(`  - Tracks de video:`, activeTracks.filter(t => t.kind === Track.Kind.Video));
+    console.log(`  - Track encontrado:`, foundTrack);
+    
+    if (foundTrack) {
+      console.log(`[VoiceChatContainer] ✅ TRACK DE VIDEO DE TAVUS ENCONTRADO!`);
+      console.log(`  - ID: ${foundTrack.id}`);
+      console.log(`  - Kind: ${foundTrack.kind}`);
+      console.log(`  - Source: ${foundTrack.source}`);
+      console.log(`  - Has Track: ${!!foundTrack.publication.track}`);
+    } else {
+      console.log(`[VoiceChatContainer] ❌ TRACK DE VIDEO DE TAVUS NO ENCONTRADO`);
+      
+      // Debug adicional para entender por qué no se encuentra
+      const tavusTracks = activeTracks.filter(t => t.identity === 'tavus-avatar-agent');
+      if (tavusTracks.length > 0) {
+        console.log(`[VoiceChatContainer] 🔍 Pero hay ${tavusTracks.length} tracks de Tavus:`, tavusTracks.map(t => `${t.kind}:${t.source}`));
+      }
+    }
+    
+    return foundTrack;
+  }, [activeTracks]);
 
   const audioTracks = useMemo(() => activeTracks
     .filter(t => t.kind === Track.Kind.Audio && t.publication && t.publication.track)

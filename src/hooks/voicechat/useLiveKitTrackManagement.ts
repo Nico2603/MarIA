@@ -50,26 +50,67 @@ export function useLiveKitTrackManagement({
       source: publication.source,
     };
 
+    // DEBUGGING: Log detallado para el avatar de Tavus
+    if (participant.identity === 'tavus-avatar-agent') {
+      console.log(`[TrackManagement] 🎬 TAVUS TRACK DETECTADO:`);
+      console.log(`  - Participant: ${participant.identity}`);
+      console.log(`  - Track Kind: ${track.kind}`);
+      console.log(`  - Track Source: ${publication.source}`);
+      console.log(`  - Track SID: ${publication.trackSid}`);
+      console.log(`  - Track Attached: ${track.attachedElements.length > 0}`);
+      console.log(`  - Publication State: ${publication.isSubscribed}`);
+      console.log(`  - Is Video Track: ${track.kind === Track.Kind.Video}`);
+      console.log(`  - Is Camera Source: ${publication.source === Track.Source.Camera}`);
+    }
+
     setActiveTracks((prevTracks) => {
       if (prevTracks.find(t => t.id === newTrackInfo.id)) {
+        console.log(`[TrackManagement] ⚠️ Track ya existe: ${newTrackInfo.id}`);
         return prevTracks;
       }
-      return [...prevTracks, newTrackInfo];
+      
+      const updatedTracks = [...prevTracks, newTrackInfo];
+      
+      // Log cuando se agrega un track de video del avatar
+      if (participant.identity === 'tavus-avatar-agent' && track.kind === Track.Kind.Video) {
+        console.log(`[TrackManagement] ✅ VIDEO TRACK DE TAVUS AGREGADO EXITOSAMENTE`);
+        console.log(`[TrackManagement] 📊 Tracks activos actuales:`, updatedTracks.map(t => `${t.identity}:${t.kind}:${t.source}`));
+      }
+      
+      return updatedTracks;
     });
   }, []);
 
   const removeTrack = useCallback((trackSid: string, participantIdentity: string, trackKind: Track.Kind) => {
-    setActiveTracks((prevTracks) => prevTracks.filter(t => !(t.publication?.trackSid === trackSid && t.identity === participantIdentity)));
+    console.log(`[TrackManagement] ❌ Removiendo track: ${participantIdentity}:${trackKind}:${trackSid}`);
+    
+    setActiveTracks((prevTracks) => {
+      const filtered = prevTracks.filter(t => !(t.publication?.trackSid === trackSid && t.identity === participantIdentity));
+      
+      if (participantIdentity === 'tavus-avatar-agent' && trackKind === Track.Kind.Video) {
+        console.log(`[TrackManagement] ❌ VIDEO TRACK DE TAVUS REMOVIDO`);
+        console.log(`[TrackManagement] 📊 Tracks restantes:`, filtered.map(t => `${t.identity}:${t.kind}:${t.source}`));
+      }
+      
+      return filtered;
+    });
   }, []);
 
   const handleTrackSubscribed = useCallback((track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
     const localParticipant = roomRef.current?.localParticipant;
+
+    console.log(`[TrackManagement] 📡 Track suscrito:`);
+    console.log(`  - Participant: ${participant.identity}`);
+    console.log(`  - Track Kind: ${track.kind}`);
+    console.log(`  - Track Source: ${publication.source}`);
+    console.log(`  - Is Local: ${participant.identity === localParticipant?.identity}`);
 
     if (
       localParticipant &&
       publication.kind === Track.Kind.Video &&
       participant.identity === localParticipant.identity
     ) {
+      console.log(`[TrackManagement] ⏭️ Ignorando track de video local`);
       return;
     }
 
@@ -78,12 +119,25 @@ export function useLiveKitTrackManagement({
   }, [addTrack, roomRef]);
 
   const handleTrackUnsubscribed = useCallback((track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
+    console.log(`[TrackManagement] 📤 Track desuscrito:`);
+    console.log(`  - Participant: ${participant.identity}`);
+    console.log(`  - Track Kind: ${track.kind}`);
+    console.log(`  - Track Source: ${publication.source}`);
+    
     removeTrack(publication.trackSid, participant.identity, track.kind);
   }, [removeTrack]);
 
   const handleParticipantDisconnected = useCallback((participant: RemoteParticipant) => {
+    console.log(`[TrackManagement] 👋 Participante desconectado: ${participant.identity}`);
+    
     setActiveTracks((prevTracks) => {
-      return prevTracks.filter(t => t.identity !== participant.identity);
+      const filtered = prevTracks.filter(t => t.identity !== participant.identity);
+      
+      if (participant.identity === 'tavus-avatar-agent') {
+        console.log(`[TrackManagement] ❌ TAVUS AVATAR DESCONECTADO - Todos sus tracks removidos`);
+      }
+      
+      return filtered;
     });
   }, []);
 
