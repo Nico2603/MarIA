@@ -177,6 +177,8 @@ function VoiceChatInner() {
     };
   }, [room, userProfile]);
 
+
+
   // Función para mostrar/ocultar el chat
   const toggleChatVisibility = useCallback(() => {
     dispatch({ type: 'TOGGLE_CHAT_VISIBILITY' });
@@ -242,6 +244,49 @@ function VoiceChatInner() {
   const audioTracks = useMemo(() => activeTracks
     .filter(t => t.kind === Track.Kind.Audio && t.publication && t.publication.track)
     .map(t => t.publication.track!), [activeTracks]);
+
+  // CRÍTICO: Configurar eventos de tracks de LiveKit
+  useEffect(() => {
+    if (!room) {
+      console.log('[VoiceChatContainer] ⚠️ No hay room para configurar eventos de tracks');
+      return;
+    }
+
+    console.log('[VoiceChatContainer] 🔧 Configurando eventos de tracks de LiveKit...');
+
+    // Manejar tracks cuando se suscriben
+    const onTrackSubscribed = (track: any, publication: any, participant: any) => {
+      console.log('[VoiceChatContainer] 🎉 EVENTO: TrackSubscribed recibido!');
+      handleTrackSubscribed(track, publication, participant);
+    };
+
+    // Manejar tracks cuando se des-suscriben
+    const onTrackUnsubscribed = (track: any, publication: any, participant: any) => {
+      console.log('[VoiceChatContainer] 👋 EVENTO: TrackUnsubscribed recibido!');
+      handleTrackUnsubscribed(track, publication, participant);
+    };
+
+    // Manejar cuando los participantes se desconectan
+    const onParticipantDisconnected = (participant: any) => {
+      console.log('[VoiceChatContainer] 🚪 EVENTO: ParticipantDisconnected recibido!');
+      handleParticipantDisconnected(participant);
+    };
+
+    // Registrar eventos
+    room.on(RoomEvent.TrackSubscribed, onTrackSubscribed);
+    room.on(RoomEvent.TrackUnsubscribed, onTrackUnsubscribed);
+    room.on(RoomEvent.ParticipantDisconnected, onParticipantDisconnected);
+
+    console.log('[VoiceChatContainer] ✅ Eventos de tracks configurados exitosamente');
+
+    // Cleanup
+    return () => {
+      console.log('[VoiceChatContainer] 🧹 Limpiando eventos de tracks...');
+      room.off(RoomEvent.TrackSubscribed, onTrackSubscribed);
+      room.off(RoomEvent.TrackUnsubscribed, onTrackUnsubscribed);
+      room.off(RoomEvent.ParticipantDisconnected, onParticipantDisconnected);
+    };
+  }, [room, handleTrackSubscribed, handleTrackUnsubscribed, handleParticipantDisconnected]);
 
   const onConnectedCallback = useCallback((connectedRoom: Room) => {
     roomRef.current = connectedRoom;
