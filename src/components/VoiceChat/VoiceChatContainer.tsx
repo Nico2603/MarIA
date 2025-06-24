@@ -247,6 +247,27 @@ function VoiceChatInner() {
 
   // Como ahora usamos LiveKitRoom, necesitamos obtener la conexión de manera diferente
   const connectionState = room?.state || LiveKitConnectionState.Disconnected;
+  
+  // Determinar si está listo para iniciar
+  useEffect(() => {
+    const calculatedIsReadyToStart = 
+      authStatus === 'authenticated' &&
+      connectionState === LiveKitConnectionState.Connected &&
+      !!discoveredTargetParticipant &&
+      !state.conversationActive &&
+      !!userProfile;
+      
+    if (state.isReadyToStart !== calculatedIsReadyToStart) {
+      dispatch({ type: 'SET_READY_TO_START', payload: calculatedIsReadyToStart });
+    }
+  }, [
+    authStatus,
+    connectionState,
+    discoveredTargetParticipant,
+    state.conversationActive,
+    state.isReadyToStart,
+    userProfile
+  ]);
 
   // Optimized participant discovery - SIMPLIFICADO
   useEffect(() => {
@@ -551,7 +572,7 @@ function VoiceChatInner() {
         isSessionClosed={isSessionClosed}
         conversationActive={conversationActive}
         isPushToTalkActive={isPushToTalkActive}
-        isReadyToStart={isReadyToStart}
+        isReadyToStart={state.isReadyToStart}
         authStatus={authStatus}
         userName={session?.user?.name}
         messages={messages}

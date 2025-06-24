@@ -46,14 +46,13 @@ const ChatInput: React.FC<ChatInputProps> = ({
     <div className="p-4 bg-transparent">
       <form onSubmit={(e) => { 
         e.preventDefault(); 
-        // FUNCIONALIDAD DE TEXTO TEMPORALMENTE DESHABILITADA
-        // if (safeTextInput.trim() && conversationActive && !isSessionClosed && !isProcessing && !isSpeaking) {
-        //   console.log('[ChatInput] 📝 Enviando mensaje por formulario:', safeTextInput);
-        //   handleSendTextMessage(safeTextInput);
-        // }
+        if (safeTextInput.trim() && conversationActive && !isSessionClosed && !isProcessing && !isSpeaking && !isThinking) {
+          console.log('[ChatInput] 📝 Enviando mensaje por formulario:', safeTextInput);
+          handleSendTextMessage(safeTextInput);
+        }
       }} className="flex items-center space-x-3">
         
-        {/* ENTRADA DE TEXTO TEMPORALMENTE DESHABILITADA - Solo funcionalidad por voz
+        {/* Entrada de texto habilitada */}
         <textarea
           ref={textAreaRef}
           value={safeTextInput}
@@ -72,7 +71,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
-              if (safeTextInput.trim() && conversationActive && !isSessionClosed && !isProcessing && !isSpeaking) {
+              if (safeTextInput.trim() && conversationActive && !isSessionClosed && !isProcessing && !isSpeaking && !isThinking) {
                 console.log('[ChatInput] 📝 Enviando mensaje por Enter:', safeTextInput);
                 handleSendTextMessage(safeTextInput);
               }
@@ -81,14 +80,15 @@ const ChatInput: React.FC<ChatInputProps> = ({
               e.stopPropagation();
             }
           }}
-          disabled={!conversationActive || isSessionClosed || isProcessing || isSpeaking}
+          disabled={!conversationActive || isSessionClosed || isProcessing || isSpeaking || isThinking}
         />
         
+        {/* Botón de enviar texto */}
         <button
           type="submit"
-          disabled={!conversationActive || isSessionClosed || isProcessing || isSpeaking || !safeTextInput.trim()}
+          disabled={!conversationActive || isSessionClosed || isProcessing || isSpeaking || isThinking || !safeTextInput.trim()}
           className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-neutral-900 shadow-md ${
-            (!conversationActive || isSessionClosed || isProcessing || isSpeaking || !safeTextInput.trim()) 
+            (!conversationActive || isSessionClosed || isProcessing || isSpeaking || isThinking || !safeTextInput.trim()) 
               ? 'bg-neutral-300 dark:bg-neutral-600 text-neutral-500 cursor-not-allowed opacity-50' 
               : 'bg-green-600 hover:bg-green-700 text-white focus:ring-green-500'
           }`}
@@ -96,13 +96,12 @@ const ChatInput: React.FC<ChatInputProps> = ({
         >
           <Send className="h-5 w-5" />
         </button>
-        */}
 
         {/* Botón de micrófono */}
         <button 
           type="button"
           onClick={isListening ? handleStopListening : handleStartListening} 
-          disabled={!conversationActive || isSessionClosed || isProcessing || isSpeaking}
+          disabled={!conversationActive || isSessionClosed || isProcessing || isSpeaking || isThinking}
           className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-neutral-900 shadow-md ${ 
             isListening
             ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-400' 
@@ -110,7 +109,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
           } ${ 
             (isPushToTalkActive) ? 'ring-4 ring-offset-0 ring-green-400 scale-110' : '' 
           } ${ 
-            (!conversationActive || isSessionClosed || isProcessing || isSpeaking) ? 'opacity-50 cursor-not-allowed' : ''
+            (!conversationActive || isSessionClosed || isProcessing || isSpeaking || isThinking) ? 'opacity-50 cursor-not-allowed' : ''
           }`}
           aria-label={isListening ? "Detener micrófono" : "Activar micrófono"}
           onMouseDown={() => { console.log('[ChatInput] 🎤 Botón mic: mouse down'); onSpeechStart?.(); }}
@@ -138,7 +137,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
         </div>
       ) : (
           <p className={`text-xs mt-2 text-center text-neutral-500 dark:text-neutral-400 ${!conversationActive ? 'opacity-50' : 'font-medium'}`}>
-              {conversationActive ? 'Mantén pulsada la tecla [Espacio] para hablar.' : 'Inicia la conversación para activar el micrófono.'}
+              {conversationActive ? 'Escribe un mensaje o mantén pulsada la tecla [Espacio] para hablar.' : 'Inicia la conversación para activar el chat.'}
           </p>
       )}
     </div>
