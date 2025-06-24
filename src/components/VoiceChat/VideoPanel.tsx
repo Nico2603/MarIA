@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Loader2, Mic } from 'lucide-react';
+import { Loader2, Mic, MessageSquare, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { ActiveTrackInfo } from '@/hooks/voicechat/useLiveKitTrackManagement';
 import RemoteTrackPlayer from './RemoteTrackPlayer';
@@ -206,6 +206,7 @@ const VideoPanel: React.FC<VideoPanelProps> = ({
   handleStartListening,
   handleStopListening,
   isPushToTalkActive,
+  toggleChatVisibility,
   onVideoLoaded,
   handleStartConversation,
   isReadyToStart,
@@ -262,6 +263,23 @@ const VideoPanel: React.FC<VideoPanelProps> = ({
         handleStopListening={handleStopListening}
         isAvatarLoaded={isAvatarLoaded}
       />
+
+      {/* Botón toggle del chat */}
+      {toggleChatVisibility && (
+        <motion.button
+          onClick={toggleChatVisibility}
+          className="absolute top-4 left-4 w-12 h-12 bg-black/50 backdrop-blur-sm rounded-lg border border-white/20 flex items-center justify-center text-white hover:bg-black/70 transition-all duration-200 z-30"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          aria-label={isChatVisible ? "Ocultar chat" : "Mostrar chat"}
+        >
+          {isChatVisible ? (
+            <ChevronsLeft className="h-5 w-5" />
+          ) : (
+            <MessageSquare className="h-5 w-5" />
+          )}
+        </motion.button>
+      )}
 
       {/* Indicador de estado en la esquina */}
       {conversationActive && (

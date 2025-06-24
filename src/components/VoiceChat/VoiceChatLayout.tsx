@@ -124,7 +124,7 @@ export default function VoiceChatLayout({
       <NotificationDisplay notification={notification} />
 
       <div className="flex flex-1 h-full overflow-hidden">
-        {/* Panel del chat - TEMPORALMENTE OCULTO EN MODO SOLO VOZ */}
+        {/* Panel del chat - Habilitado con toggle */}
         <AnimatePresence>
           {isChatVisible && (
             <motion.aside
@@ -187,6 +187,7 @@ export default function VoiceChatLayout({
               handleStartListening={handleStartListening}
               handleStopListening={handleStopListening}
               isPushToTalkActive={isPushToTalkActive}
+              toggleChatVisibility={toggleChatVisibility}
               onVideoLoaded={onTavusVideoLoaded}
               handleStartConversation={handleStartConversation}
               isReadyToStart={isReadyToStart}
@@ -205,6 +206,7 @@ export default function VoiceChatLayout({
               handleStartListening={handleStartListening}
               handleStopListening={handleStopListening}
               isPushToTalkActive={isPushToTalkActive}
+              toggleChatVisibility={toggleChatVisibility}
               handleStartConversation={handleStartConversation}
               isReadyToStart={isReadyToStart}
               authStatus={authStatus}

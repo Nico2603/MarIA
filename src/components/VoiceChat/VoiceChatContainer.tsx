@@ -15,6 +15,7 @@ import {
     ConnectionState as LiveKitConnectionState,
     DataPublishOptions
 } from 'livekit-client';
+import { LiveKitRoom, useMaybeRoomContext } from '@livekit/components-react';
 import { Send, AlertCircle, Mic, ChevronsLeft, ChevronsRight, MessageSquare, Loader2, Terminal, Clock, Calendar } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
@@ -28,7 +29,6 @@ import { useError } from '@/contexts/ErrorContext';
 import { useNotifications } from '@/utils/notifications';
 import NotificationDisplay from '@/components/ui/NotificationDisplay';
 import ErrorDisplay from '@/components/ui/ErrorDisplay';
-// import { VideoPanelSkeleton } from './VideoPanel'; // Comentado - no se usa
 import type { Message } from "@/types";
 import { useLiveKitTrackManagement, ActiveTrackInfo } from '@/hooks/voicechat/useLiveKitTrackManagement';
 import RemoteTrackPlayer from './RemoteTrackPlayer';
@@ -51,11 +51,13 @@ const DynamicVideoPanel = dynamic(() => import('./VideoPanel'), {
   ssr: false
 });
 
-function VoiceChatContainer() {
+// Componente interno que usa el contexto de LiveKit
+function VoiceChatInner() {
   const { data: session, status: authStatus } = useSession();
   const router = useRouter();
   const { error: appError, setError: setAppError, clearError } = useError();
   const { notification, showNotification } = useNotifications();
+  const room = useMaybeRoomContext();
 
   const [state, dispatch] = useReducer(voiceChatReducer, initialState);
   const [discoveredTargetParticipant, setDiscoveredTargetParticipant] = useState<RemoteParticipant | null>(null);
@@ -63,6 +65,11 @@ function VoiceChatContainer() {
   const [tavusVideoLoaded, setTavusVideoLoaded] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [autoRedirectInProgress, setAutoRedirectInProgress] = useState(false);
+  
+  // Estado para transcripciones
+  const [transcriptions, setTranscriptions] = useState<{[key: string]: any}>({});
+  const [transcriptionCompleted, setTranscriptionCompleted] = useState<any[]>([]);
+  const lastTextRef = useRef<{[key: string]: string}>({});
   
   const dataReceivedHandlerRef = useRef<((...args: any[]) => void) | null>(null);
   
@@ -95,15 +102,84 @@ function VoiceChatContainer() {
   const processingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialized = useRef(false);
 
-  // TEMPORALMENTE DESHABILITADO - Solo funcionalidad por voz
-  // const toggleChatVisibility = useCallback(() => {
-  //   dispatch({ type: 'TOGGLE_CHAT_VISIBILITY' });
-  // }, []);
-  
-  // Función temporal para mantener la compatibilidad
+  // Actualizar roomRef cuando cambie room
+  useEffect(() => {
+    roomRef.current = room || null;
+  }, [room]);
+
+  // useEffect para capturar transcripciones en tiempo real
+  useEffect(() => {
+    if (!room || !userProfile) {
+      return;
+    }
+
+    const updateTranscriptions = (segments: any[], participant?: Participant) => {
+      if (!participant) return;
+      
+      setTranscriptions((prev) => {
+        const newTranscriptions = { ...prev };
+        for (const segment of segments) {
+          newTranscriptions[segment.id] = {
+            ...segment,
+            origin: participant.isLocal
+              ? userProfile?.username || "Tú"
+              : "MarIA", // Nombre del asistente
+          };
+        }
+        return newTranscriptions;
+      });
+
+      setTranscriptionCompleted((prev) => {
+        const newTranscriptions = [...prev];
+
+        for (const segment of segments) {
+          const newText = segment.text.trim();
+          const speaker = participant.isLocal
+            ? userProfile?.username || "Tú"
+            : "MarIA";
+
+          // Si el speaker tiene un texto previo, extraer solo la parte nueva
+          if (lastTextRef.current[speaker]) {
+            const prevText = lastTextRef.current[speaker];
+
+            // Remover la parte repetida al inicio
+            const cleanText = newText.replace(prevText, "").trim();
+
+            if (cleanText) {
+              newTranscriptions.push({
+                id: segment.id,
+                text: cleanText,
+                origin: speaker,
+              });
+
+              // Guardar este texto como el nuevo último texto recibido
+              lastTextRef.current[speaker] = newText;
+            }
+          } else {
+            // Primer fragmento de texto del speaker, se almacena completo
+            newTranscriptions.push({
+              id: segment.id,
+              text: newText,
+              origin: speaker,
+            });
+
+            lastTextRef.current[speaker] = newText;
+          }
+        }
+
+        return newTranscriptions;
+      });
+    };
+
+    room.on(RoomEvent.TranscriptionReceived, updateTranscriptions);
+    return () => {
+      room.off(RoomEvent.TranscriptionReceived, updateTranscriptions);
+    };
+  }, [room, userProfile]);
+
+  // Función para mostrar/ocultar el chat
   const toggleChatVisibility = useCallback(() => {
-    // No hacer nada - chat siempre oculto para funcionalidad solo por voz
-    console.log('Toggle chat deshabilitado - solo funcionalidad por voz');
+    dispatch({ type: 'TOGGLE_CHAT_VISIBILITY' });
   }, []);
 
   const handleTavusVideoLoaded = useCallback(() => {
@@ -140,8 +216,6 @@ function VoiceChatContainer() {
     .filter(t => t.kind === Track.Kind.Audio && t.publication && t.publication.track)
     .map(t => t.publication.track!), [activeTracks]);
 
-  // Las funciones handleStartListening y handleStopListening ahora se obtienen del hook useSpeechToTextControls
-
   const onConnectedCallback = useCallback((connectedRoom: Room) => {
     roomRef.current = connectedRoom;
     clearError();
@@ -171,38 +245,8 @@ function VoiceChatContainer() {
     }
   }, []);
 
-  // Memoizar la configuración del hook para evitar re-creaciones
-  const liveKitConnectionConfig = useMemo(() => ({
-    userProfile: userProfile,
-    initialContext: initialContext,
-    activeSessionId: activeSessionId,
-    onConnected: onConnectedCallback,
-    onDisconnected: onDisconnectedCallback,
-    onConnectionError: onConnectionErrorCallback,
-    handleTrackSubscribed,
-    handleTrackUnsubscribed,
-    handleParticipantDisconnected,
-    onDataReceived: onDataReceivedLiveKitCallback,
-  }), [
-    userProfile?.id,
-    userProfile?.username,
-    userProfile?.email,
-    initialContext,
-    activeSessionId,
-    onConnectedCallback,
-    onDisconnectedCallback,
-    onConnectionErrorCallback,
-    handleTrackSubscribed,
-    handleTrackUnsubscribed,
-    handleParticipantDisconnected,
-    onDataReceivedLiveKitCallback,
-  ]);
-
-  const {
-    room,
-    connectionState,
-    disconnectFromLiveKit,
-  } = useLiveKitConnectionManager(liveKitConnectionConfig);
+  // Como ahora usamos LiveKitRoom, necesitamos obtener la conexión de manera diferente
+  const connectionState = room?.state || LiveKitConnectionState.Disconnected;
 
   // Optimized participant discovery - SIMPLIFICADO
   useEffect(() => {
@@ -230,7 +274,6 @@ function VoiceChatContainer() {
   // User profile management - Obtener perfil real de la base de datos
   useEffect(() => {
     if (authStatus === 'authenticated' && session?.user?.email && !userProfile) {
-      // Obtener el perfil real de la base de datos
       const fetchUserProfile = async () => {
         try {
           const response = await fetch('/api/profile');
@@ -276,8 +319,12 @@ function VoiceChatContainer() {
     console.log(`[VoiceChatContainer] ✅ Modal de feedback activado - estado actualizado`);
   }, []);
 
-  // Conversation session management
-  const conversationManagerProps = useMemo(() => ({
+  // Conversation session management - Simplified
+  const {
+    endSession,
+    handleStartConversation,
+    redirectToProfile,
+  } = useConversationSessionManager({
     session,
     authStatus,
     conversationActive: state.conversationActive,
@@ -287,32 +334,17 @@ function VoiceChatContainer() {
     isSessionClosed: state.isSessionClosed,
     roomRef,
     audioStreamRef,
-    disconnectFromLiveKit,
+    disconnectFromLiveKit: async () => {
+      if (room) {
+        await room.disconnect();
+      }
+    },
     setAppError,
     showNotification,
     dispatch,
     onShowFeedbackModal: handleShowFeedbackModal,
     setAutoRedirectInProgress,
-  }), [
-    session?.user?.id,
-    authStatus, 
-    state.conversationActive, 
-    state.isReadyToStart, 
-    state.messages.length,
-    state.activeSessionId, 
-    state.isSessionClosed,
-    disconnectFromLiveKit, 
-    setAppError, 
-    showNotification,
-    handleShowFeedbackModal,
-    setAutoRedirectInProgress,
-  ]);
-
-  const {
-    endSession,
-    handleStartConversation,
-    redirectToProfile,
-  } = useConversationSessionManager(conversationManagerProps);
+  });
 
   // Handlers para el modal de feedback
   const handleCloseFeedbackModal = useCallback(() => {
@@ -353,8 +385,8 @@ function VoiceChatContainer() {
     }, 1000);
   }, [redirectToProfile, showNotification, autoRedirectInProgress]);
 
-  // Data channel events
-  const dataChannelEventsProps = useMemo(() => ({
+  // Data channel events - Simplified
+  const { handleDataReceived, handleSendTextMessage } = useLiveKitDataChannelEvents({
     dispatch,
     conversationActive: state.conversationActive,
     greetingMessageId: state.greetingMessageId,
@@ -365,24 +397,10 @@ function VoiceChatContainer() {
     isSpeaking: state.isSpeaking,
     isSessionClosed: state.isSessionClosed,
     activeSessionId: state.activeSessionId,
-    room: room,
+    room: room || null,
     roomRef: roomRef,
     isReadyToStart: state.isReadyToStart,
-  }), [
-    state.conversationActive, 
-    state.greetingMessageId, 
-    state.currentSpeakingId,
-    endSession, 
-    state.isProcessing, 
-    state.isListening, 
-    state.isSpeaking,
-    state.isSessionClosed, 
-    state.activeSessionId, 
-    room?.name,
-    state.isReadyToStart,
-  ]);
-
-  const { handleDataReceived, handleSendTextMessage } = useLiveKitDataChannelEvents(dataChannelEventsProps);
+  });
 
   useEffect(() => {
     dataReceivedHandlerRef.current = handleDataReceived;
@@ -451,21 +469,18 @@ function VoiceChatContainer() {
     conversationActive: state.conversationActive,
     roomRef,
     setIsListening,
-    tavusVideoLoaded: tavusVideoLoaded, // << NUEVO: Pasar estado de carga del video
+    tavusVideoLoaded: tavusVideoLoaded,
   }), [
-    state.isListening, 
-    state.isProcessing, 
-    state.isSpeaking, 
-    state.isSessionClosed, 
+    state.isListening,
+    state.isProcessing,
+    state.isSpeaking,
+    state.isSessionClosed,
     state.conversationActive,
     setIsListening,
-    tavusVideoLoaded, // << NUEVO: Incluir en dependencias
+    tavusVideoLoaded,
   ]);
 
-  const {
-    handleStartListening: sttHandleStartListening,
-    handleStopListening: sttHandleStopListening
-  } = useSpeechToTextControls(speechToTextControlsProps);
+  const { handleStartListening, handleStopListening } = useSpeechToTextControls(speechToTextControlsProps);
 
   // Push to talk
   usePushToTalk({
@@ -475,85 +490,52 @@ function VoiceChatContainer() {
     isThinking: state.isThinking,
     conversationActive: state.conversationActive,
     isSessionClosed: state.isSessionClosed,
-    onStartListening: sttHandleStartListening, // << CORREGIDO: Usar las funciones que realmente controlan el micrófono
-    onStopListening: sttHandleStopListening,   // << CORREGIDO: Usar las funciones que realmente controlan el micrófono
+    onStartListening: handleStartListening,
+    onStopListening: handleStopListening,
     setIsPushToTalkActive,
-    tavusVideoLoaded: tavusVideoLoaded, // << NUEVO: Pasar estado de carga del video
+    tavusVideoLoaded: tavusVideoLoaded,
   });
 
   // Session timeout
-  const { isTimeRunningOut } = useSessionTimeout({
-    conversationActive: state.conversationActive,
+  useSessionTimeout({
     sessionStartTime: state.sessionStartTime,
     isSessionClosed: state.isSessionClosed,
+    conversationActive: state.conversationActive,
     onTimeout: onTimeoutCallback,
     onWarning: onWarningCallback,
   });
 
+  // Logging for debugging
   useEffect(() => {
-    if (state.isTimeRunningOutState !== isTimeRunningOut) {
-      dispatch({ type: 'SET_TIME_RUNNING_OUT', payload: isTimeRunningOut });
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[VoiceChatContainer] Estado actual:`, {
+        connectionState,
+        conversationActive: state.conversationActive,
+        isReadyToStart: state.isReadyToStart,
+        isListening: state.isListening,
+        isSpeaking: state.isSpeaking,
+        isProcessing: state.isProcessing,
+        isThinking: state.isThinking,
+        participantFound: !!discoveredTargetParticipant,
+        tavusVideoLoaded,
+        messageCount: state.messages.length,
+      });
     }
-  }, [isTimeRunningOut, state.isTimeRunningOutState]);
+  }, [
+    connectionState,
+    state.conversationActive,
+    state.isReadyToStart,
+    state.isListening,
+    state.isSpeaking,
+    state.isProcessing,
+    state.isThinking,
+    discoveredTargetParticipant,
+    tavusVideoLoaded,
+    state.messages.length,
+  ]);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      clearError();
-      if (thinkingTimeoutRef.current) clearTimeout(thinkingTimeoutRef.current);
-      if (processingTimeoutRef.current) clearTimeout(processingTimeoutRef.current);
-    };
-  }, [clearError]);
-
-  // Loading states
-  const isLoading = authStatus === 'loading' || (!userProfile && session?.user?.id);
-
-  // Log de debugging para el modal
-  console.log(`[VoiceChatContainer] 🎭 Estado del modal: showFeedbackModal=${showFeedbackModal}, autoRedirectInProgress=${autoRedirectInProgress}`);
-
-  // Simplificado: solo verificar autenticación básica
-  if (authStatus === 'loading') {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen bg-gray-900 text-white">
-        <Loader2 className="animate-spin h-12 w-12 text-blue-500" />
-        <p className="mt-4 text-lg">Iniciando MarIA...</p>
-      </div>
-    );
-  }
-
-  if (!session?.user?.id) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen bg-gray-900 text-white">
-        <AlertCircle className="h-16 w-16 text-red-500" />
-        <h1 className="mt-6 text-3xl font-semibold">Acceso Denegado</h1>
-        <p className="mt-2 text-lg text-center">Debes iniciar sesión para acceder a esta función.</p>
-        <Link href="/login" legacyBehavior>
-          <a className="mt-6 px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-md text-lg font-medium transition-colors">
-            Iniciar Sesión
-          </a>
-        </Link>
-      </div>
-    );
-  }
-
-  if (appError.type && appError.type !== 'permissions' && appError.type !== 'profile' && appError.message) {
-    return <ErrorDisplay error={{ message: appError.message, type: appError.type || undefined }} onClose={clearError} />;
-  }
-
-  // Ir directo a VoiceChatLayout sin pantallas de carga intermedias
   return (
     <>
-      {/* Audio tracks - hidden but functional */}
-      {audioTracks.map((audioTrack, index) => (
-        <RemoteTrackPlayer
-          key={`audio-${audioTrack.sid || index}`}
-          track={audioTrack}
-          autoPlay={true}
-          muted={false}
-          className="hidden"
-        />
-      ))}
-      
       <VoiceChatLayout
         appError={appError}
         notification={notification}
@@ -569,9 +551,9 @@ function VoiceChatContainer() {
         isSessionClosed={isSessionClosed}
         conversationActive={conversationActive}
         isPushToTalkActive={isPushToTalkActive}
-        isReadyToStart={state.isReadyToStart}
+        isReadyToStart={isReadyToStart}
         authStatus={authStatus}
-        userName={session?.user?.name || userProfile?.username}
+        userName={session?.user?.name}
         messages={messages}
         greetingMessageId={greetingMessageId}
         currentSpeakingId={currentSpeakingId}
@@ -582,8 +564,8 @@ function VoiceChatContainer() {
         setTextInput={(value: string) => dispatch({ type: 'SET_TEXT_INPUT', payload: value })}
         clearError={clearError}
         toggleChatVisibility={toggleChatVisibility}
-        handleStartListening={sttHandleStartListening}
-        handleStopListening={sttHandleStopListening}
+        handleStartListening={handleStartListening}
+        handleStopListening={handleStopListening}
         handleSendTextMessage={handleSendTextMessage}
         dispatch={dispatch}
         onTavusVideoLoaded={handleTavusVideoLoaded}
@@ -591,14 +573,188 @@ function VoiceChatContainer() {
         isAvatarLoaded={tavusVideoLoaded}
       />
       
-      {/* Modal de feedback y pago */}
-      <FeedbackPaymentModal
-        isOpen={showFeedbackModal}
-        onClose={handleCloseFeedbackModal}
-        onComplete={handleCompleteFeedbackModal}
-        userName={session?.user?.name || userProfile?.username || undefined}
-      />
+      {audioTracks.map((track, index) => (
+        <RemoteTrackPlayer
+          key={`audio-${index}`}
+          track={track}
+          autoPlay={true}
+          muted={false}
+          className="hidden"
+        />
+      ))}
+      
+      <AnimatePresence>
+        {showFeedbackModal && (
+          <FeedbackPaymentModal
+            isOpen={showFeedbackModal}
+            onClose={handleCloseFeedbackModal}
+            onComplete={handleCompleteFeedbackModal}
+          />
+        )}
+      </AnimatePresence>
     </>
+  );
+}
+
+// Función para obtener el token de LiveKit
+async function getLiveKitToken(roomName: string, participantName: string, userProfile: any, activeSessionId: string | null, initialContext: string | null): Promise<string> {
+  try {
+    const queryParams = new URLSearchParams({
+      room: roomName,
+      participant: participantName,
+      identity: participantName,
+    });
+
+    // Añadir metadata del usuario si está disponible
+    if (userProfile?.id) {
+      queryParams.set('userId', userProfile.id);
+    }
+    if (userProfile?.username) {
+      queryParams.set('username', userProfile.username);
+    }
+    
+    // Manejar chatSessionId: usar el activo o generar uno temporal si es null
+    const chatSessionId = activeSessionId || `temp_session_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    queryParams.set('chatSessionId', chatSessionId);
+    
+    if (initialContext) {
+      queryParams.set('latestSummary', initialContext);
+    }
+
+    console.log(`[VoiceChatContainer] Generando token con chatSessionId: ${chatSessionId}`);
+
+    const response = await fetch(`/api/livekit-token?${queryParams.toString()}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Token request failed: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.token) {
+      throw new Error('No token received from server');
+    }
+
+    return data.token;
+  } catch (error) {
+    console.error('[VoiceChatContainer] Error obteniendo token de LiveKit:', error);
+    throw error;
+  }
+}
+
+// Componente principal que incluye LiveKitRoom
+function VoiceChatContainer() {
+  const { data: session, status: authStatus } = useSession();
+  const [liveKitToken, setLiveKitToken] = useState<string | null>(null);
+  const [tokenError, setTokenError] = useState<string | null>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [initialContext, setInitialContext] = useState<string | null>(null);
+
+  // Obtener perfil del usuario al cargar
+  useEffect(() => {
+    if (authStatus === 'authenticated' && session?.user?.email && !userProfile) {
+      const fetchUserProfile = async () => {
+        try {
+          const response = await fetch('/api/profile');
+          if (response.ok) {
+            const profile = await response.json();
+            const newProfile = { 
+              id: session?.user?.id || undefined,
+              email: session?.user?.email || null,
+              username: profile.username || session?.user?.name || null,
+            };
+            setUserProfile(newProfile);
+          } else {
+            // Fallback a datos de sesión si falla la API
+            const newProfile = { 
+              id: session?.user?.id || undefined,
+              email: session?.user?.email || null,
+              username: session?.user?.name || null,
+            };
+            setUserProfile(newProfile);
+          }
+        } catch (error) {
+          console.error('Error obteniendo perfil de usuario:', error);
+          // Fallback a datos de sesión
+          const newProfile = { 
+            id: session?.user?.id || undefined,
+            email: session?.user?.email || null,
+            username: session?.user?.name || null,
+          };
+          setUserProfile(newProfile);
+        }
+      };
+
+      fetchUserProfile();
+    } else if (authStatus === 'unauthenticated' && userProfile !== null) {
+      setUserProfile(null);
+    }
+  }, [authStatus, session?.user?.id, session?.user?.email, userProfile]);
+
+  // Obtener token de LiveKit
+  useEffect(() => {
+    if (authStatus === 'authenticated' && userProfile && !liveKitToken) {
+      const fetchToken = async () => {
+        try {
+          const roomName = 'ai-mental-health-chat';
+          const participantName = userProfile.username || userProfile.email || 'usuario';
+          
+          const token = await getLiveKitToken(roomName, participantName, userProfile, activeSessionId, initialContext);
+          setLiveKitToken(token);
+          setTokenError(null);
+        } catch (error) {
+          console.error('Error obteniendo token:', error);
+          setTokenError(error instanceof Error ? error.message : 'Error desconocido');
+        }
+      };
+
+      fetchToken();
+    }
+  }, [authStatus, userProfile, liveKitToken, activeSessionId, initialContext]);
+
+  // Mostrar loading mientras se obtiene el token
+  if (authStatus === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  // Mostrar error si no se puede obtener el token
+  if (tokenError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-red-500">Error obteniendo token: {tokenError}</div>
+      </div>
+    );
+  }
+
+  // Mostrar loading mientras se obtiene el token
+  if (!liveKitToken) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  return (
+    <LiveKitRoom
+      token={liveKitToken}
+      serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL || ''}
+      audio={true}
+      video={false}
+    >
+      <VoiceChatInner />
+    </LiveKitRoom>
   );
 }
 

@@ -1,22 +1,18 @@
 'use client';
 
 /*
- * CONFIGURACIÓN TEMPORAL: MODO SOLO VOZ
+ * PÁGINA DE CHAT INTERACTIVO
  * 
- * Esta página está configurada temporalmente para funcionar únicamente
- * como bot conversacional por voz. Se han deshabilitado temporalmente:
+ * Esta página funciona como bot conversacional completo con:
  * - Chat de texto (textarea y botón de envío)
  * - Botones de toggle de visibilidad del chat
- * - Panel lateral del chat (siempre oculto)
- * 
- * Funcionalidades activas:
- * - Botón de micrófono para click
+ * - Panel lateral del chat con mensajes
+ * - Botón de micrófono para conversación por voz
  * - Push-to-talk con tecla [Espacio]
  * - Video avatar de Tavus
  * - Procesamiento de audio y respuestas por voz
  * 
- * El código de texto está comentado y se puede restaurar fácilmente
- * cuando se requiera volver a incluir las funcionalidades de chat.
+ * Todas las funcionalidades están activas para una experiencia completa.
  */
 
 import React from 'react';
