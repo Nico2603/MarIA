@@ -10,6 +10,11 @@ import Footer from '@/components/Footer'
 export const metadata: Metadata = {
   title: 'Terapia virtual para ansiedad con MarIA | Desde $50 mil la sesión',
   description: 'Videollamada con MarIA, tu terapeuta virtual para la ansiedad. Solo $50.000 por sesión. Sin compromiso: paga después de la sesión y solo si te ayuda.',
+  icons: {
+    icon: '/img/MarIA.png',
+    shortcut: '/img/MarIA.png',
+    apple: '/img/MarIA.png',
+  },
 }
 
 // Configuración de fuentes con next/font

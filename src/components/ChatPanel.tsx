@@ -40,6 +40,7 @@ interface ChatPanelProps {
   conversationActive: boolean;
   isPushToTalkActive: boolean;
   textAreaRef: React.RefObject<HTMLTextAreaElement>;
+  isAvatarLoaded?: boolean; // Nuevo: para verificar si el avatar está cargado
 }
 
 // Componente ThinkingIndicator consolidado
@@ -121,6 +122,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   conversationActive,
   isPushToTalkActive,
   textAreaRef,
+  isAvatarLoaded = true, // Por defecto true para compatibilidad
 }) => {
   // Debug reducido para ChatPanel
   if (messages.length > 0) {
@@ -245,6 +247,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
           conversationActive={conversationActive}
           isPushToTalkActive={isPushToTalkActive}
           textAreaRef={textAreaRef}
+          isAvatarLoaded={isAvatarLoaded}
         />
       </div>
     </div>

@@ -59,7 +59,7 @@ const MicrophoneButton: React.FC<{
         <motion.button 
           type="button"
           onClick={isListening ? handleStopListening : handleStartListening} 
-          disabled={isProcessing || isSpeaking || isThinking || !isAvatarLoaded} 
+          disabled={isProcessing || isSpeaking || isThinking || (!isAvatarLoaded && conversationActive)} 
           className={`relative w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 ease-in-out focus:outline-none shadow-2xl backdrop-blur-sm border-2 ${ 
             isListening
               ? 'bg-red-500/90 border-red-400 hover:bg-red-600/90 text-white scale-110' 
@@ -67,10 +67,10 @@ const MicrophoneButton: React.FC<{
           } ${ 
             isPushToTalkActive ? 'ring-4 ring-green-400/50 scale-110' : ''
           } ${ 
-            (isProcessing || isSpeaking || isThinking || !isAvatarLoaded) ? 'opacity-60 cursor-not-allowed' : 'hover:scale-105'
+            (isProcessing || isSpeaking || isThinking || (!isAvatarLoaded && conversationActive)) ? 'opacity-60 cursor-not-allowed' : 'hover:scale-105'
           }`}
-          whileHover={{ scale: (isProcessing || isSpeaking || isThinking || !isAvatarLoaded) ? 1 : 1.1 }}
-          whileTap={{ scale: (isProcessing || isSpeaking || isThinking || !isAvatarLoaded) ? 1 : 0.95 }}
+          whileHover={{ scale: (isProcessing || isSpeaking || isThinking || (!isAvatarLoaded && conversationActive)) ? 1 : 1.1 }}
+          whileTap={{ scale: (isProcessing || isSpeaking || isThinking || (!isAvatarLoaded && conversationActive)) ? 1 : 0.95 }}
           aria-label={isListening ? "Detener micrófono" : "Activar micrófono"}
         >
           {isProcessing ? (
@@ -88,7 +88,7 @@ const MicrophoneButton: React.FC<{
         {/* Texto de instrucciones */}
         <div className="text-center bg-black/50 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/20">
           <p className="text-sm text-white font-medium">
-            {!isAvatarLoaded ? "🔄 Cargando avatar..." :
+            {(!isAvatarLoaded && conversationActive) ? "🔄 Cargando avatar..." :
              isListening ? "🎤 Micrófono activo" : 
              isProcessing ? "⏳ Procesando..." :
              isSpeaking ? "🗣️ María hablando..." :
@@ -164,9 +164,19 @@ const OptimizedVideoDisplay: React.FC<{
   const [isVideoLoading, setIsVideoLoading] = useState(true);
 
   const handleVideoLoadedData = useCallback(() => {
+    console.log('[OptimizedVideoDisplay] Video cargado exitosamente');
     setIsVideoLoading(false);
     onVideoLoaded?.();
   }, [onVideoLoaded]);
+
+  // También manejar cuando haya datos de video pero sin evento loadeddata
+  const handleCanPlay = useCallback(() => {
+    console.log('[OptimizedVideoDisplay] Video puede reproducirse');
+    if (isVideoLoading) {
+      setIsVideoLoading(false);
+      onVideoLoaded?.();
+    }
+  }, [onVideoLoaded, isVideoLoading]);
 
   return (
     <div className="relative w-full h-full">
@@ -303,8 +313,8 @@ const VideoPanel: React.FC<VideoPanelProps> = ({
         </div>
       )}
 
-      {/* Indicador de conexión cuando no está lista */}
-      {!conversationActive && authStatus === 'authenticated' && (
+      {/* Indicador de conexión solo cuando realmente está conectando - más específico */}
+      {!conversationActive && authStatus === 'authenticated' && !isReadyToStart && (
         <div className="absolute bottom-4 left-4 px-3 py-2 bg-black/50 backdrop-blur-sm rounded-lg border border-white/20">
           <div className="flex items-center space-x-2">
             <Loader2 className="h-3 w-3 animate-spin text-blue-400" />

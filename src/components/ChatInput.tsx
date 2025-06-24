@@ -21,6 +21,7 @@ interface ChatInputProps {
   textAreaRef: React.RefObject<HTMLTextAreaElement>;
   onSpeechStart?: () => void;
   onSpeechEnd?: () => void;
+  isAvatarLoaded?: boolean; // Nuevo: para verificar si el avatar está cargado
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({
@@ -39,14 +40,18 @@ const ChatInput: React.FC<ChatInputProps> = ({
   textAreaRef,
   onSpeechStart,
   onSpeechEnd,
+  isAvatarLoaded = true, // Por defecto true para compatibilidad
 }) => {
   const safeTextInput = textInput ?? '';
+  
+  // Solo habilitar el chat cuando el avatar esté cargado (o no sea necesario)
+  const canSendMessage = conversationActive && !isSessionClosed && !isProcessing && !isSpeaking && !isThinking && (isAvatarLoaded || !conversationActive);
 
   return (
     <div className="p-4 bg-transparent">
       <form onSubmit={(e) => { 
         e.preventDefault(); 
-        if (safeTextInput.trim() && conversationActive && !isSessionClosed && !isProcessing && !isSpeaking && !isThinking) {
+        if (safeTextInput.trim() && canSendMessage) {
           console.log('[ChatInput] 📝 Enviando mensaje por formulario:', safeTextInput);
           handleSendTextMessage(safeTextInput);
         }
@@ -60,6 +65,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
           placeholder={
             !conversationActive ? "Inicia una conversación..." :
             isSessionClosed ? "Sesión finalizada." : 
+            (!isAvatarLoaded && conversationActive) ? "Cargando avatar..." :
             isListening ? "Escuchando..." :
             isProcessing ? "Procesando..." :
             isSpeaking ? "María está hablando..." :
@@ -71,7 +77,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
-              if (safeTextInput.trim() && conversationActive && !isSessionClosed && !isProcessing && !isSpeaking && !isThinking) {
+              if (safeTextInput.trim() && canSendMessage) {
                 console.log('[ChatInput] 📝 Enviando mensaje por Enter:', safeTextInput);
                 handleSendTextMessage(safeTextInput);
               }
@@ -80,15 +86,15 @@ const ChatInput: React.FC<ChatInputProps> = ({
               e.stopPropagation();
             }
           }}
-          disabled={!conversationActive || isSessionClosed || isProcessing || isSpeaking || isThinking}
+          disabled={!canSendMessage}
         />
         
         {/* Botón de enviar texto */}
         <button
           type="submit"
-          disabled={!conversationActive || isSessionClosed || isProcessing || isSpeaking || isThinking || !safeTextInput.trim()}
+          disabled={!canSendMessage || !safeTextInput.trim()}
           className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-neutral-900 shadow-md ${
-            (!conversationActive || isSessionClosed || isProcessing || isSpeaking || isThinking || !safeTextInput.trim()) 
+            (!canSendMessage || !safeTextInput.trim()) 
               ? 'bg-neutral-300 dark:bg-neutral-600 text-neutral-500 cursor-not-allowed opacity-50' 
               : 'bg-green-600 hover:bg-green-700 text-white focus:ring-green-500'
           }`}
@@ -101,7 +107,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
         <button 
           type="button"
           onClick={isListening ? handleStopListening : handleStartListening} 
-          disabled={!conversationActive || isSessionClosed || isProcessing || isSpeaking || isThinking}
+          disabled={!canSendMessage}
           className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-neutral-900 shadow-md ${ 
             isListening
             ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-400' 
@@ -109,7 +115,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
           } ${ 
             (isPushToTalkActive) ? 'ring-4 ring-offset-0 ring-green-400 scale-110' : '' 
           } ${ 
-            (!conversationActive || isSessionClosed || isProcessing || isSpeaking || isThinking) ? 'opacity-50 cursor-not-allowed' : ''
+            (!canSendMessage) ? 'opacity-50 cursor-not-allowed' : ''
           }`}
           aria-label={isListening ? "Detener micrófono" : "Activar micrófono"}
           onMouseDown={() => { console.log('[ChatInput] 🎤 Botón mic: mouse down'); onSpeechStart?.(); }}

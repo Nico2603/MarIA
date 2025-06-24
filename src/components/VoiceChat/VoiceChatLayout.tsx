@@ -166,6 +166,7 @@ export default function VoiceChatLayout({
                 isPushToTalkActive={isPushToTalkActive}
                 textAreaRef={textAreaRef}
                 isProcessing={isProcessing}
+                isAvatarLoaded={isAvatarLoaded}
               />
             </motion.aside>
           )}

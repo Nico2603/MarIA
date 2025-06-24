@@ -54,7 +54,7 @@ export function useReadyToStart({
       const fallbackTimer = setTimeout(() => {
         console.log('[useReadyToStart] Timeout de seguridad activado - forzando ready state');
         setFallbackReady(true);
-      }, 8000); // 8 segundos total desde que está estable
+      }, 5000); // Reducido a 5 segundos para mejor UX
 
       return () => clearTimeout(fallbackTimer);
     } else {
