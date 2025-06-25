@@ -208,7 +208,7 @@ export function FeedbackPaymentModal({
                     ¿Te ayudó MarIA?
                   </h3>
                   <p className="text-blue-200 text-sm leading-relaxed">
-                    Como usuario de prueba, tienes acceso exclusivo por solo <span className="font-bold text-green-400">$10,000 pesos</span> esta semana.
+                    Si sientes que MarIA te ayudó, puedes hacer el <span className="font-bold text-green-400">aporte que desees</span> para apoyar el proyecto.
                   </p>
                 </div>
 
@@ -228,17 +228,17 @@ export function FeedbackPaymentModal({
                     <p className="text-sm text-blue-200">
                       Escanea el código QR con tu app de Bancolombia
                     </p>
-                    <div className="text-2xl font-bold text-green-400">
-                      $10,000 COP
+                    <div className="text-lg font-bold text-green-400">
+                      Aporte voluntario
                     </div>
                   </div>
                 </div>
 
                 <div className="bg-purple-900/30 rounded-lg p-4">
                   <p className="text-sm text-purple-200 text-center leading-relaxed">
-                    <strong className="text-white">Solo si realmente te sirvió</strong> y sientes que MarIA puede 
-                    impactar la vida de personas que lo necesiten. En unos días te contactaremos 
-                    para conocer tu experiencia y opiniones.
+                    <strong className="text-white">Sin compromiso:</strong> Solo nos das una compensación económica 
+                    si sientes que te ayudó y quieres apoyar el proyecto. El monto lo decides tú. 
+                    En unos días te contactaremos para conocer tu experiencia y opiniones.
                   </p>
                 </div>
               </div>

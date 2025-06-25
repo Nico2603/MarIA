@@ -336,10 +336,10 @@ export default function LandingPage() {
           
           <div ref={heroRef} className="relative z-10 opacity-100">
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold font-display text-neutral-900 dark:text-white mb-6 leading-tight text-shadow-subtle dark:dark:text-shadow-subtle">
-              MarIA: Terapia virtual para la ansiedad desde $50 mil pesos
+              MarIA: Terapia virtual para la ansiedad con tu aporte voluntario
             </h1>
             <h2 className="text-lg md:text-xl font-medium text-neutral-600 dark:text-neutral-300 mb-10 max-w-3xl mx-auto text-shadow-subtle dark:dark:text-shadow-subtle">
-              Obtén ayuda psicológica en línea y atención profesional para la ansiedad. María te escucha, te comprende y te guía en tu camino hacia una mejor salud mental.
+              Obtén ayuda psicológica en línea y atención profesional para la ansiedad. María te escucha, te comprende y te guía en tu camino hacia una mejor salud mental. Solo aportas si sientes que te ayudó.
             </h2>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               {/* << MODIFICADO: Usar onClick, añadir ref al array, quitar clases de transform y hover >> */}
@@ -603,7 +603,7 @@ export default function LandingPage() {
             </p>
             {/* Beneficio adicional junto al CTA */}
             <div className="mb-8 text-center text-sm italic text-neutral-300 dark:text-neutral-400">
-              Sesión sin compromiso: paga después de la sesión y sólo si te ayuda.
+              Sin compromiso: solo nos das una compensación económica si sientes que te ayudó.
             </div>
             {/* << MODIFICADO: Usar onClick, añadir ref, quitar hover de Tailwind >> */}
             <button
