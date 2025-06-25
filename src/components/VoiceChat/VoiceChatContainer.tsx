@@ -62,7 +62,6 @@ function VoiceChatInner() {
   const [state, dispatch] = useReducer(voiceChatReducer, initialState);
   const [discoveredTargetParticipant, setDiscoveredTargetParticipant] = useState<RemoteParticipant | null>(null);
   const [initializationPhase, setInitializationPhase] = useState<'auth' | 'connecting' | 'ready' | 'complete'>('auth');
-  const [tavusVideoLoaded, setTavusVideoLoaded] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [autoRedirectInProgress, setAutoRedirectInProgress] = useState(false);
   
@@ -184,20 +183,7 @@ function VoiceChatInner() {
     dispatch({ type: 'TOGGLE_CHAT_VISIBILITY' });
   }, []);
 
-  const handleTavusVideoLoaded = useCallback(() => {
-    setTavusVideoLoaded(true);
-  }, []);
-
-  // Reset tavus video loaded state when participant changes - SIMPLIFICADO
-  useEffect(() => {
-    if (discoveredTargetParticipant?.identity === 'tavus-avatar-agent' && tavusVideoLoaded) {
-      // Solo resetear si cambia a un participante diferente de Tavus
-      return;
-    }
-    if (discoveredTargetParticipant?.identity !== 'tavus-avatar-agent' && tavusVideoLoaded) {
-      setTavusVideoLoaded(false);
-    }
-  }, [discoveredTargetParticipant?.identity]);
+  // Tavus removido - usando avatar CSS
 
   const {
     activeTracks,
@@ -520,7 +506,6 @@ function VoiceChatInner() {
     isSpeaking: state.isSpeaking,
     conversationActive: state.conversationActive,
     activeTracks: stableActiveTracks,
-    tavusVideoLoaded: tavusVideoLoaded,
   });
 
   // Actualizar isReadyToStart SOLO cuando sea realmente necesario
@@ -566,7 +551,6 @@ function VoiceChatInner() {
     conversationActive: state.conversationActive,
     roomRef,
     setIsListening,
-    tavusVideoLoaded: tavusVideoLoaded,
   }), [
     state.isListening,
     state.isProcessing,
@@ -574,7 +558,6 @@ function VoiceChatInner() {
     state.isSessionClosed,
     state.conversationActive,
     setIsListening,
-    tavusVideoLoaded,
   ]);
 
   const { handleStartListening, handleStopListening } = useSpeechToTextControls(speechToTextControlsProps);
@@ -590,7 +573,6 @@ function VoiceChatInner() {
     onStartListening: handleStartListening,
     onStopListening: handleStopListening,
     setIsPushToTalkActive,
-    tavusVideoLoaded: tavusVideoLoaded,
   });
 
   // Session timeout
@@ -614,7 +596,6 @@ function VoiceChatInner() {
         isProcessing: state.isProcessing,
         isThinking: state.isThinking,
         participantFound: !!discoveredTargetParticipant,
-        tavusVideoLoaded,
         messageCount: state.messages.length,
       });
     }
@@ -627,7 +608,6 @@ function VoiceChatInner() {
     state.isProcessing,
     state.isThinking,
     discoveredTargetParticipant,
-    tavusVideoLoaded,
     state.messages.length,
   ]);
 
@@ -637,8 +617,7 @@ function VoiceChatInner() {
         appError={appError}
         notification={notification}
         isChatVisible={isChatVisible}
-        tavusVideoTrack={tavusVideoTrack}
-        tavusVideoTrackPublication={tavusVideoTrack?.publication as RemoteTrackPublication | undefined}
+
         discoveredTargetParticipant={discoveredTargetParticipant || undefined}
         connectionState={connectionState}
         isSpeaking={isSpeaking}
@@ -665,9 +644,7 @@ function VoiceChatInner() {
         handleStopListening={handleStopListening}
         handleSendTextMessage={handleSendTextMessage}
         dispatch={dispatch}
-        onTavusVideoLoaded={handleTavusVideoLoaded}
         handleStartConversation={handleStartConversation}
-        isAvatarLoaded={tavusVideoLoaded}
       />
       
       {audioTracks.map((track, index) => (

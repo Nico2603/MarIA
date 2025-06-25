@@ -31,8 +31,7 @@ interface VoiceChatLayoutProps {
   appError: AppError | null;
   notification: any | null; // Cambiado a any temporalmente
   isChatVisible: boolean;
-  tavusVideoTrack?: ActiveTrackInfo;
-  tavusVideoTrackPublication: RemoteTrackPublication | undefined;
+  // Tavus removido - usando avatar CSS
   discoveredTargetParticipant?: RemoteParticipant;
   connectionState: LiveKitConnectionState;
   isSpeaking: boolean;
@@ -61,17 +60,13 @@ interface VoiceChatLayoutProps {
   handleStopListening: () => void;
   handleSendTextMessage: (text: string, clearTextInput?: () => void) => Promise<void>;
   dispatch: React.Dispatch<any>; // Considerar un tipo más específico si es posible
-  onTavusVideoLoaded?: () => void;
   handleStartConversation: () => Promise<void>;
-  isAvatarLoaded?: boolean; // << NUEVO: Para verificar si el avatar está cargado
 }
 
 export default function VoiceChatLayout({
   appError,
   notification,
   isChatVisible,
-  tavusVideoTrack,
-  tavusVideoTrackPublication,
   discoveredTargetParticipant,
   connectionState,
   isSpeaking,
@@ -98,9 +93,7 @@ export default function VoiceChatLayout({
   handleStopListening,
   handleSendTextMessage,
   dispatch,
-  onTavusVideoLoaded,
   handleStartConversation,
-  isAvatarLoaded,
 }: VoiceChatLayoutProps) {
   const { data: session } = useSession();
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -166,38 +159,16 @@ export default function VoiceChatLayout({
                 isPushToTalkActive={isPushToTalkActive}
                 textAreaRef={textAreaRef}
                 isProcessing={isProcessing}
-                isAvatarLoaded={isAvatarLoaded}
               />
             </motion.aside>
           )}
         </AnimatePresence>
 
-        {/* Contenedor principal optimizado para modo solo voz */}
+        {/* Contenedor principal optimizado para avatar CSS */}
         <div className="w-full h-full flex items-center justify-center bg-gray-900">
-          {/* Video Panel - ahora maneja todo el layout internamente */}
-          {tavusVideoTrack ? (
-            <VideoPanel
-              isChatVisible={isChatVisible}
-              tavusTrackInfo={tavusVideoTrack}
-              isSpeaking={isSpeaking}
-              isListening={isListening}
-              isProcessing={isProcessing}
-              isThinking={isThinking}
-              isSessionClosed={isSessionClosed}
-              conversationActive={conversationActive}
-              handleStartListening={handleStartListening}
-              handleStopListening={handleStopListening}
-              isPushToTalkActive={isPushToTalkActive}
-              toggleChatVisibility={toggleChatVisibility}
-              onVideoLoaded={onTavusVideoLoaded}
-              handleStartConversation={handleStartConversation}
-              isReadyToStart={isReadyToStart}
-              authStatus={authStatus}
-              isAvatarLoaded={isAvatarLoaded}
-            />
-          ) : (
-            <VideoPanel
-              isChatVisible={isChatVisible}
+          {/* Video Panel - Siempre usa el avatar CSS */}
+          <VideoPanel
+            isChatVisible={isChatVisible}
               isSpeaking={isSpeaking}
               isListening={isListening}
               isProcessing={isProcessing}

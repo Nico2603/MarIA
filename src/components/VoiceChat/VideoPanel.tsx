@@ -4,11 +4,10 @@ import React, { useState, useCallback } from 'react';
 import { Loader2, Mic, MessageSquare, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { ActiveTrackInfo } from '@/hooks/voicechat/useLiveKitTrackManagement';
-import RemoteTrackPlayer from './RemoteTrackPlayer';
+import CSSAvatar from './CSSAvatar';
 
 interface VideoPanelProps {
   isChatVisible: boolean;
-  tavusTrackInfo?: ActiveTrackInfo;
   isSpeaking: boolean;
   isListening: boolean;
   isProcessing: boolean;
@@ -19,11 +18,9 @@ interface VideoPanelProps {
   handleStopListening: () => void;
   isPushToTalkActive: boolean;
   toggleChatVisibility?: () => void;
-  onVideoLoaded?: () => void;
   isReadyToStart?: boolean;
   authStatus?: string;
   handleStartConversation?: () => Promise<void>;
-  isAvatarLoaded?: boolean; // << NUEVO: Para verificar si el avatar está cargado
 }
 
 // Componente de botón del micrófono mejorado
@@ -37,7 +34,6 @@ const MicrophoneButton: React.FC<{
   isPushToTalkActive: boolean;
   handleStartListening: () => void;
   handleStopListening: () => void;
-  isAvatarLoaded?: boolean; // << NUEVO: Para verificar si el avatar está cargado
 }> = ({
   isListening,
   isProcessing,
@@ -48,7 +44,6 @@ const MicrophoneButton: React.FC<{
   isPushToTalkActive,
   handleStartListening,
   handleStopListening,
-  isAvatarLoaded = true, // << NUEVO: Por defecto true para compatibilidad
 }) => {
   if (!conversationActive || isSessionClosed) return null;
 
@@ -59,7 +54,7 @@ const MicrophoneButton: React.FC<{
         <motion.button 
           type="button"
           onClick={isListening ? handleStopListening : handleStartListening} 
-          disabled={isProcessing || isSpeaking || isThinking || (!isAvatarLoaded && conversationActive)} 
+          disabled={isProcessing || isSpeaking || isThinking} 
           className={`relative w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 ease-in-out focus:outline-none shadow-2xl backdrop-blur-sm border-2 ${ 
             isListening
               ? 'bg-red-500/90 border-red-400 hover:bg-red-600/90 text-white scale-110' 
@@ -67,10 +62,10 @@ const MicrophoneButton: React.FC<{
           } ${ 
             isPushToTalkActive ? 'ring-4 ring-green-400/50 scale-110' : ''
           } ${ 
-            (isProcessing || isSpeaking || isThinking || (!isAvatarLoaded && conversationActive)) ? 'opacity-60 cursor-not-allowed' : 'hover:scale-105'
+            (isProcessing || isSpeaking || isThinking) ? 'opacity-60 cursor-not-allowed' : 'hover:scale-105'
           }`}
-          whileHover={{ scale: (isProcessing || isSpeaking || isThinking || (!isAvatarLoaded && conversationActive)) ? 1 : 1.1 }}
-          whileTap={{ scale: (isProcessing || isSpeaking || isThinking || (!isAvatarLoaded && conversationActive)) ? 1 : 0.95 }}
+          whileHover={{ scale: (isProcessing || isSpeaking || isThinking) ? 1 : 1.1 }}
+          whileTap={{ scale: (isProcessing || isSpeaking || isThinking) ? 1 : 0.95 }}
           aria-label={isListening ? "Detener micrófono" : "Activar micrófono"}
         >
           {isProcessing ? (
@@ -88,8 +83,7 @@ const MicrophoneButton: React.FC<{
         {/* Texto de instrucciones */}
         <div className="text-center bg-black/50 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/20">
           <p className="text-sm text-white font-medium">
-            {(!isAvatarLoaded && conversationActive) ? "🔄 Cargando avatar..." :
-             isListening ? "🎤 Micrófono activo" : 
+            {isListening ? "🎤 Micrófono activo" : 
              isProcessing ? "⏳ Procesando..." :
              isSpeaking ? "🗣️ María hablando..." :
              isThinking ? "💭 María pensando..." :
@@ -156,49 +150,25 @@ const AvatarPlaceholder: React.FC<{
   </div>
 );
 
-// Componente principal del video optimizado
-const OptimizedVideoDisplay: React.FC<{
-  tavusTrackInfo: ActiveTrackInfo;
-  onVideoLoaded?: () => void;
-}> = ({ tavusTrackInfo, onVideoLoaded }) => {
-  const [isVideoLoading, setIsVideoLoading] = useState(true);
-
-  const handleVideoLoadedData = useCallback(() => {
-    console.log('[OptimizedVideoDisplay] Video cargado exitosamente');
-    setIsVideoLoading(false);
-    onVideoLoaded?.();
-  }, [onVideoLoaded]);
-
-  // También manejar cuando haya datos de video pero sin evento loadeddata
-  const handleCanPlay = useCallback(() => {
-    console.log('[OptimizedVideoDisplay] Video puede reproducirse');
-    if (isVideoLoading) {
-      setIsVideoLoading(false);
-      onVideoLoaded?.();
-    }
-  }, [onVideoLoaded, isVideoLoading]);
-
+// Componente principal del avatar CSS
+const CSSAvatarDisplay: React.FC<{
+  isSpeaking: boolean;
+  isListening: boolean;
+  isProcessing: boolean;
+  isThinking: boolean;
+  conversationActive: boolean;
+  isSessionClosed: boolean;
+}> = ({ isSpeaking, isListening, isProcessing, isThinking, conversationActive, isSessionClosed }) => {
   return (
-    <div className="relative w-full h-full">
-      {/* Loading overlay */}
-      {isVideoLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm z-10 rounded-lg">
-          <div className="text-center space-y-4">
-            <Loader2 className="w-12 h-12 text-blue-400 animate-spin mx-auto" />
-            <p className="text-white/80 text-sm">Cargando avatar...</p>
-          </div>
-        </div>
-      )}
-      
-      {/* Video del avatar */}
-      <RemoteTrackPlayer
-        track={tavusTrackInfo.publication.track!}
-        className="w-full h-full object-cover rounded-lg"
-        autoPlay={true}
-        muted={false}
-        playsInline={true}
-        onLoadedData={handleVideoLoadedData}
-        onVideoLoaded={handleVideoLoadedData}
+    <div className="flex items-center justify-center w-full h-full">
+      <CSSAvatar
+        size={200}
+        isSpeaking={isSpeaking}
+        isListening={isListening}
+        isProcessing={isProcessing}
+        isThinking={isThinking}
+        conversationActive={conversationActive}
+        isSessionClosed={isSessionClosed}
       />
     </div>
   );
@@ -206,7 +176,6 @@ const OptimizedVideoDisplay: React.FC<{
 
 const VideoPanel: React.FC<VideoPanelProps> = ({
   isChatVisible,
-  tavusTrackInfo,
   isSpeaking,
   isListening,
   isProcessing,
@@ -217,35 +186,27 @@ const VideoPanel: React.FC<VideoPanelProps> = ({
   handleStopListening,
   isPushToTalkActive,
   toggleChatVisibility,
-  onVideoLoaded,
   handleStartConversation,
   isReadyToStart,
   authStatus,
-  isAvatarLoaded,
 }) => {
   // Layout principal simplificado y centrado
   return (
     <div className="relative w-full h-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center overflow-hidden">
       
-      {/* Video oculto para pre-carga cuando no está activa la conversación */}
-      {tavusTrackInfo?.participant && tavusTrackInfo.publication?.track && !conversationActive && (
-        <div className="absolute inset-0 opacity-0 pointer-events-none">
-          <OptimizedVideoDisplay
-            tavusTrackInfo={tavusTrackInfo}
-            onVideoLoaded={onVideoLoaded}
-          />
-        </div>
-      )}
-      
       {/* Contenedor del contenido principal */}
       <div className="relative w-full h-full max-w-4xl mx-auto flex items-center justify-center p-6">
         
-        {/* Video o placeholder - Solo mostrar video cuando la conversación esté activa */}
-        {tavusTrackInfo?.participant && tavusTrackInfo.publication?.track && conversationActive ? (
-          <div className="relative w-full h-full max-h-[80vh] aspect-video rounded-xl overflow-hidden shadow-2xl border border-white/10">
-            <OptimizedVideoDisplay
-              tavusTrackInfo={tavusTrackInfo}
-              onVideoLoaded={onVideoLoaded}
+        {/* Avatar CSS - Siempre visible, cambia según el estado */}
+        {conversationActive ? (
+          <div className="relative w-full h-full max-h-[80vh] flex items-center justify-center">
+            <CSSAvatarDisplay
+              isSpeaking={isSpeaking}
+              isListening={isListening}
+              isProcessing={isProcessing}
+              isThinking={isThinking}
+              conversationActive={conversationActive}
+              isSessionClosed={isSessionClosed}
             />
           </div>
         ) : (
@@ -271,7 +232,6 @@ const VideoPanel: React.FC<VideoPanelProps> = ({
         isPushToTalkActive={isPushToTalkActive}
         handleStartListening={handleStartListening}
         handleStopListening={handleStopListening}
-        isAvatarLoaded={isAvatarLoaded}
       />
 
       {/* Botón toggle del chat */}
