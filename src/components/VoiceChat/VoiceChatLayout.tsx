@@ -169,22 +169,21 @@ export default function VoiceChatLayout({
           {/* Video Panel - Siempre usa el avatar CSS */}
           <VideoPanel
             isChatVisible={isChatVisible}
-              isSpeaking={isSpeaking}
-              isListening={isListening}
-              isProcessing={isProcessing}
-              isThinking={isThinking}
-              isSessionClosed={isSessionClosed}
-              conversationActive={conversationActive}
-              handleStartListening={handleStartListening}
-              handleStopListening={handleStopListening}
-              isPushToTalkActive={isPushToTalkActive}
-              toggleChatVisibility={toggleChatVisibility}
-              handleStartConversation={handleStartConversation}
-              isReadyToStart={isReadyToStart}
-              authStatus={authStatus}
-              isAvatarLoaded={isAvatarLoaded}
-            />
-          )}
+            isSpeaking={isSpeaking}
+            isListening={isListening}
+            isProcessing={isProcessing}
+            isThinking={isThinking}
+            isSessionClosed={isSessionClosed}
+            conversationActive={conversationActive}
+            handleStartListening={handleStartListening}
+            handleStopListening={handleStopListening}
+            isPushToTalkActive={isPushToTalkActive}
+            toggleChatVisibility={toggleChatVisibility}
+            handleStartConversation={handleStartConversation}
+            isReadyToStart={isReadyToStart}
+            authStatus={authStatus}
+            isAvatarLoaded={true}
+          />
         </div>
       </div>
     </div>

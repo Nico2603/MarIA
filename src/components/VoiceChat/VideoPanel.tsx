@@ -21,6 +21,7 @@ interface VideoPanelProps {
   isReadyToStart?: boolean;
   authStatus?: string;
   handleStartConversation?: () => Promise<void>;
+  isAvatarLoaded?: boolean;
 }
 
 // Componente de botón del micrófono mejorado
@@ -189,6 +190,7 @@ const VideoPanel: React.FC<VideoPanelProps> = ({
   handleStartConversation,
   isReadyToStart,
   authStatus,
+  isAvatarLoaded,
 }) => {
   // Layout principal simplificado y centrado
   return (
