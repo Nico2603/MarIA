@@ -9,7 +9,7 @@
  * - Panel lateral del chat con mensajes
  * - Botón de micrófono para conversación por voz
  * - Push-to-talk con tecla [Espacio]
- * - Video avatar de Tavus
+ * - Avatar CSS animado
  * - Procesamiento de audio y respuestas por voz
  * 
  * Todas las funcionalidades están activas para una experiencia completa.

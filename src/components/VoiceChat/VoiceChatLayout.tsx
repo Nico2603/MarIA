@@ -31,7 +31,7 @@ interface VoiceChatLayoutProps {
   appError: AppError | null;
   notification: any | null; // Cambiado a any temporalmente
   isChatVisible: boolean;
-  // Tavus removido - usando avatar CSS
+  // Usando avatar CSS
   discoveredTargetParticipant?: RemoteParticipant;
   connectionState: LiveKitConnectionState;
   isSpeaking: boolean;

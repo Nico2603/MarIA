@@ -63,7 +63,7 @@ const RemoteTrackPlayer: React.FC<RemoteTrackPlayerProps> = ({
           mediaElement.style.objectFit = 'cover';
           mediaElement.style.objectPosition = 'center top';
           
-          // Configuración optimizada para Tavus
+          // Configuración optimizada para audio
           mediaElement.style.backgroundColor = '#000';
           mediaElement.preload = 'metadata';
         }

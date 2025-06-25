@@ -183,7 +183,7 @@ function VoiceChatInner() {
     dispatch({ type: 'TOGGLE_CHAT_VISIBILITY' });
   }, []);
 
-  // Tavus removido - usando avatar CSS
+  // Usando avatar CSS
 
   const {
     activeTracks,
@@ -194,38 +194,7 @@ function VoiceChatInner() {
     roomRef
   });
 
-  const tavusVideoTrack = useMemo(() => {
-    const foundTrack = activeTracks.find(t => 
-      t.kind === Track.Kind.Video && 
-      t.identity === 'tavus-avatar-agent' && 
-      t.source === Track.Source.Camera
-    );
-    
-    // DEBUGGING: Log detallado sobre el track de video de Tavus
-    console.log(`[VoiceChatContainer] 🔍 Buscando track de video de Tavus:`);
-    console.log(`  - Tracks activos totales: ${activeTracks.length}`);
-    console.log(`  - Tracks de Tavus:`, activeTracks.filter(t => t.identity === 'tavus-avatar-agent'));
-    console.log(`  - Tracks de video:`, activeTracks.filter(t => t.kind === Track.Kind.Video));
-    console.log(`  - Track encontrado:`, foundTrack);
-    
-    if (foundTrack) {
-      console.log(`[VoiceChatContainer] ✅ TRACK DE VIDEO DE TAVUS ENCONTRADO!`);
-      console.log(`  - ID: ${foundTrack.id}`);
-      console.log(`  - Kind: ${foundTrack.kind}`);
-      console.log(`  - Source: ${foundTrack.source}`);
-      console.log(`  - Has Track: ${!!foundTrack.publication.track}`);
-    } else {
-      console.log(`[VoiceChatContainer] ❌ TRACK DE VIDEO DE TAVUS NO ENCONTRADO`);
-      
-      // Debug adicional para entender por qué no se encuentra
-      const tavusTracks = activeTracks.filter(t => t.identity === 'tavus-avatar-agent');
-      if (tavusTracks.length > 0) {
-        console.log(`[VoiceChatContainer] 🔍 Pero hay ${tavusTracks.length} tracks de Tavus:`, tavusTracks.map(t => `${t.kind}:${t.source}`));
-      }
-    }
-    
-    return foundTrack;
-  }, [activeTracks]);
+  // Avatar CSS no requiere track de video - simplificado
 
   const audioTracks = useMemo(() => activeTracks
     .filter(t => t.kind === Track.Kind.Audio && t.publication && t.publication.track)
@@ -289,11 +258,11 @@ function VoiceChatInner() {
     clearError();
     setInitializationPhase('ready');
     
-    if (state.conversationActive && roomRef.current?.localParticipant) {
-      roomRef.current.localParticipant.setMicrophoneEnabled(true);
-      dispatch({ type: 'SET_LISTENING', payload: true });
+    // NO activar automáticamente el micrófono - el usuario debe controlarlo manualmente
+    if (roomRef.current?.localParticipant) {
+      roomRef.current.localParticipant.setMicrophoneEnabled(false);
     }
-  }, [clearError, state.conversationActive]);
+  }, [clearError]);
 
   const onDisconnectedCallback = useCallback(() => {
     roomRef.current = null;
@@ -343,11 +312,8 @@ function VoiceChatInner() {
     
     let foundInteractiveAgent: RemoteParticipant | null = null;
     
-    // Priorizar tavus-avatar-agent si está disponible
-    const tavusAgent = validAgents.find(p => p.identity === 'tavus-avatar-agent');
-    if (tavusAgent) {
-      foundInteractiveAgent = tavusAgent;
-    } else if (validAgents.length > 0) {
+    // Usar cualquier agente válido disponible
+    if (validAgents.length > 0) {
       foundInteractiveAgent = validAgents[0];
     }
 
@@ -551,6 +517,7 @@ function VoiceChatInner() {
     conversationActive: state.conversationActive,
     roomRef,
     setIsListening,
+    isAvatarLoaded: true, // Avatar CSS siempre está "cargado"
   }), [
     state.isListening,
     state.isProcessing,
@@ -573,6 +540,7 @@ function VoiceChatInner() {
     onStartListening: handleStartListening,
     onStopListening: handleStopListening,
     setIsPushToTalkActive,
+    isAvatarLoaded: true, // Avatar CSS siempre está "cargado"
   });
 
   // Session timeout

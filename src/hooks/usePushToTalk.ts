@@ -4,26 +4,26 @@ interface UsePushToTalkProps {
   isListening: boolean;
   isProcessing: boolean;
   isSpeaking: boolean;
-  isThinking: boolean; // << NUEVO: Añadido para evitar PTT mientras piensa
+  isThinking: boolean; // Añadido para evitar PTT mientras piensa
   conversationActive: boolean;
   isSessionClosed: boolean;
   onStartListening: () => void;
   onStopListening: () => void;
   setIsPushToTalkActive: (isActive: boolean) => void;
-  tavusVideoLoaded?: boolean; // << NUEVO: Para verificar si el avatar está cargado
+  isAvatarLoaded?: boolean; // Para verificar si el avatar está cargado
 }
 
 export function usePushToTalk({
   isListening,
   isProcessing,
   isSpeaking,
-  isThinking, // << NUEVO
+  isThinking,
   conversationActive,
   isSessionClosed,
   onStartListening,
   onStopListening,
   setIsPushToTalkActive,
-  tavusVideoLoaded = true, // << NUEVO: Por defecto true para compatibilidad
+  isAvatarLoaded = true, // Por defecto true para compatibilidad
 }: UsePushToTalkProps) {
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     const targetElement = event.target as HTMLElement;
@@ -38,7 +38,7 @@ export function usePushToTalk({
       
       // Verificar que el avatar esté completamente cargado antes de permitir PTT
       if (!isListening && !isProcessing && !isSpeaking && !isThinking && 
-          conversationActive && !isSessionClosed && tavusVideoLoaded) {
+          conversationActive && !isSessionClosed && isAvatarLoaded) {
         setIsPushToTalkActive(true);
         onStartListening();
       }
@@ -52,7 +52,7 @@ export function usePushToTalk({
     isSessionClosed, 
     setIsPushToTalkActive, 
     onStartListening,
-    tavusVideoLoaded // << NUEVO
+    isAvatarLoaded
   ]);
 
   const handleKeyUp = useCallback((event: KeyboardEvent) => {

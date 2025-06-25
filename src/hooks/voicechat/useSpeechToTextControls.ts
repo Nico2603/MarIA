@@ -12,7 +12,7 @@ interface UseSpeechToTextControlsProps {
   conversationActive: boolean;
   roomRef: RefObject<Room | null>;
   setIsListening: (value: boolean) => void;
-  tavusVideoLoaded?: boolean; // << NUEVO: Para verificar si el avatar está cargado
+  isAvatarLoaded?: boolean; // Para verificar si el avatar está cargado
 }
 
 export function useSpeechToTextControls({
@@ -23,14 +23,14 @@ export function useSpeechToTextControls({
   conversationActive,
   roomRef,
   setIsListening,
-  tavusVideoLoaded = true, // << NUEVO: Por defecto true para compatibilidad
+  isAvatarLoaded = true, // Por defecto true para compatibilidad
 }: UseSpeechToTextControlsProps) {
   const { setError: setAppError, clearError } = useError();
 
   const handleStartListening = useCallback(async () => {
     // Verificar que el avatar esté completamente cargado antes de permitir usar el micrófono
     if (!isListening && !isProcessing && !isSpeaking && !isSessionClosed && 
-        conversationActive && roomRef.current?.localParticipant && tavusVideoLoaded) {
+        conversationActive && roomRef.current?.localParticipant && isAvatarLoaded) {
       setIsListening(true);
       
       try {
@@ -57,7 +57,7 @@ export function useSpeechToTextControls({
         }
       }
     }
-  }, [isListening, isProcessing, isSpeaking, isSessionClosed, conversationActive, roomRef, setIsListening, tavusVideoLoaded]);
+  }, [isListening, isProcessing, isSpeaking, isSessionClosed, conversationActive, roomRef, setIsListening, isAvatarLoaded]);
 
   const handleStopListening = useCallback(async () => {
     if (isListening) {
