@@ -21,7 +21,7 @@ interface ChatInputProps {
   textAreaRef: React.RefObject<HTMLTextAreaElement>;
   onSpeechStart?: () => void;
   onSpeechEnd?: () => void;
-  isAvatarLoaded?: boolean; // Nuevo: para verificar si el avatar está cargado
+  isAvatarLoaded?: boolean; // Avatar CSS siempre está cargado
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({
@@ -40,12 +40,12 @@ const ChatInput: React.FC<ChatInputProps> = ({
   textAreaRef,
   onSpeechStart,
   onSpeechEnd,
-  isAvatarLoaded = true, // Por defecto true para compatibilidad
+  isAvatarLoaded = true, // Avatar CSS siempre está cargado
 }) => {
   const safeTextInput = textInput ?? '';
   
-  // Solo habilitar el chat cuando el avatar esté cargado (o no sea necesario)
-  const canSendMessage = conversationActive && !isSessionClosed && !isProcessing && !isSpeaking && !isThinking && (isAvatarLoaded || !conversationActive);
+  // Con avatar CSS, siempre está "cargado" - lógica simplificada
+  const canSendMessage = conversationActive && !isSessionClosed && !isProcessing && !isSpeaking && !isThinking;
 
   return (
     <div className="p-4 bg-transparent">
@@ -65,7 +65,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
           placeholder={
             !conversationActive ? "Inicia una conversación..." :
             isSessionClosed ? "Sesión finalizada." : 
-            (!isAvatarLoaded && conversationActive) ? "Cargando avatar..." :
             isListening ? "Escuchando..." :
             isProcessing ? "Procesando..." :
             isSpeaking ? "María está hablando..." :

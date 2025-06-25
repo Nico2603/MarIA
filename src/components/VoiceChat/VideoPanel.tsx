@@ -144,7 +144,7 @@ const AvatarPlaceholder: React.FC<{
           whileHover={isReadyToStart ? { scale: 1.05 } : {}}
           whileTap={isReadyToStart ? { scale: 0.95 } : {}}
         >
-          {isReadyToStart ? '▶ Iniciar Conversación' : 'Preparando...'}
+          {'▶ Iniciar Conversación'}
         </motion.button>
       )}
     </div>
@@ -275,15 +275,7 @@ const VideoPanel: React.FC<VideoPanelProps> = ({
         </div>
       )}
 
-      {/* Indicador de conexión solo cuando realmente está conectando - más específico */}
-      {!conversationActive && authStatus === 'authenticated' && !isReadyToStart && (
-        <div className="absolute bottom-4 left-4 px-3 py-2 bg-black/50 backdrop-blur-sm rounded-lg border border-white/20">
-          <div className="flex items-center space-x-2">
-            <Loader2 className="h-3 w-3 animate-spin text-blue-400" />
-            <span className="text-xs text-white/80">Conectando...</span>
-          </div>
-        </div>
-      )}
+      {/* Indicador de conexión removido - avatar CSS inicia inmediatamente */}
     </div>
   );
 };
