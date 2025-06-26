@@ -21,6 +21,7 @@ interface UseLiveKitDataChannelEventsProps {
   roomRef: RefObject<Room | null>;
   room: Room | null; // Añadido room como prop para el useEffect
   isReadyToStart: boolean; // <--- Añadido
+  messages: Message[]; // Añadido para evitar duplicados
 }
 
 export function useLiveKitDataChannelEvents({
@@ -37,6 +38,7 @@ export function useLiveKitDataChannelEvents({
   roomRef,
   room, // Recibir room
   isReadyToStart, // <--- Añadido
+  messages, // Añadido para evitar duplicados
 }: UseLiveKitDataChannelEventsProps) {
   const { setError: setAppError, clearError } = useError();
 
@@ -255,27 +257,34 @@ export function useLiveKitDataChannelEvents({
         switch (mappedEvent.type) {
           case 'user_transcription_result':
             if (mappedEvent.payload && mappedEvent.payload.transcript) {
-              const userMessage: Message = { 
-                id: `user-voice-${Date.now()}`, 
-                text: mappedEvent.payload.transcript, 
-                isUser: true, 
-                timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true })
-              };
+              console.log(`[DataChannel] 📝 Transcripción del usuario recibida del backend: "${mappedEvent.payload.transcript}"`);
               
-              // Solo agregar si no existe ya un mensaje similar reciente (evitar duplicados)
-              // Esto pasa cuando el backend procesa el mensaje del usuario y lo reenvía
-              console.log(`[DataChannel] 📝 Transcripción del usuario recibida del backend:`, userMessage);
-              console.log(`[DataChannel] 🔍 Texto transcrito exacto: "${mappedEvent.payload.transcript}"`);
+              // Solo procesar si el mensaje no existe ya en el chat
+              // Esto evita duplicados cuando el usuario escribió texto (no habló)
+              const existingUserMessage = messages.find(m => 
+                m.isUser && m.text.trim() === mappedEvent.payload.transcript.trim()
+              );
               
-              // Agregar el mensaje del usuario al chat para mantener el flujo visual
-              dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
-              
-              if (isListening) {
-                dispatch({ type: 'SET_LISTENING', payload: false });
+              if (!existingUserMessage) {
+                const userMessage: Message = { 
+                  id: `user-voice-${Date.now()}`, 
+                  text: mappedEvent.payload.transcript, 
+                  isUser: true, 
+                  timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true })
+                };
+                
+                console.log(`[DataChannel] ➕ Agregando transcripción de voz del usuario al chat:`, userMessage);
+                dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
+                
+                if (isListening) {
+                  dispatch({ type: 'SET_LISTENING', payload: false });
+                }
+                
+                dispatch({ type: 'SET_PROCESSING', payload: true });
+                dispatch({ type: 'SET_THINKING', payload: true });
+              } else {
+                console.log(`[DataChannel] 🔄 Transcripción duplicada ignorada (usuario ya escribió este texto)`);
               }
-              
-              dispatch({ type: 'SET_PROCESSING', payload: true });
-              dispatch({ type: 'SET_THINKING', payload: true });
             }
             break;
             
@@ -451,7 +460,8 @@ export function useLiveKitDataChannelEvents({
     isListening, 
     isSessionClosed, 
     setAppError,
-    isReadyToStart
+    isReadyToStart,
+    messages
   ]);
 
   const handleSendTextMessage = useCallback(async (messageText: string, clearTextInput?: () => void) => {

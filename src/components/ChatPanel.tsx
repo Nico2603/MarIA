@@ -126,11 +126,25 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 }) => {
   // Auto-scroll cuando se agreguen mensajes nuevos - optimizado
   useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ 
-        behavior: 'smooth',
-        block: 'nearest'
-      });
+    if (chatEndRef.current && chatContainerRef.current) {
+      // Verificar si el usuario está cerca del final del chat
+      const container = chatContainerRef.current;
+      const scrollableDiv = container.querySelector('.overflow-y-auto');
+      
+      if (scrollableDiv) {
+        const { scrollTop, scrollHeight, clientHeight } = scrollableDiv;
+        const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+        
+        // Solo hacer auto-scroll si el usuario está cerca del final
+        if (isNearBottom) {
+          // Scroll suave solo dentro del contenedor del chat
+          chatEndRef.current.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'end',
+            inline: 'nearest'
+          });
+        }
+      }
     }
   }, [messages.length, isThinking]);
 
@@ -204,7 +218,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             {isThinking && <ThinkingIndicator />}
           </>
         )}
-        <div ref={chatEndRef} />
+        <div ref={chatEndRef} className="h-1" />
       </div>
       
       <div className="flex-shrink-0 bg-transparent">

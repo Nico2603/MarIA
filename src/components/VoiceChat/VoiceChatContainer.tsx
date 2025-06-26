@@ -144,39 +144,22 @@ function VoiceChatInner() {
             
             // Si el nuevo texto es más largo, actualizar
             if (newText.length > prevText.length) {
-              console.log(`[VoiceChatContainer] 📝 Actualizando transcripción ${participant.isLocal ? 'del usuario' : 'del bot'}: "${newText}"`);
+              // Solo log para usuario, no para bot (reduce spam)
+              if (participant.isLocal) {
+                console.log(`[VoiceChatContainer] 📝 Actualizando transcripción del usuario: "${newText}"`);
+              }
               lastTextRef.current[speaker] = newText;
             }
           } else {
             // Primera transcripción del speaker
-            console.log(`[VoiceChatContainer] 📝 Primera transcripción ${participant.isLocal ? 'del usuario' : 'del bot'}: "${newText}"`);
+            if (participant.isLocal) {
+              console.log(`[VoiceChatContainer] 📝 Primera transcripción del usuario: "${newText}"`);
+            }
             lastTextRef.current[speaker] = newText;
           }
 
-          // Solo para transcripciones del BOT finales, agregar al chat como fallback
-          if (!participant.isLocal && segment.final && newText.length > 30) {
-            console.log(`[VoiceChatContainer] 🤖 Transcripción final del bot recibida: "${newText}"`);
-            
-            const botMessage: Message = { 
-              id: `bot-transcription-${segment.id}`, 
-              text: newText, 
-              isUser: false, 
-              timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true })
-            };
-            
-            // Verificar que no existe ya este mensaje para evitar duplicados
-            const existingMessage = messages.find(m => m.id === botMessage.id || 
-              (!m.isUser && m.text.trim() === newText.trim()));
-            
-            if (!existingMessage) {
-              console.log(`[VoiceChatContainer] ➕ Agregando transcripción final del bot al chat (fallback):`, botMessage);
-              dispatch({ type: 'ADD_MESSAGE', payload: botMessage });
-              
-              // Limpiar estados de procesamiento
-              dispatch({ type: 'SET_PROCESSING', payload: false });
-              dispatch({ type: 'SET_THINKING', payload: false });
-            }
-          }
+          // NOTA: No agregar mensajes del bot aquí ya que llegan correctamente via DataChannel
+          // Solo mantener las transcripciones para referencia pero el chat se actualiza via DataChannel
         }
 
         return newTranscriptions;
@@ -515,6 +498,7 @@ function VoiceChatInner() {
     room: room || null,
     roomRef: roomRef,
     isReadyToStart: state.isReadyToStart,
+    messages: state.messages,
   });
 
   useEffect(() => {
