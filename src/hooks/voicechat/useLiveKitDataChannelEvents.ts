@@ -286,9 +286,25 @@ export function useLiveKitDataChannelEvents({
               (window as any).currentMessageTimeoutId = null;
             }
             
-            if (mappedEvent.payload && mappedEvent.payload.text && mappedEvent.payload.text.trim()) {
-              const messageId = mappedEvent.payload.id || `ai-${Date.now()}`;
-              const messageText = mappedEvent.payload.text.trim();
+            // Manejar tanto formato directo como formato con payload
+            const responseText = mappedEvent.text || (mappedEvent.payload && mappedEvent.payload.text) || '';
+            const responseId = mappedEvent.id || (mappedEvent.payload && mappedEvent.payload.id) || `ai-${Date.now()}`;
+            const isInitialGreeting = mappedEvent.isInitialGreeting || (mappedEvent.payload && mappedEvent.payload.isInitialGreeting) || false;
+            const suggestedVideo = mappedEvent.suggestedVideo || (mappedEvent.payload && mappedEvent.payload.suggestedVideo);
+            
+            console.log(`[DataChannel] 🔍 DEBUG ai_response_generated:`, {
+              hasPayload: !!mappedEvent.payload,
+              mappedEventText: mappedEvent.text,
+              payloadText: mappedEvent.payload?.text,
+              finalText: responseText,
+              responseId,
+              isInitialGreeting,
+              fullEvent: mappedEvent
+            });
+            
+            if (responseText && responseText.trim()) {
+              const messageId = responseId;
+              const messageText = responseText.trim();
               
               // Verificar si ya existe un mensaje con este ID (mensaje placeholder)
               const existingMessageElement = document.querySelector(`[data-message-id="${messageId}"]`);
@@ -298,13 +314,13 @@ export function useLiveKitDataChannelEvents({
                   text: messageText, 
                   isUser: false, 
                   timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }), 
-                  suggestedVideo: mappedEvent.payload.suggestedVideo || undefined 
+                  suggestedVideo: suggestedVideo || undefined 
               };
               
               console.log(`[DataChannel] ${existingMessageElement ? 'Actualizando' : 'Agregando'} respuesta de IA:`, aiMessage);
               console.log(`[DataChannel] 🎤 Texto EXACTO que se mostrará en chat: "${messageText}"`);
               console.log(`[DataChannel] 🔊 Este mismo texto será convertido a voz por el sistema TTS`);
-              console.log(`[DataChannel] 🎥 Video detectado en payload:`, mappedEvent.payload.suggestedVideo);
+              console.log(`[DataChannel] 🎥 Video detectado en payload:`, suggestedVideo);
               
               if (existingMessageElement) {
                 // Actualizar mensaje existente
@@ -315,7 +331,7 @@ export function useLiveKitDataChannelEvents({
               }
               
               // Si es el saludo inicial, establecer greetingMessageId
-              if (mappedEvent.payload.isInitialGreeting && !greetingMessageId) {
+              if (isInitialGreeting && !greetingMessageId) {
                 console.log('[DataChannel] 📢 Recibido saludo inicial, estableciendo greetingMessageId:', aiMessage.id);
                 console.log('[DataChannel] 🎯 SALUDO INICIAL - Texto que se muestra en chat y se convierte a voz:', messageText);
                 dispatch({ type: 'SET_GREETING_MESSAGE_ID', payload: aiMessage.id });
@@ -324,7 +340,12 @@ export function useLiveKitDataChannelEvents({
               dispatch({ type: 'SET_THINKING', payload: false });
               dispatch({ type: 'SET_PROCESSING', payload: false });
             } else {
-              console.warn(`[DataChannel] Respuesta de IA sin texto válido:`, mappedEvent.payload);
+              console.warn(`[DataChannel] Respuesta de IA sin texto válido:`, {
+                responseText,
+                responseId,
+                isInitialGreeting,
+                fullMappedEvent: mappedEvent
+              });
               dispatch({ type: 'SET_THINKING', payload: false });
               dispatch({ type: 'SET_PROCESSING', payload: false });
             }
