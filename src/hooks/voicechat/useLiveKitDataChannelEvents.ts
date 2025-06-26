@@ -533,15 +533,12 @@ export function useLiveKitDataChannelEvents({
       dispatch({ type: 'SET_THINKING', payload: true });
       
       const payload = JSON.stringify({ 
-        message_type: "conversation",
-        event_type: "conversation.respond",
-        conversation_id: activeSessionId,
-        properties: {
-          text: trimmedInput
-        }
+        type: "submit_user_text",
+        text: trimmedInput,
+        sessionId: activeSessionId
       });
       
-      console.log('[handleSendTextMessage] 📤 Payload a enviar al backend (formato Tavus):', payload);
+      console.log('[handleSendTextMessage] 📤 Payload a enviar al backend:', payload);
       
       await roomRef.current.localParticipant.publishData(
         new TextEncoder().encode(payload), 
