@@ -62,22 +62,23 @@ export function useSpeechToTextControls({
   const handleStopListening = useCallback(async () => {
     if (isListening) {
       console.log("[useSpeechToTextControls] 🛑 Deteniendo captura de audio del usuario");
-      setIsListening(false);
       
-      if (roomRef.current?.localParticipant) {
-        try {
-          await roomRef.current.localParticipant.setMicrophoneEnabled(false);
-          console.log("[useSpeechToTextControls] ✅ Micrófono deshabilitado exitosamente");
-          
-          // Pequeño delay para permitir que se procese la transcripción final
-          setTimeout(() => {
-            console.log("[useSpeechToTextControls] ⏳ Esperando transcripción final del usuario...");
-          }, 500);
-          
-        } catch (error) {
-          console.error("[useSpeechToTextControls] Error al deshabilitar micrófono:", error);
+      // IMPORTANTE: Mantener micrófono activo unos milisegundos más para capturar transcripción final
+      setTimeout(async () => {
+        setIsListening(false);
+        
+        if (roomRef.current?.localParticipant) {
+          try {
+            await roomRef.current.localParticipant.setMicrophoneEnabled(false);
+            console.log("[useSpeechToTextControls] ✅ Micrófono deshabilitado exitosamente");
+            
+          } catch (error) {
+            console.error("[useSpeechToTextControls] Error al deshabilitar micrófono:", error);
+          }
         }
-      }
+        
+        console.log("[useSpeechToTextControls] ⏳ Esperando transcripción final del usuario...");
+      }, 300); // Pequeño delay para capturar transcripción final
     }
   }, [isListening, roomRef, setIsListening]);
 
