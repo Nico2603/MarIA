@@ -124,40 +124,15 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   textAreaRef,
   isAvatarLoaded = true, // Por defecto true para compatibilidad
 }) => {
-  // Debug reducido para ChatPanel
-  if (messages.length > 0) {
-    console.log('[ChatPanel] 📊 Renderizando:', {
-      messagesCount: messages.length,
-      isThinking,
-      conversationActive
-    });
-  }
-
+  // Auto-scroll cuando se agreguen mensajes nuevos - optimizado
   useEffect(() => {
-    if (chatContainerRef && chatContainerRef.current) {
-      const container = chatContainerRef.current;
-      const messagesContainer = container.querySelector('.flex-1.overflow-y-auto');
-      if (messagesContainer) {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-      }
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'nearest'
+      });
     }
-  }, [messages, chatContainerRef]);
-
-  // Auto-scroll cuando se agreguen mensajes nuevos - solo dentro del contenedor de chat
-  useEffect(() => {
-    if (chatEndRef.current && chatContainerRef.current) {
-      const container = chatContainerRef.current;
-      const messagesContainer = container.querySelector('.flex-1.overflow-y-auto');
-      if (messagesContainer) {
-        // Usar scrollIntoView pero limitado al contenedor padre
-        chatEndRef.current.scrollIntoView({ 
-          behavior: 'smooth',
-          block: 'end',
-          inline: 'nearest'
-        });
-      }
-    }
-  }, [messages.length, isThinking, chatEndRef, chatContainerRef]);
+  }, [messages.length, isThinking]);
 
   return (
     <div
