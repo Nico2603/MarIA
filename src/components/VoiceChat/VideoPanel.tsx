@@ -104,7 +104,7 @@ const MicrophoneButton: React.FC<{
   );
 };
 
-// Componente de placeholder del avatar simplificado
+// Componente de placeholder del avatar simplificado - Sin botón, inicio automático
 const AvatarPlaceholder: React.FC<{ 
   handleStartConversation?: () => Promise<void>;
   isReadyToStart?: boolean;
@@ -131,21 +131,13 @@ const AvatarPlaceholder: React.FC<{
       <h3 className="text-2xl font-bold text-white">MarIA</h3>
       <p className="text-white/80 text-lg">Tu asistente de salud mental</p>
       
-      {/* Botón para iniciar conversación */}
+      {/* Mensaje de estado sin botón - inicio automático */}
       {authStatus === 'authenticated' && !conversationActive && (
-        <motion.button
-          onClick={handleStartConversation}
-          disabled={!isReadyToStart}
-          className={`px-8 py-4 rounded-full font-semibold text-lg transition-all duration-300 ${
-            isReadyToStart 
-              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
-              : 'bg-gray-600 text-gray-300 cursor-not-allowed'
-          }`}
-          whileHover={isReadyToStart ? { scale: 1.05 } : {}}
-          whileTap={isReadyToStart ? { scale: 0.95 } : {}}
-        >
-          {'▶ Iniciar Conversación'}
-        </motion.button>
+        <div className="px-6 py-3 bg-blue-600/20 backdrop-blur-sm rounded-lg border border-blue-400/30">
+          <p className="text-blue-200 text-base font-medium">
+            {isReadyToStart ? '✨ Iniciando conversación...' : '🔗 Conectando...'}
+          </p>
+        </div>
       )}
     </div>
   </div>

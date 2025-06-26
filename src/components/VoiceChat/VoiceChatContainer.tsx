@@ -486,6 +486,17 @@ function VoiceChatInner() {
     }
   }, [calculatedIsReadyToStart]);
 
+  // Auto-inicio de conversación cuando todo esté listo
+  useEffect(() => {
+    if (state.isReadyToStart && !state.conversationActive && !state.isSessionClosed) {
+      console.log('[VoiceChatContainer] 🚀 Iniciando conversación automáticamente');
+      // Pequeño delay para asegurar que la UI esté lista
+      setTimeout(() => {
+        handleStartConversation();
+      }, 100);
+    }
+  }, [state.isReadyToStart, state.conversationActive, state.isSessionClosed, handleStartConversation]);
+
   // Callbacks defined outside of useMemo to avoid hook violations
   const setIsListening = useCallback(
     (value: boolean) => dispatch({ type: 'SET_LISTENING', payload: value }),
