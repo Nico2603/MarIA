@@ -145,22 +145,130 @@ function VoiceChatInner() {
             const cleanText = newText.replace(prevText, "").trim();
 
             if (cleanText) {
-              newTranscriptions.push({
+              const transcriptionData = {
                 id: segment.id,
                 text: cleanText,
                 origin: speaker,
-              });
+                isLocal: participant.isLocal,
+                isFinal: segment.final || false
+              };
+              
+              newTranscriptions.push(transcriptionData);
+
+              // Si es transcripción del usuario Y es final, agregar al chat
+              if (participant.isLocal && (segment.final || cleanText.length > 20)) {
+                console.log(`[VoiceChatContainer] 🎤 Transcripción del usuario finalizada: "${cleanText}"`);
+                
+                const userMessage: Message = { 
+                  id: `user-transcription-${segment.id}`, 
+                  text: cleanText, 
+                  isUser: true, 
+                  timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true })
+                };
+                
+                // Verificar que no existe ya este mensaje para evitar duplicados
+                const existingMessage = messages.find(m => m.id === userMessage.id);
+                if (!existingMessage) {
+                  console.log(`[VoiceChatContainer] ➕ Agregando transcripción del usuario al chat:`, userMessage);
+                  dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
+                  
+                  // Marcar como procesando para indicar que se está esperando respuesta
+                  dispatch({ type: 'SET_PROCESSING', payload: true });
+                  dispatch({ type: 'SET_THINKING', payload: true });
+                }
+              }
+
+              // Si es transcripción del BOT Y es final, agregar al chat (fallback si no llega via data channel)
+              if (!participant.isLocal && (segment.final || cleanText.length > 30)) {
+                console.log(`[VoiceChatContainer] 🤖 Transcripción del bot recibida: "${cleanText}"`);
+                
+                const botMessage: Message = { 
+                  id: `bot-transcription-${segment.id}`, 
+                  text: cleanText, 
+                  isUser: false, 
+                  timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true })
+                };
+                
+                // Verificar que no existe ya este mensaje para evitar duplicados
+                const existingMessage = messages.find(m => m.id === botMessage.id || 
+                  (!m.isUser && m.text.trim() === cleanText.trim()));
+                
+                if (!existingMessage) {
+                  console.log(`[VoiceChatContainer] ➕ Agregando transcripción del bot al chat (fallback):`, botMessage);
+                  dispatch({ type: 'ADD_MESSAGE', payload: botMessage });
+                  
+                  // Limpiar estados de procesamiento
+                  dispatch({ type: 'SET_PROCESSING', payload: false });
+                  dispatch({ type: 'SET_THINKING', payload: false });
+                } else {
+                  console.log(`[VoiceChatContainer] 🔄 Transcripción del bot ya existe en el chat, omitiendo`);
+                }
+              }
 
               // Guardar este texto como el nuevo último texto recibido
               lastTextRef.current[speaker] = newText;
             }
           } else {
             // Primer fragmento de texto del speaker, se almacena completo
-            newTranscriptions.push({
+            const transcriptionData = {
               id: segment.id,
               text: newText,
               origin: speaker,
-            });
+              isLocal: participant.isLocal,
+              isFinal: segment.final || false
+            };
+            
+            newTranscriptions.push(transcriptionData);
+            
+            // Si es transcripción del usuario Y es final, agregar al chat
+            if (participant.isLocal && (segment.final || newText.length > 20)) {
+              console.log(`[VoiceChatContainer] 🎤 Primera transcripción del usuario: "${newText}"`);
+              
+              const userMessage: Message = { 
+                id: `user-transcription-${segment.id}`, 
+                text: newText, 
+                isUser: true, 
+                timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true })
+              };
+              
+              // Verificar que no existe ya este mensaje para evitar duplicados
+              const existingMessage = messages.find(m => m.id === userMessage.id);
+              if (!existingMessage) {
+                console.log(`[VoiceChatContainer] ➕ Agregando primera transcripción del usuario al chat:`, userMessage);
+                dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
+                
+                // Marcar como procesando para indicar que se está esperando respuesta
+                dispatch({ type: 'SET_PROCESSING', payload: true });
+                dispatch({ type: 'SET_THINKING', payload: true });
+              }
+            }
+
+            // Si es transcripción del BOT Y es final, agregar al chat (fallback si no llega via data channel)
+            if (!participant.isLocal && (segment.final || newText.length > 30)) {
+              console.log(`[VoiceChatContainer] 🤖 Primera transcripción del bot recibida: "${newText}"`);
+              
+              const botMessage: Message = { 
+                id: `bot-transcription-${segment.id}`, 
+                text: newText, 
+                isUser: false, 
+                timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true })
+              };
+              
+              // Verificar que no existe ya este mensaje para evitar duplicados
+              const existingMessage = messages.find(m => m.id === botMessage.id || 
+                (!m.isUser && m.text.trim() === newText.trim()));
+              
+              if (!existingMessage) {
+                console.log(`[VoiceChatContainer] ➕ Agregando primera transcripción del bot al chat (fallback):`, botMessage);
+                dispatch({ type: 'ADD_MESSAGE', payload: botMessage });
+                
+                // Limpiar estados de procesamiento
+                dispatch({ type: 'SET_PROCESSING', payload: false });
+                dispatch({ type: 'SET_THINKING', payload: false });
+              } else {
+                console.log(`[VoiceChatContainer] 🔄 Primera transcripción del bot ya existe en el chat, omitiendo`);
+              }
+            }
 
             lastTextRef.current[speaker] = newText;
           }
@@ -174,9 +282,47 @@ function VoiceChatInner() {
     return () => {
       room.off(RoomEvent.TranscriptionReceived, updateTranscriptions);
     };
-  }, [room, userProfile]);
+  }, [room, userProfile, messages, dispatch]);
 
-
+  // Efecto para procesar transcripciones pendientes cuando se deja de escuchar
+  useEffect(() => {
+    if (!isListening && userProfile) {
+      // Pequeño delay para capturar transcripciones finales que puedan llegar después de soltar PTT
+      const timeoutId = setTimeout(() => {
+        const userSpeaker = userProfile?.username || "Tú";
+        const lastUserText = lastTextRef.current[userSpeaker];
+        
+        if (lastUserText && lastUserText.trim().length > 0) {
+          console.log(`[VoiceChatContainer] 🔍 Verificando transcripción pendiente del usuario: "${lastUserText}"`);
+          
+          // Verificar si ya existe un mensaje con este texto en el chat
+          const existingMessage = messages.find(m => 
+            m.isUser && m.text.trim() === lastUserText.trim()
+          );
+          
+          if (!existingMessage && lastUserText.trim().length > 3) {
+            console.log(`[VoiceChatContainer] ➕ Procesando transcripción pendiente del usuario como mensaje`);
+            
+            const userMessage: Message = { 
+              id: `user-final-transcription-${Date.now()}`, 
+              text: lastUserText.trim(), 
+              isUser: true, 
+              timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true })
+            };
+            
+            dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
+            dispatch({ type: 'SET_PROCESSING', payload: true });
+            dispatch({ type: 'SET_THINKING', payload: true });
+            
+            // Limpiar el texto para evitar reprocesamiento
+            lastTextRef.current[userSpeaker] = '';
+          }
+        }
+      }, 1000); // Esperar 1 segundo después de dejar de escuchar
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isListening, userProfile, messages, dispatch]);
 
   // Función para mostrar/ocultar el chat
   const toggleChatVisibility = useCallback(() => {
