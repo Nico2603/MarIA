@@ -51,6 +51,40 @@ const DynamicVideoPanel = dynamic(() => import('./VideoPanel'), {
   ssr: false
 });
 
+// Funciones auxiliares para el manejo de transcripciones
+function calculateTextSimilarity(text1: string, text2: string): number {
+  // Algoritmo simple de similitud basado en palabras comunes
+  const words1 = text1.toLowerCase().split(/\s+/);
+  const words2 = text2.toLowerCase().split(/\s+/);
+  
+  const commonWords = words1.filter(word => words2.includes(word));
+  const totalWords = Math.max(words1.length, words2.length);
+  
+  return totalWords > 0 ? commonWords.length / totalWords : 0;
+}
+
+function combineTranscriptions(prevText: string, newText: string): string {
+  // Lógica inteligente para combinar transcripciones
+  const prevWords = prevText.trim().split(/\s+/);
+  const newWords = newText.trim().split(/\s+/);
+  
+  // Si el nuevo texto comienza donde terminó el anterior, concatenar
+  if (newWords.length > 0 && prevWords.length > 0) {
+    const lastPrevWord = prevWords[prevWords.length - 1];
+    const firstNewWord = newWords[0];
+    
+    // Si la última palabra del texto anterior está contenida en la primera del nuevo
+    if (firstNewWord.toLowerCase().includes(lastPrevWord.toLowerCase()) || 
+        lastPrevWord.toLowerCase().includes(firstNewWord.toLowerCase())) {
+      // Combinar eliminando la duplicación
+      return prevText + ' ' + newWords.slice(1).join(' ');
+    }
+  }
+  
+  // Si no hay solapamiento claro, concatenar con espacio
+  return prevText + ' ' + newText;
+}
+
 // Componente interno que usa el contexto de LiveKit
 function VoiceChatInner() {
   const { data: session, status: authStatus } = useSession();
@@ -142,13 +176,30 @@ function VoiceChatInner() {
           if (lastTextRef.current[speaker]) {
             const prevText = lastTextRef.current[speaker];
             
-            // Si el nuevo texto es más largo, actualizar
+            // Mejoramos la lógica de acumulación de texto:
+            // 1. Si el nuevo texto es más largo, actualizar directamente
+            // 2. Si es diferente pero similar longitud, usar el más reciente
+            // 3. Si es completamente diferente, concatenar inteligentemente
             if (newText.length > prevText.length) {
               // Solo log para usuario, no para bot (reduce spam)
               if (participant.isLocal) {
                 console.log(`[VoiceChatContainer] 📝 Actualizando transcripción del usuario: "${newText}"`);
               }
               lastTextRef.current[speaker] = newText;
+            } else if (newText !== prevText && newText.length > 5) {
+              // Si son textos diferentes pero de longitud similar, verificar si complementan
+              const similarity = calculateTextSimilarity(prevText, newText);
+              if (similarity < 0.7) {
+                // Textos muy diferentes, posiblemente nueva frase
+                const combinedText = combineTranscriptions(prevText, newText);
+                if (participant.isLocal) {
+                  console.log(`[VoiceChatContainer] 🔄 Combinando transcripciones: "${combinedText}"`);
+                }
+                lastTextRef.current[speaker] = combinedText;
+              } else {
+                // Similar, usar el más reciente
+                lastTextRef.current[speaker] = newText;
+              }
             }
           } else {
             // Primera transcripción del speaker
@@ -180,7 +231,8 @@ function VoiceChatInner() {
         const userSpeaker = userProfile?.username || "Tú";
         const lastUserText = lastTextRef.current[userSpeaker];
         
-        if (lastUserText && lastUserText.trim().length > 5) {
+        // Reducir el requisito mínimo de caracteres para capturar frases más cortas
+        if (lastUserText && lastUserText.trim().length > 3) {
           console.log(`[VoiceChatContainer] 🔍 Procesando transcripción final del usuario: "${lastUserText}"`);
           
           // Verificar si ya existe un mensaje reciente con este texto exacto
@@ -207,12 +259,12 @@ function VoiceChatInner() {
             
             console.log(`[VoiceChatContainer] ✅ Mensaje final del usuario enviado: "${lastUserText}"`);
             
-            // Timeout de seguridad para limpiar estados si no hay respuesta
+            // Timeout de seguridad MÁS LARGO para dar tiempo a la respuesta completa
             setTimeout(() => {
               console.log(`[VoiceChatContainer] ⚠️ Timeout de seguridad: limpiando estados de procesamiento`);
               dispatch({ type: 'SET_PROCESSING', payload: false });
               dispatch({ type: 'SET_THINKING', payload: false });
-            }, 30000); // 30 segundos de timeout
+            }, 45000); // 45 segundos de timeout en lugar de 30
           } else {
             console.log(`[VoiceChatContainer] 🔄 Mensaje del usuario ya existe, omitiendo`);
             // Limpiar el texto de todas formas
@@ -221,7 +273,7 @@ function VoiceChatInner() {
         } else {
           console.log(`[VoiceChatContainer] ⚠️ No hay transcripción válida del usuario o es muy corta`);
         }
-      }, 1500); // Esperar 1.5 segundos después de dejar de escuchar
+      }, 2500); // Aumentar de 1.5 a 2.5 segundos para capturar transcripciones tardías
       
       return () => clearTimeout(timeoutId);
     }

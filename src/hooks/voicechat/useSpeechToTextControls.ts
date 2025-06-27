@@ -63,7 +63,7 @@ export function useSpeechToTextControls({
     if (isListening) {
       console.log("[useSpeechToTextControls] 🛑 Deteniendo captura de audio del usuario");
       
-      // IMPORTANTE: Mantener micrófono activo unos milisegundos más para capturar transcripción final
+      // IMPORTANTE: Mantener micrófono activo más tiempo para capturar transcripción final completa
       setTimeout(async () => {
         setIsListening(false);
         
@@ -77,8 +77,8 @@ export function useSpeechToTextControls({
           }
         }
         
-        console.log("[useSpeechToTextControls] ⏳ Esperando transcripción final del usuario...");
-      }, 300); // Pequeño delay para capturar transcripción final
+        console.log("[useSpeechToTextControls] ⏳ Esperando transcripción final del usuario (tiempo extendido)...");
+      }, 800); // Aumentar de 300ms a 800ms para capturar transcripción final completa
     }
   }, [isListening, roomRef, setIsListening]);
 
