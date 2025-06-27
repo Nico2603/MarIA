@@ -93,11 +93,22 @@ export function useConversationSessionManager({
       setTimeout(() => {
         if (isReadyToStart) {
           console.log("Conversación iniciada. El backend debería enviar el saludo inicial automáticamente.");
-          console.log("Si no aparece el saludo en 5 segundos, verificar configuración del backend.");
+          console.log("Si no aparece el saludo en 8 segundos, verificar configuración del backend.");
         } else {
           console.warn("Intento de iniciar conversación, pero la preparación del saludo (bot TTS) podría no estar completa.");
         }
       }, 1000);
+      
+      // Timeout de seguridad mejorado para detectar cuando el backend no responde
+      setTimeout(() => {
+        // Verificar si hay algún mensaje de saludo en el estado actual
+        const hasGreeting = messages.some(msg => msg.id.startsWith('greeting-') || !msg.isUser);
+        if (!hasGreeting && conversationActive) {
+          console.error("❌ TIMEOUT: El backend no envió el saludo inicial después de 15 segundos");
+          setAppError('agent', 'El agente María no está respondiendo. Verifica que el backend esté ejecutándose.');
+          showNotification("Error: María no está respondiendo. Verifica la conexión con el servidor.", "error");
+        }
+      }, 15000); // Aumentar timeout a 15 segundos
       
       showNotification("Iniciando nueva conversación...", "info");
     } catch (error: any) {

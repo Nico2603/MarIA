@@ -56,7 +56,7 @@ export function useLiveKitDataChannelEvents({
       
       if (validAgents.length === 0) {
         console.warn('[DebugBackend] ⚠️ No se encontraron agentes válidos conectados');
-        setAppError('agent', 'No hay agentes conectados. Verifica la configuración del backend.');
+        setAppError('agent', 'El agente María no está conectado. Verifica que el backend esté ejecutándose correctamente.');
       } else {
         console.log('[DebugBackend] ✅ Agentes válidos detectados, limpiando errores de agente');
         // Solo limpiar el error si es de tipo 'agent'
@@ -65,20 +65,25 @@ export function useLiveKitDataChannelEvents({
     }
   }, [room, setAppError]);
 
-  // Función para verificar agentes con delay inicial
+  // Función para verificar agentes con delay inicial y tiempos más largos
   const checkAgentsWithDelay = useCallback(() => {
     // Verificar inmediatamente
     debugBackendCommunication();
     
-    // Verificar después de 2 segundos para dar tiempo a que se conecten los agentes
+    // Verificar después de 3 segundos para dar tiempo a que se conecten los agentes
     setTimeout(() => {
       debugBackendCommunication();
-    }, 2000);
+    }, 3000);
     
-    // Verificar después de 5 segundos como verificación final
+    // Verificar después de 8 segundos como verificación final
     setTimeout(() => {
       debugBackendCommunication();
-    }, 5000);
+    }, 8000);
+    
+    // Verificación adicional después de 15 segundos para casos lentos
+    setTimeout(() => {
+      debugBackendCommunication();
+    }, 15000);
   }, [debugBackendCommunication]);
 
   useEffect(() => {
