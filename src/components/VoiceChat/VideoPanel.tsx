@@ -129,7 +129,7 @@ const AvatarPlaceholder: React.FC<{
     {/* Información */}
     <div className="text-center space-y-4">
       <h3 className="text-2xl font-bold text-white">MarIA</h3>
-      <p className="text-white/80 text-lg">Tu asistente de salud mental</p>
+                      <p className="text-white/80 text-lg">Tu asistente de acompañamiento emocional</p>
       
       {/* Mensaje de estado sin botón - inicio automático */}
       {authStatus === 'authenticated' && !conversationActive && (

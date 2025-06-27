@@ -1,7 +1,7 @@
 {
   "name": "maria-frontend",
   "version": "1.0.0",
-  "description": "Frontend de MarIA, un asistente de IA para orientación en salud mental",
+  "description": "Frontend de MarIA, un asistente de IA para acompañamiento emocional",
   "private": true,
   "scripts": {
     "dev": "next dev",

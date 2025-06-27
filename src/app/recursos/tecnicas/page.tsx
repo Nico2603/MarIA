@@ -175,7 +175,7 @@ const TecnicasRelajacionPage = () => {
           <div className={`mt-10 rounded-lg p-6 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'} border-l-4 ${theme === 'dark' ? 'border-blue-400' : 'border-blue-500'}`}>
             <h2 className="text-xl font-semibold mb-3">Importante</h2>
             <p>
-              Estas técnicas son un apoyo valioso, pero no reemplazan la ayuda profesional. Si sientes que la ansiedad o el estrés te superan, o si necesitas un diagnóstico y tratamiento, busca ayuda médica o psicológica.
+              Estas técnicas proporcionan acompañamiento emocional y apoyo para el manejo de la ansiedad, pero NO reemplazan la atención profesional de salud mental. Si sientes que la ansiedad o el estrés te superan, o si necesitas diagnóstico y tratamiento especializado, busca atención con un psicólogo, psiquiatra o profesional de la salud mental licenciado.
             </p>
              <div className="mt-4">
               <Link 

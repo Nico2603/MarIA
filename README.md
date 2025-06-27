@@ -1,20 +1,20 @@
-# MarIA - Asistente de Salud Mental basado en IA
+# MarIA - Asistente de Acompañamiento Emocional basado en IA
 
 <div align="center">
   <img src="public/img/MarIA.png" alt="MarIA Logo" width="300px">
   <br>
-  <strong>Un compañero de salud mental potenciado por inteligencia artificial</strong>
+  <strong>Un compañero de acompañamiento emocional potenciado por inteligencia artificial</strong>
   <br><br>
   <a href="https://ai-mental-health-zyb6.onrender.com" target="_blank">Ver Demo en Vivo</a>
 </div>
 
 ## 📖 Introducción
 
-MarIA es un **chatbot de salud mental** impulsado por inteligencia artificial que integra **Next.js**, **TypeScript**, y las APIs más avanzadas para ofrecer soporte emocional y técnicas de relajación personalizadas en tiempo real. Diseñado para brindar empatía, guías de mindfulness y análisis de voz, MarIA acompaña a los usuarios en momentos de ansiedad, estrés o para fomentar su bienestar mental general.
+MarIA es un **asistente de acompañamiento emocional** basado en inteligencia artificial que integra **Next.js**, **TypeScript**, y las APIs más avanzadas para ofrecer apoyo emocional y técnicas de relajación personalizadas en tiempo real. Diseñado para brindar empatía, guías de mindfulness y análisis de voz, MarIA acompaña a los usuarios en momentos de ansiedad, estrés o para fomentar su bienestar mental general.
 
 ## 🔍 Características principales
 
-- **Chat terapéutico**: Respuestas empáticas generadas por GPT-4.1-mini para sostener conversaciones profundas y seguras
+- **Chat de acompañamiento emocional**: Respuestas empáticas generadas por GPT-4.1-mini para sostener conversaciones profundas y seguras
 - **Técnicas de relajación**: Guías de respiración y mindfulness adaptadas al usuario
 - **Análisis de voz y emociones**: Procesamiento de audio con Deepgram Nova-2 para identificar tono, sentimientos y patrones emocionales
 - **Comunicación en tiempo real**: Integración con LiveKit para chat de voz y texto sin latencia perceptible

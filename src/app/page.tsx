@@ -77,8 +77,8 @@ const faqItems = [
     value: "item-1"
   },
   {
-    question: "¿María puede sustituir a un terapeuta humano?",
-    answer: "María es una herramienta de apoyo increíblemente útil, pero no reemplaza la terapia profesional. Si sientes que necesitas ayuda especializada, te animamos a contactar con un psicólogo o psiquiatra cualificado.",
+    question: "¿María puede sustituir a un profesional de la salud mental?",
+    answer: "No. María proporciona únicamente acompañamiento emocional basado en inteligencia artificial y NO reemplaza servicios de salud mental profesional. Para diagnósticos, tratamientos o terapia especializada, es fundamental consultar con un psicólogo, psiquiatra o profesional de la salud mental licenciado.",
     value: "item-2"
   },
   {
@@ -336,10 +336,10 @@ export default function LandingPage() {
           
           <div ref={heroRef} className="relative z-10 opacity-100">
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold font-display text-neutral-900 dark:text-white mb-6 leading-tight text-shadow-subtle dark:dark:text-shadow-subtle">
-              MarIA: Terapia virtual para la ansiedad con tu aporte voluntario
+              MarIA: Acompañamiento emocional virtual para la ansiedad con tu aporte voluntario
             </h1>
             <h2 className="text-lg md:text-xl font-medium text-neutral-600 dark:text-neutral-300 mb-10 max-w-3xl mx-auto text-shadow-subtle dark:dark:text-shadow-subtle">
-              Obtén ayuda psicológica en línea y atención profesional para la ansiedad. María te escucha, te comprende y te guía en tu camino hacia una mejor salud mental. Solo aportas si sientes que te ayudó.
+              Obtén acompañamiento emocional basado en inteligencia artificial para la ansiedad. María te escucha, te comprende y te guía en tu bienestar emocional. Solo aportas si sientes que te ayudó.
             </h2>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               {/* << MODIFICADO: Usar onClick, añadir ref al array, quitar clases de transform y hover >> */}
@@ -583,6 +583,50 @@ export default function LandingPage() {
                 })
               }}
             />
+          </div>
+        </section>
+
+        {/* Sección Disclaimer Legal */}
+        <section className="py-16 bg-neutral-50 dark:bg-neutral-900 border-t-2 border-red-200 dark:border-red-800">
+          <div className="container mx-auto px-4 max-w-4xl">
+            <div className="bg-white dark:bg-neutral-800 rounded-lg p-8 shadow-lg border-l-4 border-red-500">
+              <h2 className="text-2xl font-bold text-center text-neutral-900 dark:text-white mb-6">
+                ⚠️ AVISO LEGAL IMPORTANTE
+              </h2>
+              <div className="space-y-4 text-neutral-700 dark:text-neutral-300">
+                <p className="text-center font-semibold text-lg">
+                  MarIA proporciona únicamente <strong>acompañamiento emocional basado en inteligencia artificial</strong>
+                </p>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="font-semibold text-red-600 dark:text-red-400 mb-2">❌ MarIA NO es:</h3>
+                    <ul className="space-y-1 text-sm list-disc pl-5">
+                      <li>Un servicio de salud mental profesional</li>
+                      <li>Un servicio de telesalud</li>
+                      <li>Un reemplazo de terapia psicológica</li>
+                      <li>Una herramienta de diagnóstico médico</li>
+                      <li>Un profesional de la salud mental licenciado</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-green-600 dark:text-green-400 mb-2">✅ MarIA SÍ es:</h3>
+                    <ul className="space-y-1 text-sm list-disc pl-5">
+                      <li>Acompañamiento emocional basado en IA</li>
+                      <li>Herramientas de manejo de ansiedad</li>
+                      <li>Apoyo conversacional empático</li>
+                      <li>Técnicas de relajación guiadas</li>
+                      <li>Recursos educativos sobre bienestar</li>
+                    </ul>
+                  </div>
+                </div>
+                <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-200 dark:border-red-800">
+                  <p className="text-sm text-center">
+                    <strong>Cumplimiento Legal:</strong> Este servicio cumple con la Ley 1618/2013 y Resolución 2654/2019 de Colombia sobre telesalud, 
+                    al NO proporcionar servicios médicos o de salud mental profesional. Para atención especializada, consulta con un profesional licenciado.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 

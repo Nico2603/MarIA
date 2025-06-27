@@ -91,10 +91,10 @@ const Footer = () => {
         {/* Disclaimer y Emergencias */}
         <div className="mt-8 pt-8 border-t border-neutral-200 dark:border-neutral-700 text-center text-xs text-neutral-600 dark:text-neutral-500 transition-colors duration-300">
           <p className="mb-2">
-            <strong>Importante:</strong> María es una IA de apoyo y no reemplaza la consulta profesional. Su objetivo es ofrecer información y técnicas generales para el manejo de la <strong>ansiedad</strong>.
+            <strong>AVISO LEGAL:</strong> MarIA proporciona únicamente acompañamiento emocional basado en inteligencia artificial. NO es un servicio de salud mental, NO reemplaza la atención profesional y NO constituye telesalud según la legislación colombiana (Ley 1618/2013 y Resolución 2654/2019).
           </p>
           <p className="mb-2">
-            No utilices este servicio para diagnóstico médico o psicológico. Consulta siempre a un profesional de la salud mental calificado.
+                            Este servicio proporciona únicamente acompañamiento emocional basado en inteligencia artificial. NO utilices este servicio para diagnóstico médico o psicológico. Para servicios de salud mental profesional, consulta siempre a un psicólogo, psiquiatra o profesional de la salud mental licenciado.
           </p>
           <p>
             <strong>En caso de emergencia:</strong> Contacta a la línea nacional 123 o la Línea de Salud Mental 106.

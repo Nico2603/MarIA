@@ -8,8 +8,8 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 
 export const metadata: Metadata = {
-  title: 'Terapia virtual para ansiedad con MarIA | Con tu aporte voluntario',
-  description: 'Videollamada con MarIA, tu terapeuta virtual para la ansiedad. Recibimos el aporte que quieras brindar para el soporte. Sin compromiso: solo nos das una compensación económica si sientes que te ayudó.',
+  title: 'Acompañamiento emocional virtual con MarIA | Con tu aporte voluntario',
+  description: 'Videollamada con MarIA, tu asistente de acompañamiento emocional basado en inteligencia artificial para la ansiedad. Recibimos el aporte que quieras brindar para el soporte. Sin compromiso: solo nos das una compensación económica si sientes que te ayudó.',
   icons: {
     icon: '/img/MarIA.png',
     shortcut: '/img/MarIA.png',
