@@ -359,9 +359,10 @@ function VoiceChatInner() {
     clearError();
     setInitializationPhase('ready');
     
-    // NO activar automáticamente el micrófono - el usuario debe controlarlo manualmente
+    // CRÍTICO: Asegurar que el micrófono esté desactivado por defecto para push-to-talk
     if (roomRef.current?.localParticipant) {
       roomRef.current.localParticipant.setMicrophoneEnabled(false);
+      console.log('[VoiceChatContainer] 🔇 Micrófono desactivado por defecto - Push-to-Talk habilitado');
     }
   }, [clearError]);
 
@@ -496,7 +497,21 @@ function VoiceChatInner() {
     setAutoRedirectInProgress,
   });
 
-  // Handlers para el modal de feedback
+  // Función para redirigir directamente a feedback (nuevo flujo)
+  const redirectToFeedback = useCallback(() => {
+    console.log("[VoiceChatContainer] 🎯 Redirigiendo directamente a página de feedback");
+    // Usar router para ir directamente al perfil con parámetros para mostrar feedback
+    try {
+      router.push('/settings/profile?fromChat=true&showFeedback=true');
+      console.log("[VoiceChatContainer] ✅ Redirección a feedback exitosa");
+    } catch (error) {
+      console.error("[VoiceChatContainer] ❌ Error en redirección a feedback:", error);
+      // Fallback
+      window.location.href = '/settings/profile?fromChat=true&showFeedback=true';
+    }
+  }, [router]);
+
+  // Handlers para el modal de feedback (SIN redirección automática)
   const handleCloseFeedbackModal = useCallback(() => {
     console.log(`[VoiceChatContainer] ❌ Modal de feedback cerrado sin completar`);
     setShowFeedbackModal(false);
@@ -507,12 +522,9 @@ function VoiceChatInner() {
       console.log(`[VoiceChatContainer] 🏁 Flag de redirección automática limpiado`);
     }
     
-    // Siempre redirigir al cerrar el modal (con o sin datos)
-    console.log(`[VoiceChatContainer] 🔄 Redirección después de cerrar modal`);
-    setTimeout(() => {
-      redirectToProfile();
-    }, 500);
-  }, [redirectToProfile, autoRedirectInProgress]);
+    // YA NO redirigir automáticamente - dejar que el usuario decida
+    console.log(`[VoiceChatContainer] 🔄 Modal cerrado - usuario permanece en la sesión finalizada`);
+  }, [autoRedirectInProgress]);
 
   const handleCompleteFeedbackModal = useCallback((phoneNumber?: string) => {
     console.log(`[VoiceChatContainer] ✅ Modal de feedback completado`, phoneNumber ? 'con número' : 'sin número');
@@ -528,12 +540,10 @@ function VoiceChatInner() {
       console.log(`[VoiceChatContainer] 🏁 Flag de redirección automática limpiado`);
     }
     
-    // Siempre redirigir al completar el modal
-    console.log(`[VoiceChatContainer] 🔄 Redirección después de completar modal`);
-    setTimeout(() => {
-      redirectToProfile();
-    }, 1000);
-  }, [redirectToProfile, showNotification, autoRedirectInProgress]);
+    // YA NO redirigir automáticamente - mostrar agradecimiento
+    console.log(`[VoiceChatContainer] 🔄 Feedback completado - usuario permanece para decidir siguiente paso`);
+    showNotification("¡Gracias por compartir tu información! Puedes cerrar esta ventana.", "success", 5000);
+  }, [showNotification, autoRedirectInProgress]);
 
   // Data channel events - Simplified
   const { handleDataReceived, handleSendTextMessage } = useLiveKitDataChannelEvents({
@@ -610,11 +620,28 @@ function VoiceChatInner() {
     []
   );
 
-  const onTimeoutCallback = useCallback(() => {
-    endSession(false, "inactividad", false); // No redirigir en timeout por inactividad
-    showNotification("Sesión finalizada por inactividad.", "warning", 5000);
-    dispatch({ type: 'SET_TIME_RUNNING_OUT', payload: false });
-  }, [endSession, showNotification]);
+  const onTimeoutCallback = useCallback(async () => {
+    console.log('[VoiceChatContainer] ⏰ Sesión alcanzó 30 minutos - iniciando despedida automática');
+    
+    // Enviar señal especial al agente para que genere despedida automática de 30 minutos
+    try {
+      await handleSendTextMessage('[TIMEOUT_30_MINUTOS]');
+      console.log('[VoiceChatContainer] ✅ Señal de timeout enviada al agente');
+      
+      // Dar tiempo para que María genere y reproduzca la despedida antes de cerrar
+      setTimeout(() => {
+        endSession(false, "timeout_30_minutos", false);
+        dispatch({ type: 'SET_TIME_RUNNING_OUT', payload: false });
+      }, 8000); // 8 segundos para despedida completa
+      
+    } catch (error) {
+      console.error('[VoiceChatContainer] ❌ Error enviando señal de timeout:', error);
+      // Fallback: cerrar sesión inmediatamente si hay error
+      endSession(false, "timeout_30_minutos", false);
+      showNotification("Sesión finalizada - 30 minutos completados.", "info", 5000);
+      dispatch({ type: 'SET_TIME_RUNNING_OUT', payload: false });
+    }
+  }, [endSession, showNotification, handleSendTextMessage]);
 
   const onWarningCallback = useCallback(() => {
     showNotification("La sesión finalizará pronto.", "warning", 5000);
@@ -726,6 +753,7 @@ function VoiceChatInner() {
         handleSendTextMessage={handleSendTextMessage}
         dispatch={dispatch}
         handleStartConversation={handleStartConversation}
+        redirectToFeedback={redirectToFeedback}
       />
       
       {audioTracks.map((track, index) => (
@@ -735,6 +763,12 @@ function VoiceChatInner() {
           autoPlay={true}
           muted={false}
           className="hidden"
+          onLoadedData={() => {
+            console.log('[VoiceChatContainer] 🔊 Audio track cargado y listo para reproducir');
+          }}
+          onError={() => {
+            console.error('[VoiceChatContainer] ❌ Error reproduciendo audio track');
+          }}
         />
       ))}
       

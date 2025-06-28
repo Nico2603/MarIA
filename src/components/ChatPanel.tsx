@@ -5,14 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Loader2 } from 'lucide-react';
 import TranscribedResponse from './TranscribedResponse';
 import ChatInput from './ChatInput';
-
-interface Message {
-  id: string;
-  text: string;
-  isUser: boolean;
-  timestamp: string;
-  suggestedVideo?: { title: string; url: string };
-}
+import type { Message } from '@/types';
 
 interface ChatPanelProps {
   messages: Message[];
@@ -41,6 +34,7 @@ interface ChatPanelProps {
   isPushToTalkActive: boolean;
   textAreaRef: React.RefObject<HTMLTextAreaElement>;
   isAvatarLoaded?: boolean; // Nuevo: para verificar si el avatar está cargado
+  redirectToFeedback?: () => void;
 }
 
 // Componente ThinkingIndicator consolidado
@@ -123,6 +117,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   isPushToTalkActive,
   textAreaRef,
   isAvatarLoaded = true, // Por defecto true para compatibilidad
+  redirectToFeedback,
 }) => {
   // Auto-scroll cuando se agreguen mensajes nuevos - optimizado
   useEffect(() => {
@@ -209,9 +204,11 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                   isUser={msg.isUser}
                   timestamp={msg.timestamp}
                   isHighlighted={currentSpeakingId === msg.id}
-                  suggestedVideo={msg.suggestedVideo}
+                                        suggestedVideo={msg.suggestedVideo}
+                      richContent={msg.richContent}
                   avatarUrl={msg.isUser ? (userImage || undefined) : undefined}
                   userName={msg.isUser ? userName : undefined}
+                  redirectToFeedback={redirectToFeedback}
                 />
               );
             })}

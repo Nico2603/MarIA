@@ -305,6 +305,7 @@ export function useLiveKitDataChannelEvents({
             const responseId = mappedEvent.id || (mappedEvent.payload && mappedEvent.payload.id) || `ai-${Date.now()}`;
             const isInitialGreeting = mappedEvent.isInitialGreeting || (mappedEvent.payload && mappedEvent.payload.isInitialGreeting) || false;
             const suggestedVideo = mappedEvent.suggestedVideo || (mappedEvent.payload && mappedEvent.payload.suggestedVideo);
+            const richContent = mappedEvent.richContent || (mappedEvent.payload && mappedEvent.payload.richContent);
             
             console.log(`[DataChannel] 🔍 DEBUG ai_response_generated:`, {
               hasPayload: !!mappedEvent.payload,
@@ -313,6 +314,8 @@ export function useLiveKitDataChannelEvents({
               finalText: responseText,
               responseId,
               isInitialGreeting,
+              suggestedVideo,
+              richContent,
               fullEvent: mappedEvent
             });
             
@@ -328,13 +331,15 @@ export function useLiveKitDataChannelEvents({
                   text: messageText, 
                   isUser: false, 
                   timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true }), 
-                  suggestedVideo: suggestedVideo || undefined 
+                  suggestedVideo: suggestedVideo || undefined,
+                  richContent: richContent || undefined
               };
               
               console.log(`[DataChannel] ${existingMessageElement ? 'Actualizando' : 'Agregando'} respuesta de IA:`, aiMessage);
               console.log(`[DataChannel] 🎤 Texto EXACTO que se mostrará en chat: "${messageText}"`);
               console.log(`[DataChannel] 🔊 Este mismo texto será convertido a voz por el sistema TTS`);
               console.log(`[DataChannel] 🎥 Video detectado en payload:`, suggestedVideo);
+              console.log(`[DataChannel] 🎨 Contenido enriquecido detectado:`, richContent);
               
               if (existingMessageElement) {
                 // Actualizar mensaje existente

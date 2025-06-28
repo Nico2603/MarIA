@@ -61,6 +61,7 @@ interface VoiceChatLayoutProps {
   handleSendTextMessage: (text: string, clearTextInput?: () => void) => Promise<void>;
   dispatch: React.Dispatch<any>; // Considerar un tipo más específico si es posible
   handleStartConversation: () => Promise<void>;
+  redirectToFeedback?: () => void;
 }
 
 export default function VoiceChatLayout({
@@ -94,6 +95,7 @@ export default function VoiceChatLayout({
   handleSendTextMessage,
   dispatch,
   handleStartConversation,
+  redirectToFeedback,
 }: VoiceChatLayoutProps) {
   const { data: session } = useSession();
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -159,6 +161,7 @@ export default function VoiceChatLayout({
                 isPushToTalkActive={isPushToTalkActive}
                 textAreaRef={textAreaRef}
                 isProcessing={isProcessing}
+                redirectToFeedback={redirectToFeedback}
               />
             </motion.aside>
           )}
@@ -183,6 +186,7 @@ export default function VoiceChatLayout({
             isReadyToStart={isReadyToStart}
             authStatus={authStatus}
             isAvatarLoaded={true}
+            redirectToFeedback={redirectToFeedback}
           />
         </div>
       </div>

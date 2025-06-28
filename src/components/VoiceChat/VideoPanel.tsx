@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Loader2, Mic, MessageSquare, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Loader2, Mic, MessageSquare, ChevronsLeft, ChevronsRight, Heart, MessageCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { ActiveTrackInfo } from '@/hooks/voicechat/useLiveKitTrackManagement';
 import CSSAvatar from './CSSAvatar';
@@ -22,6 +22,7 @@ interface VideoPanelProps {
   authStatus?: string;
   handleStartConversation?: () => Promise<void>;
   isAvatarLoaded?: boolean;
+  redirectToFeedback?: () => void;
 }
 
 // Componente de botón del micrófono mejorado
@@ -143,6 +144,46 @@ const AvatarPlaceholder: React.FC<{
   </div>
 );
 
+// Componente para el estado de sesión finalizada con botón de feedback
+const SessionClosedDisplay: React.FC<{
+  redirectToFeedback?: () => void;
+}> = ({ redirectToFeedback }) => (
+  <div className="flex flex-col items-center justify-center space-y-8 text-white max-w-md mx-auto text-center">
+    {/* Avatar con estado finalizado */}
+    <div className="w-32 h-32 bg-gradient-to-br from-gray-500/30 to-gray-700/30 rounded-full flex items-center justify-center border-4 border-white/20 backdrop-blur-sm">
+      <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center">
+        <Heart className="w-8 h-8 text-pink-400" />
+      </div>
+    </div>
+    
+    {/* Mensaje de agradecimiento */}
+    <div className="space-y-4">
+      <h3 className="text-2xl font-bold text-white">¡Gracias por tu tiempo!</h3>
+      <p className="text-white/80 text-lg leading-relaxed">
+        Ha sido un honor acompañarte. Tu experiencia es muy valiosa para nosotros.
+      </p>
+    </div>
+    
+    {/* Botón de feedback */}
+    {redirectToFeedback && (
+      <motion.button
+        onClick={redirectToFeedback}
+        className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-xl text-white font-semibold text-lg shadow-2xl border border-white/20 backdrop-blur-sm flex items-center space-x-3 transition-all duration-300"
+        whileHover={{ scale: 1.05, y: -2 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <MessageCircle className="w-6 h-6" />
+        <span>Compartir mi experiencia</span>
+      </motion.button>
+    )}
+    
+    {/* Mensaje opcional */}
+    <p className="text-white/60 text-sm">
+      Tu feedback nos ayuda a mejorar María para ayudar a más personas
+    </p>
+  </div>
+);
+
 // Componente principal del avatar CSS
 const CSSAvatarDisplay: React.FC<{
   isSpeaking: boolean;
@@ -183,6 +224,7 @@ const VideoPanel: React.FC<VideoPanelProps> = ({
   isReadyToStart,
   authStatus,
   isAvatarLoaded,
+  redirectToFeedback,
 }) => {
   // Layout principal simplificado y centrado
   return (
@@ -192,7 +234,11 @@ const VideoPanel: React.FC<VideoPanelProps> = ({
       <div className="relative w-full h-full max-w-4xl mx-auto flex items-center justify-center p-6">
         
         {/* Avatar CSS - Siempre visible, cambia según el estado */}
-        {conversationActive ? (
+        {isSessionClosed ? (
+          <div className="relative w-full h-full max-h-[80vh] flex items-center justify-center">
+            <SessionClosedDisplay redirectToFeedback={redirectToFeedback} />
+          </div>
+        ) : conversationActive ? (
           <div className="relative w-full h-full max-h-[80vh] flex items-center justify-center">
             <CSSAvatarDisplay
               isSpeaking={isSpeaking}

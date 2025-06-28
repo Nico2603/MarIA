@@ -7,13 +7,51 @@ export interface NotificationMessage {
   duration: number;
 }
 
+// === Tipos de Respuestas Enriquecidas ===
+export interface RichImage {
+  title: string;
+  url: string;
+  alt?: string;
+  caption?: string;
+}
+
+export interface RichLink {
+  title: string;
+  url: string;
+  description?: string;
+  type?: 'article' | 'resource' | 'external' | 'guide';
+}
+
+export interface RichButton {
+  title: string;
+  action: string;
+  style?: 'primary' | 'secondary' | 'success' | 'warning' | 'info';
+  icon?: string;
+}
+
+export interface RichCard {
+  title: string;
+  content: string;
+  type?: 'tip' | 'technique' | 'exercise' | 'info' | 'warning';
+  items?: string[];
+}
+
+export interface RichContent {
+  images?: RichImage[];
+  links?: RichLink[];
+  buttons?: RichButton[];
+  cards?: RichCard[];
+  suggestedVideo?: { title: string; url: string }; // Mantener compatibilidad
+}
+
 // === Tipos de Mensaje ===
 export interface Message {
   id: string;
   text: string;
   isUser: boolean;
   timestamp: string;
-  suggestedVideo?: { title: string; url: string };
+  suggestedVideo?: { title: string; url: string }; // Deprecated, usar richContent
+  richContent?: RichContent;
 }
 
 // === Tipos de VoiceChat ===

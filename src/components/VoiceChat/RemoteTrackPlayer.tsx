@@ -56,21 +56,37 @@ const RemoteTrackPlayer: React.FC<RemoteTrackPlayerProps> = ({
           mediaElement.playsInline = playsInline;
         }
         
-        // Aplicar estilos para video
+        // Configuración específica por tipo de elemento
         if (mediaElement instanceof HTMLVideoElement) {
           mediaElement.style.width = '100%';
           mediaElement.style.height = '100%';
           mediaElement.style.objectFit = 'cover';
           mediaElement.style.objectPosition = 'center top';
-          
-          // Configuración optimizada para audio
           mediaElement.style.backgroundColor = '#000';
           mediaElement.preload = 'metadata';
+        } else if (mediaElement instanceof HTMLAudioElement) {
+          // Configuración específica para audio TTS - CRÍTICO para saludo inicial
+          mediaElement.preload = 'auto'; // Cargar completamente para reproducción inmediata
+          mediaElement.volume = 0.8; // Volumen por defecto
+          console.log('[RemoteTrackPlayer] 🎵 Elemento audio configurado para TTS');
         }
         
         // Manejar eventos de carga
         const handleLoadedData = (event: Event) => {
           console.log('[RemoteTrackPlayer] 📡 Datos de media cargados');
+          
+          // Para audio, asegurar que se reproduzca automáticamente
+          if (mediaElement instanceof HTMLAudioElement && autoPlay) {
+            console.log('[RemoteTrackPlayer] 🔊 Iniciando reproducción automática de audio TTS');
+            mediaElement.play().catch((error) => {
+              console.error('[RemoteTrackPlayer] ❌ Error al reproducir audio automáticamente:', error);
+              // Intentar reproducir con interacción del usuario si falla autoplay
+              if (error.name === 'NotAllowedError') {
+                console.log('[RemoteTrackPlayer] 🤔 Autoplay bloqueado, intentando reproducir en la siguiente interacción');
+              }
+            });
+          }
+          
           onLoadedData?.(event as any);
         };
 

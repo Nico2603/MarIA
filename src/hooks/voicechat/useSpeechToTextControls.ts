@@ -31,10 +31,12 @@ export function useSpeechToTextControls({
     // Verificar que el avatar esté completamente cargado antes de permitir usar el micrófono
     if (!isListening && !isProcessing && !isSpeaking && !isSessionClosed && 
         conversationActive && roomRef.current?.localParticipant && isAvatarLoaded) {
+      console.log("[useSpeechToTextControls] 🎤 INICIANDO Push-to-Talk - Activando micrófono");
       setIsListening(true);
       
       try {
         await roomRef.current.localParticipant.setMicrophoneEnabled(true);
+        console.log("[useSpeechToTextControls] ✅ Micrófono activado para Push-to-Talk");
         
         // Verificar permisos de micrófono
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -61,7 +63,7 @@ export function useSpeechToTextControls({
 
   const handleStopListening = useCallback(async () => {
     if (isListening) {
-      console.log("[useSpeechToTextControls] 🛑 Deteniendo captura de audio del usuario");
+      console.log("[useSpeechToTextControls] 🛑 DETENIENDO Push-to-Talk - Desactivando micrófono");
       
       // IMPORTANTE: Mantener micrófono activo más tiempo para capturar transcripción final completa
       setTimeout(async () => {
@@ -70,7 +72,7 @@ export function useSpeechToTextControls({
         if (roomRef.current?.localParticipant) {
           try {
             await roomRef.current.localParticipant.setMicrophoneEnabled(false);
-            console.log("[useSpeechToTextControls] ✅ Micrófono deshabilitado exitosamente");
+            console.log("[useSpeechToTextControls] ✅ Push-to-Talk completado - Micrófono deshabilitado exitosamente");
             
           } catch (error) {
             console.error("[useSpeechToTextControls] Error al deshabilitar micrófono:", error);

@@ -10,8 +10,8 @@ interface UseSessionTimeoutProps {
   warningThresholdMs?: number;
 }
 
-const DEFAULT_SESSION_DURATION_MS = 20 * 60 * 1000; // 20 minutos
-const DEFAULT_WARNING_THRESHOLD_MS = 18 * 60 * 1000; // 18 minutos (2 minutos antes del final)
+const DEFAULT_SESSION_DURATION_MS = 30 * 60 * 1000; // 30 minutos (reglamentario)
+const DEFAULT_WARNING_THRESHOLD_MS = 28 * 60 * 1000; // 28 minutos (2 minutos antes del final)
 
 export function useSessionTimeout({
   conversationActive,
