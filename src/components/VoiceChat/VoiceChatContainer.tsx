@@ -140,14 +140,22 @@ function VoiceChatInner() {
     roomRef.current = room || null;
   }, [room]);
 
-  // useEffect para capturar transcripciones en tiempo real
+  // DESHABILITADO: No escuchar transcripciones automáticamente
+  // Las transcripciones solo se activarán cuando el usuario use push-to-talk
   useEffect(() => {
     if (!room || !userProfile) {
       return;
     }
 
+    // SOLO registrar transcripciones cuando el usuario esté activamente hablando (isListening)
     const updateTranscriptions = (segments: any[], participant?: Participant) => {
       if (!participant) return;
+      
+      // CRÍTICO: Solo procesar transcripciones si el usuario está usando push-to-talk
+      if (!isListening && participant.isLocal) {
+        console.log(`[VoiceChatContainer] 🚫 Ignorando transcripción - micrófono no activado por push-to-talk`);
+        return;
+      }
       
       setTranscriptions((prev) => {
         const newTranscriptions = { ...prev };
@@ -171,6 +179,12 @@ function VoiceChatInner() {
             ? userProfile?.username || "Tú"
             : "MarIA";
 
+          // Solo procesar transcripciones del usuario cuando está hablando activamente
+          if (participant.isLocal && !isListening) {
+            console.log(`[VoiceChatContainer] 🚫 Ignorando transcripción del usuario - no está en modo PTT activo`);
+            return newTranscriptions;
+          }
+
           // Solo almacenar las transcripciones sin agregar al chat inmediatamente
           // El chat se actualizará cuando el usuario termine de hablar (suelte PTT)
           if (lastTextRef.current[speaker]) {
@@ -182,7 +196,7 @@ function VoiceChatInner() {
             // 3. Si es completamente diferente, concatenar inteligentemente
             if (newText.length > prevText.length) {
               // Solo log para usuario, no para bot (reduce spam)
-              if (participant.isLocal) {
+              if (participant.isLocal && isListening) {
                 console.log(`[VoiceChatContainer] 📝 Actualizando transcripción del usuario: "${newText}"`);
               }
               lastTextRef.current[speaker] = newText;
@@ -192,7 +206,7 @@ function VoiceChatInner() {
               if (similarity < 0.7) {
                 // Textos muy diferentes, posiblemente nueva frase
                 const combinedText = combineTranscriptions(prevText, newText);
-                if (participant.isLocal) {
+                if (participant.isLocal && isListening) {
                   console.log(`[VoiceChatContainer] 🔄 Combinando transcripciones: "${combinedText}"`);
                 }
                 lastTextRef.current[speaker] = combinedText;
@@ -203,7 +217,7 @@ function VoiceChatInner() {
             }
           } else {
             // Primera transcripción del speaker
-            if (participant.isLocal) {
+            if (participant.isLocal && isListening) {
               console.log(`[VoiceChatContainer] 📝 Primera transcripción del usuario: "${newText}"`);
             }
             lastTextRef.current[speaker] = newText;
@@ -217,14 +231,21 @@ function VoiceChatInner() {
       });
     };
 
-    room.on(RoomEvent.TranscriptionReceived, updateTranscriptions);
+    // SOLO registrar el listener si está habilitado
+    if (isListening) {
+      console.log(`[VoiceChatContainer] 🎤 Activando listener de transcripciones (Push-to-Talk activo)`);
+      room.on(RoomEvent.TranscriptionReceived, updateTranscriptions);
+    }
+    
     return () => {
+      console.log(`[VoiceChatContainer] 🔇 Desactivando listener de transcripciones`);
       room.off(RoomEvent.TranscriptionReceived, updateTranscriptions);
     };
-  }, [room, userProfile, messages, dispatch]);
+  }, [room, userProfile, messages, dispatch, isListening]); // Añadir isListening como dependencia
 
   // Efecto para procesar transcripciones pendientes cuando se deja de escuchar
   useEffect(() => {
+    // SOLO procesar si el usuario estuvo escuchando y ahora dejó de hacerlo
     if (!isListening && userProfile && conversationActive) {
       // Delay más largo para capturar transcripciones finales que puedan llegar después de soltar PTT
       const timeoutId = setTimeout(() => {
@@ -354,15 +375,30 @@ function VoiceChatInner() {
     };
   }, [room, handleTrackSubscribed, handleTrackUnsubscribed, handleParticipantDisconnected, onDataReceivedLiveKitCallback]);
 
-  const onConnectedCallback = useCallback((connectedRoom: Room) => {
+  const onConnectedCallback = useCallback(async (connectedRoom: Room) => {
     roomRef.current = connectedRoom;
     clearError();
     setInitializationPhase('ready');
     
-    // CRÍTICO: Asegurar que el micrófono esté desactivado por defecto para push-to-talk
+    // CRÍTICO: Asegurar que el micrófono esté COMPLETAMENTE desactivado por defecto
     if (roomRef.current?.localParticipant) {
-      roomRef.current.localParticipant.setMicrophoneEnabled(false);
-      console.log('[VoiceChatContainer] 🔇 Micrófono desactivado por defecto - Push-to-Talk habilitado');
+      try {
+        await roomRef.current.localParticipant.setMicrophoneEnabled(false);
+        console.log('[VoiceChatContainer] 🔇 Micrófono COMPLETAMENTE desactivado por defecto');
+        console.log('[VoiceChatContainer] 🎤 Push-to-Talk es el ÚNICO método para activar micrófono');
+        
+        // Verificar que efectivamente esté desactivado
+        const isMicEnabled = roomRef.current.localParticipant.isMicrophoneEnabled;
+        console.log(`[VoiceChatContainer] 🔍 Estado del micrófono verificado: ${isMicEnabled ? 'ACTIVADO' : 'DESACTIVADO'}`);
+        
+        if (isMicEnabled) {
+          console.error('[VoiceChatContainer] ❌ PROBLEMA: Micrófono sigue activado después de deshabilitarlo');
+          // Intentar desactivar de nuevo
+          await roomRef.current.localParticipant.setMicrophoneEnabled(false);
+        }
+      } catch (error) {
+        console.error('[VoiceChatContainer] ❌ Error desactivando micrófono:', error);
+      }
     }
   }, [clearError]);
 
@@ -401,6 +437,42 @@ function VoiceChatInner() {
     state.isReadyToStart,
     userProfile
   ]);
+
+  // EFECTO CRÍTICO: Monitorear constantemente que el micrófono esté desactivado
+  useEffect(() => {
+    if (!room?.localParticipant) return;
+    
+    const checkMicrophoneState = async () => {
+      const isMicEnabled = room.localParticipant.isMicrophoneEnabled;
+      
+      // Si el micrófono está activado pero NO estamos en modo listening, desactivarlo
+      if (isMicEnabled && !isListening) {
+        console.warn(`[VoiceChatContainer] ⚠️ PROBLEMA DETECTADO: Micrófono activo sin push-to-talk`);
+        console.log(`[VoiceChatContainer] 🔧 Desactivando micrófono automáticamente...`);
+        try {
+          await room.localParticipant.setMicrophoneEnabled(false);
+          console.log(`[VoiceChatContainer] ✅ Micrófono desactivado correctamente`);
+        } catch (error) {
+          console.error(`[VoiceChatContainer] ❌ Error desactivando micrófono:`, error);
+        }
+      } else if (!isMicEnabled && isListening) {
+        console.log(`[VoiceChatContainer] 🎤 Push-to-talk activo, micrófono correctamente activado`);
+      } else if (!isMicEnabled && !isListening) {
+        // Solo log ocasional para evitar spam
+        if (Math.random() < 0.1) { // Solo 10% de las veces
+          console.log(`[VoiceChatContainer] ✅ Estado correcto: Micrófono desactivado, sin push-to-talk`);
+        }
+      }
+    };
+    
+    // Verificar inmediatamente
+    checkMicrophoneState();
+    
+    // Verificar cada 2 segundos para detectar activaciones no autorizadas
+    const intervalId = setInterval(checkMicrophoneState, 2000);
+    
+    return () => clearInterval(intervalId);
+  }, [room, isListening]);
 
   // Optimized participant discovery - SIMPLIFICADO
   useEffect(() => {
