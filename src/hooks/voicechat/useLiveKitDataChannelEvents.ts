@@ -165,8 +165,22 @@ export function useLiveKitDataChannelEvents({
           hasText: !!(event.text || event.properties?.text),
           textPreview: (event.text || event.properties?.text || '').substring(0, 50),
           isInitialGreeting: event.isInitialGreeting || event.properties?.isInitialGreeting || false,
-          fullEventKeys: Object.keys(event)
+          fullEventKeys: Object.keys(event),
+          messagesCount: messages.length,
+          lastMessageIsUser: messages.length > 0 ? messages[messages.length - 1].isUser : 'N/A'
         });
+        
+        // CRÍTICO: Log especial para ai_response_generated
+        if (event.type === 'ai_response_generated' || event.event_type?.includes('response')) {
+          console.log(`[DataChannel] 🚨 EVENTO AI_RESPONSE_GENERATED DETECTADO:`, {
+            isDirectFormat: !!event.type,
+            isTavusFormat: !!event.event_type,
+            rawEvent: event,
+            currentMessagesInChat: messages.length,
+            processingState: isProcessing,
+            thinkingState: isSessionClosed
+          });
+        }
 
         // Mapear eventos de Tavus al formato esperado
         let mappedEvent = event;
@@ -309,10 +323,19 @@ export function useLiveKitDataChannelEvents({
             break;
             
           case 'ai_response_generated':
-            // Limpiar timeout si existe
+            console.log(`[DataChannel] 🎯 PROCESANDO AI_RESPONSE_GENERATED - Inicio del caso`);
+            
+            // Limpiar timeouts si existen
             if ((window as any).currentMessageTimeoutId) {
               clearTimeout((window as any).currentMessageTimeoutId);
               (window as any).currentMessageTimeoutId = null;
+            }
+            
+            // Limpiar timeout de emergencia si existe
+            if ((window as any).emergencyTimeoutId) {
+              clearTimeout((window as any).emergencyTimeoutId);
+              (window as any).emergencyTimeoutId = null;
+              console.log(`[DataChannel] ✅ Timeout de emergencia limpiado - Respuesta de IA recibida`);
             }
             
             // Manejar tanto formato directo como formato con payload
@@ -322,7 +345,7 @@ export function useLiveKitDataChannelEvents({
             const suggestedVideo = mappedEvent.suggestedVideo || (mappedEvent.payload && mappedEvent.payload.suggestedVideo);
             const richContent = mappedEvent.richContent || (mappedEvent.payload && mappedEvent.payload.richContent);
             
-            console.log(`[DataChannel] 🔍 DEBUG ai_response_generated:`, {
+            console.log(`[DataChannel] 🔍 DEBUG ai_response_generated DETALLADO:`, {
               hasPayload: !!mappedEvent.payload,
               mappedEventText: mappedEvent.text,
               payloadText: mappedEvent.payload?.text,
@@ -331,36 +354,50 @@ export function useLiveKitDataChannelEvents({
               isInitialGreeting,
               suggestedVideo,
               richContent,
-              fullEvent: mappedEvent
+              fullEvent: mappedEvent,
+              messagesInChatBefore: messages.length,
+              currentGreetingId: greetingMessageId
             });
+            
+            console.log(`[DataChannel] 🎭 TIPO DE RESPUESTA: ${isInitialGreeting ? 'SALUDO INICIAL' : 'RESPUESTA POSTERIOR'}`);
+            console.log(`[DataChannel] 📊 ESTADO DEL CHAT: ${messages.length} mensajes existentes`);
             
             if (responseText && responseText.trim()) {
               const messageId = responseId;
               const messageText = responseText.trim();
               
-              // MEJORADO: Verificar duplicados con lógica más inteligente
+              // TEMPORAL: Lógica de duplicados más permisiva para respuestas posteriores
               const existingMessage = messages.find(m => {
-                // Duplicado exacto por ID
+                // Duplicado exacto por ID (siempre verificar)
                 if (m.id === messageId) {
                   console.log(`[DataChannel] 🔍 Mensaje encontrado por ID: ${messageId}`);
                   return true;
                 }
                 
-                // Para el saludo inicial, evitar duplicados por contenido
+                // Para el saludo inicial, verificar duplicados por contenido
                 if (isInitialGreeting && !m.isUser && m.text.trim() === messageText.trim()) {
                   console.log(`[DataChannel] 🔍 Duplicado de saludo inicial detectado por contenido`);
                   return true;
                 }
                 
-                // Para mensajes normales, verificar duplicados recientes solo si el contenido es muy similar
+                // TEMPORAL: Para respuestas posteriores, ser MUY permisivo
+                // Solo bloquear si es exactamente el mismo mensaje muy reciente (menos de 1 segundo)
                 if (!isInitialGreeting && !m.isUser && 
                     m.text.trim() === messageText.trim() && 
-                    Math.abs(Date.now() - new Date(m.timestamp || '').getTime()) < 3000) {
-                  console.log(`[DataChannel] 🔍 Duplicado reciente detectado (3s): ${messageText.substring(0, 30)}...`);
+                    Math.abs(Date.now() - new Date(m.timestamp || '').getTime()) < 1000) {
+                  console.log(`[DataChannel] 🔍 Duplicado muy reciente detectado (1s): ${messageText.substring(0, 30)}...`);
                   return true;
                 }
                 
                 return false;
+              });
+              
+              console.log(`[DataChannel] 🔍 VERIFICACIÓN DE DUPLICADOS:`, {
+                existingMessage: !!existingMessage,
+                isInitialGreeting,
+                messageId,
+                messageText: messageText.substring(0, 50),
+                totalMessagesInChat: messages.length
               });
               
               const aiMessage: Message = { 
@@ -376,7 +413,9 @@ export function useLiveKitDataChannelEvents({
                 console.log(`[DataChannel] 🔄 Actualizando respuesta de IA existente:`, aiMessage);
                 console.log(`[DataChannel] 🎤 Texto EXACTO actualizado en chat: "${messageText}"`);
                 console.log(`[DataChannel] 🔊 Este texto actualizado será/fue convertido a voz por TTS`);
+                console.log(`[DataChannel] 📤 DESPACHANDO UPDATE_MESSAGE...`);
                 dispatch({ type: 'UPDATE_MESSAGE', payload: aiMessage });
+                console.log(`[DataChannel] ✅ UPDATE_MESSAGE despachado exitosamente`);
               } else {
                 // Incrementar contador de mensajes procesados
                 aiMessageCountRef.current += 1;
@@ -387,7 +426,38 @@ export function useLiveKitDataChannelEvents({
                 console.log(`[DataChannel] 🔊 Este mismo texto será convertido a voz por el sistema TTS`);
                 console.log(`[DataChannel] 📝 TRANSCRIPCIÓN COMPLETA: Cada respuesta de audio de IA se muestra como texto`);
                 console.log(`[DataChannel] 📊 CONTADOR DE MENSAJES: Total procesados = ${aiMessageCountRef.current}`);
-                dispatch({ type: 'ADD_MESSAGE', payload: aiMessage });
+                console.log(`[DataChannel] 📤 DESPACHANDO ADD_MESSAGE...`);
+                console.log(`[DataChannel] 📋 Mensaje a agregar:`, {
+                  id: aiMessage.id,
+                  text: aiMessage.text.substring(0, 100),
+                  isUser: aiMessage.isUser,
+                  timestamp: aiMessage.timestamp,
+                  isInitialGreeting: isInitialGreeting
+                });
+                
+                // TEMPORAL: Verificar si dispatch funciona agregando mensaje de prueba primero
+                if (!isInitialGreeting) {
+                  console.log(`[DataChannel] 🧪 PRUEBA: Agregando mensaje de prueba para verificar dispatch`);
+                  const testMessage = {
+                    id: `test-${Date.now()}`,
+                    text: `[PRUEBA] Respuesta de IA recibida: ${messageText.substring(0, 50)}...`,
+                    isUser: false,
+                    timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true })
+                  };
+                  dispatch({ type: 'ADD_MESSAGE', payload: testMessage });
+                  console.log(`[DataChannel] 🧪 Mensaje de prueba despachado`);
+                  
+                  // Esperar un momento y luego agregar el mensaje real
+                  setTimeout(() => {
+                    console.log(`[DataChannel] 📤 Ahora agregando mensaje REAL...`);
+                    dispatch({ type: 'ADD_MESSAGE', payload: aiMessage });
+                    console.log(`[DataChannel] ✅ ADD_MESSAGE REAL despachado exitosamente`);
+                  }, 500);
+                } else {
+                  // Para el saludo inicial, proceder normalmente
+                  dispatch({ type: 'ADD_MESSAGE', payload: aiMessage });
+                  console.log(`[DataChannel] ✅ ADD_MESSAGE despachado exitosamente`);
+                }
               }
               
               console.log(`[DataChannel] 🎥 Video detectado en payload:`, suggestedVideo);
@@ -397,13 +467,20 @@ export function useLiveKitDataChannelEvents({
               if (isInitialGreeting && !greetingMessageId) {
                 console.log('[DataChannel] 📢 Recibido saludo inicial, estableciendo greetingMessageId:', aiMessage.id);
                 console.log('[DataChannel] 🎯 SALUDO INICIAL - Texto que se muestra en chat y se convierte a voz:', messageText);
+                console.log(`[DataChannel] 📤 DESPACHANDO SET_GREETING_MESSAGE_ID...`);
                 dispatch({ type: 'SET_GREETING_MESSAGE_ID', payload: aiMessage.id });
+                console.log(`[DataChannel] ✅ SET_GREETING_MESSAGE_ID despachado`);
               } else if (!isInitialGreeting) {
                 console.log('[DataChannel] 💬 RESPUESTA POSTERIOR - Texto transcrito y mostrado en chat:', messageText);
+                console.log(`[DataChannel] 🎉 RESPUESTA POSTERIOR PROCESADA EXITOSAMENTE`);
               }
               
+              console.log(`[DataChannel] 🧠 Limpiando estados: THINKING = false, PROCESSING = false`);
               dispatch({ type: 'SET_THINKING', payload: false });
               dispatch({ type: 'SET_PROCESSING', payload: false });
+              console.log(`[DataChannel] ✅ Estados limpiados correctamente`);
+              
+              console.log(`[DataChannel] 🎯 PROCESAMIENTO ai_response_generated COMPLETADO para ID: ${messageId}`);
             } else {
               console.warn(`[DataChannel] Respuesta de IA sin texto válido:`, {
                 responseText,
@@ -529,6 +606,28 @@ export function useLiveKitDataChannelEvents({
       roomExists: !!roomRef.current,
       localParticipantExists: !!roomRef.current?.localParticipant,
     });
+    
+    // TEMPORAL: Agregar timeout para detectar si no llegan respuestas
+    const responseTimeoutId = setTimeout(() => {
+      console.warn(`[DataChannel] ⚠️ PROBLEMA DETECTADO: No se recibió respuesta de IA en 10 segundos`);
+      console.log(`[DataChannel] 🧪 Agregando mensaje de emergencia para verificar que el chat funciona`);
+      
+      const emergencyMessage = {
+        id: `emergency-${Date.now()}`,
+        text: `[DEBUG] No se recibió respuesta de IA. Mensaje enviado: "${trimmedInput.substring(0, 50)}..." - Verificar backend.`,
+        isUser: false,
+        timestamp: new Date().toLocaleTimeString('es-ES', { hour: 'numeric', minute: 'numeric', hour12: true })
+      };
+      
+      dispatch({ type: 'ADD_MESSAGE', payload: emergencyMessage });
+      dispatch({ type: 'SET_THINKING', payload: false });
+      dispatch({ type: 'SET_PROCESSING', payload: false });
+      
+      console.log(`[DataChannel] 🚨 Mensaje de emergencia agregado - Si esto aparece en el chat, el dispatch funciona`);
+    }, 10000); // 10 segundos
+    
+    // Almacenar el timeout para poder limpiarlo desde ai_response_generated
+    (window as any).emergencyTimeoutId = responseTimeoutId;
     
     if (!trimmedInput) {
       console.warn('[handleSendTextMessage] ❌ Texto vacío, cancelando envío');
