@@ -85,11 +85,11 @@ const MicrophoneButton: React.FC<{
         {/* Texto de instrucciones */}
         <div className="text-center bg-black/50 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/20">
           <p className="text-sm text-white font-medium">
-            {isListening ? "🎤 Micrófono activo" : 
+            {isListening ? "🎤 Micrófono activo - Hablando..." : 
              isProcessing ? "⏳ Procesando..." :
              isSpeaking ? "🗣️ María hablando..." :
              isThinking ? "💭 María pensando..." :
-             "Click o [Espacio] para hablar"}
+             "🎤 Click o [Espacio] para hablar"}
           </p>
           
           {/* Indicador push-to-talk */}
