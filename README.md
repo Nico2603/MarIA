@@ -1,295 +1,97 @@
-# MarIA - Asistente de Acompañamiento Emocional basado en IA
-
 <div align="center">
-  <img src="public/img/MarIA.png" alt="MarIA Logo" width="300px">
-  <br>
-  <strong>Un compañero de acompañamiento emocional potenciado por inteligencia artificial</strong>
-  <br><br>
-  <a href="https://ai-mental-health-zyb6.onrender.com" target="_blank">Ver Demo en Vivo</a>
+  <img src="docs/assets/banner.svg" alt="MarIA" width="100%" />
 </div>
 
-## 📖 Introducción
+<br />
 
-MarIA es un **asistente de acompañamiento emocional** basado en inteligencia artificial que integra **Next.js**, **TypeScript**, y las APIs más avanzadas para ofrecer apoyo emocional y técnicas de relajación personalizadas en tiempo real. Diseñado para brindar empatía, guías de mindfulness y análisis de voz, MarIA acompaña a los usuarios en momentos de ansiedad, estrés o para fomentar su bienestar mental general.
+<div align="center">
 
-## 🔍 Características principales
+**Compañero de acompañamiento emocional** — voz, texto e historial de sesión.
 
-- **Chat de acompañamiento emocional**: Respuestas empáticas generadas por GPT-4.1-mini para sostener conversaciones profundas y seguras
-- **Técnicas de relajación**: Guías de respiración y mindfulness adaptadas al usuario
-- **Análisis de voz y emociones**: Procesamiento de audio con Deepgram Nova-2 para identificar tono, sentimientos y patrones emocionales
-- **Comunicación en tiempo real**: Integración con LiveKit para chat de voz y texto sin latencia perceptible
-- **Historial de sesiones**: Registro seguro de conversaciones y recomendaciones en PostgreSQL mediante Prisma
-- **TTS y STT**: Conversión de texto a voz (GPT-4o-mini-tts) y voz a texto (Deepgram Nova-2) para una experiencia más natural
-- **Autenticación segura**: Integración con Google OAuth y NextAuth para proteger los datos de los usuarios
+[![Demo](https://img.shields.io/badge/demo-Render-070A0F?style=for-the-badge&labelColor=3D5A80&color=7BAF9E)](https://ai-mental-health-zyb6.onrender.com)
+[![Next.js](https://img.shields.io/badge/Next.js-14-070A0F?style=for-the-badge&logo=nextdotjs&logoColor=7BA3C9)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-070A0F?style=for-the-badge&logo=typescript&logoColor=7BA3C9)](https://www.typescriptlang.org/)
 
-## 🚀 Tecnologías
+v2 de la línea de salud mental. La v1 es el [chatbot BERT](https://github.com/Nico2603/ChatBot-MentalHealth-BERT). La voz vive en [LiveKit_Agent_MarIA](https://github.com/Nico2603/LiveKit_Agent_MarIA).
 
-- **Frontend**: 
-  - Next.js (App Router)
-  - TypeScript
-  - Tailwind CSS + shadcn/ui
-  - React
+</div>
 
-- **Backend**:
-  - Prisma ORM
-  - Supabase + PostgreSQL
-  - NextAuth.js
-  - Node.js
+## Qué es
 
-- **IA y APIs**:
-  - OpenAI API
-    - GPT-4.1-mini-2025-04-14 (para conversaciones principales)
-    - GPT-3.5-turbo (para historial de conversaciones)
-    - GPT-4o-mini-tts (para texto a voz)
-  - Deepgram Nova-2 (para reconocimiento de voz y análisis emocional)
-  - LiveKit (comunicación en tiempo real)
-  - Google OAuth (autenticación)
+MarIA sostiene conversaciones de apoyo (ansiedad, estrés, mindfulness) con un backend multi-usuario: OAuth, cuotas, historial en PostgreSQL y un agente de voz en un repo hermano. No sustituye atención clínica.
 
-- **Despliegue**:
-  - Render.com
+## Qué hace el código
 
-## 🛠️ Instalación
+- Chat empático (OpenAI) + TTS/STT (GPT-4o-mini-tts, Deepgram Nova-2)
+- Voz en tiempo real vía **LiveKit** (token API + UI push-to-talk)
+- Auth Google (NextAuth) y sesiones Prisma (`User`, `ChatSession`, `Message`)
+- Rate limit por usuario en middleware; `/api/health` para Render
+- Páginas de recursos (`/recursos/ansiedad`, `/crisis`, …)
+- Avatar / eventos Tavus en el canal de datos
 
-1. **Clona el repositorio**:
-   ```bash
-   git clone https://github.com/Nico2603/MarIA.git
-   cd MarIA
-   ```
-
-2. **Instala dependencias**:
-   ```bash
-   npm install
-   ```
-
-3. **Configura variables de entorno**:
-   Crea un archivo `.env.local` con las siguientes variables:
-   ```env
-   # Servidor
-   PORT=3000
-   
-   # Base de datos (Supabase)
-   DATABASE_URL="postgresql://..."
-   NEXT_PUBLIC_SUPABASE_URL=
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=
-   
-   # LiveKit
-   LIVEKIT_API_KEY=
-   LIVEKIT_API_SECRET=
-   LIVEKIT_URL=
-   NEXT_PUBLIC_LIVEKIT_URL=
-   
-   # OpenAI
-   OPENAI_API_KEY=
-   
-   # Autenticación
-   GOOGLE_CLIENT_ID=
-   GOOGLE_CLIENT_SECRET=
-   NEXTAUTH_SECRET=
-   NEXTAUTH_URL=http://localhost:3000
-   ```
-
-4. **Configura Prisma**:
-   ```bash
-   npx prisma generate
-   npx prisma db push
-   ```
-
-5. **Ejecuta en desarrollo**:
-   ```bash
-   npm run dev
-   ```
-
-## 🚀 Despliegue en Render
-
-### Configuración automática con render.yaml
-
-El proyecto incluye un archivo `render.yaml` para despliegue automático:
-
-```yaml
-services:
-  - type: web
-    name: maria-frontend
-    runtime: node
-    buildCommand: |
-      npm ci &&
-      npx prisma generate &&
-      npm run build
-    startCommand: npm start
-    plan: starter
-    healthCheckPath: /api/health
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PRISMA_CLI_BINARY_TARGETS
-        value: native,rhel-openssl-3.0.x
-      - key: DATABASE_URL
-        fromDatabase:
-          name: maria-db
-          property: connectionString
+```mermaid
+flowchart LR
+  user[Usuario] --> web[MarIA Next.js]
+  web --> auth[NextAuth Google]
+  web --> db[(Supabase Postgres)]
+  web --> lk[LiveKit]
+  lk --> agent[LiveKit_Agent_MarIA]
+  agent --> stt[Deepgram]
+  agent --> llm[OpenAI]
+  agent --> tts[TTS adaptativo]
 ```
 
-### Variables de entorno requeridas en Render
+## Stack
 
-Configura estas variables en el dashboard de Render:
+Next.js 14 (App Router) · TypeScript · Tailwind + shadcn/Radix · Prisma · PostgreSQL (Supabase) · NextAuth · LiveKit · OpenAI · Deepgram · deploy en [Render](https://ai-mental-health-zyb6.onrender.com)
 
-**Variables obligatorias:**
-- `DATABASE_URL`: URL de conexión a PostgreSQL
-- `NEXTAUTH_URL`: URL de tu aplicación en Render (ej: https://tu-app.onrender.com)
-- `NEXTAUTH_SECRET`: Clave secreta para NextAuth (genera una aleatoria)
-- `NODE_ENV`: `production`
-
-**Variables para funcionalidades específicas:**
-- `GOOGLE_CLIENT_ID`: ID del cliente de Google OAuth
-- `GOOGLE_CLIENT_SECRET`: Secreto del cliente de Google OAuth
-- `OPENAI_API_KEY`: Clave de API de OpenAI
-- `LIVEKIT_API_KEY`: Clave de API de LiveKit
-- `LIVEKIT_API_SECRET`: Secreto de API de LiveKit
-- `LIVEKIT_URL`: URL del servidor LiveKit
-
-**Variables técnicas (opcionales):**
-- `PRISMA_CLI_BINARY_TARGETS`: `native,rhel-openssl-3.0.x`
-
-### Solución de problemas comunes
-
-#### ✅ Error SOLUCIONADO: ENOENT wasm-engine-edge.js
-
-Este error se ha resuelto con las siguientes configuraciones incluidas:
-
-1. **Schema de Prisma actualizado** con binary targets correctos
-2. **Configuración simplificada** sin engineType y output personalizado
-3. **Scripts de build optimizados** con prebuild y postbuild
-4. **Configuración de Next.js** con serverComponentsExternalPackages
-5. **Soporte multi-plataforma** (Windows para desarrollo, Linux para producción)
-
-#### ✅ Error SOLUCIONADO: OpenSSL 1.x deprecated
-
-Actualizado a OpenSSL 3.x:
-- Binary targets actualizados a `rhel-openssl-3.0.x`
-- Variables de entorno configuradas correctamente
-
-#### Pasos de troubleshooting adicionales:
-
-1. **Verifica variables de entorno**: Asegúrate de que todas las variables obligatorias estén configuradas
-2. **Versión de Node.js**: Usa Node.js 20.11.0 (especificado en `.nvmrc`)
-3. **Logs de build**: Revisa los logs de build en Render para errores específicos
-4. **Base de datos**: Verifica que la base de datos esté accesible y la URL sea correcta
-5. **Health check**: El endpoint `/api/health` debe responder correctamente
-
-#### Comandos útiles para debugging:
+## Arranque
 
 ```bash
-# Regenerar cliente de Prisma
-npx prisma generate
-
-# Verificar build local
-npm run build
-
-# Verificar conexión a BD
-npx prisma db pull
+git clone https://github.com/Nico2603/MarIA.git
+cd MarIA
+npm install
 ```
 
-### Proceso de despliegue
+Copia `.env.local` con `DATABASE_URL`, claves Supabase, LiveKit, OpenAI, Deepgram y NextAuth. Luego `npx prisma generate && npx prisma db push` y `npm run dev`.
 
-1. **Pushea los cambios**:
-   ```bash
-   git add .
-   git commit -m "feat: configurar para despliegue en Render"
-   git push origin main
-   ```
+El agente de voz se corre aparte: [LiveKit_Agent_MarIA](https://github.com/Nico2603/LiveKit_Agent_MarIA).
 
-2. **Configura variables en Render**:
-   - Ve a tu dashboard de Render
-   - Añade las variables de entorno necesarias
-   - Asegúrate de que `DATABASE_URL` apunte a tu base de datos
+## Honestidad
 
-3. **Despliega**:
-   - Render detectará automáticamente el `render.yaml`
-   - El build se ejecutará automáticamente
-   - El health check verificará que la app esté funcionando
+El modo voz puede dejar el chat de texto en segundo plano (hay una nota larga al final del código). El admin de métricas no es un RBAC completo. Es un producto de portafolio / SaaS de estudio, no un dispositivo médico.
 
-## 📄 Licencia
+## Familia
 
-Este proyecto está bajo la Licencia ISC. Ver el archivo `LICENSE` para más detalles.
+| Repo | Rol |
+|---|---|
+| [ChatBot-MentalHealth-BERT](https://github.com/Nico2603/ChatBot-MentalHealth-BERT) | v1 — modelo propio, Flask |
+| **MarIA** | v2 — orquestación y UI |
+| [LiveKit_Agent_MarIA](https://github.com/Nico2603/LiveKit_Agent_MarIA) | Agente de voz Python |
 
-## 🤝 Contribuir
+## Agentes
 
-Las contribuciones son bienvenidas. Por favor:
-
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
-## 👥 Contacto
-
-**Proyecto Link**: [https://github.com/Nico2603/MarIA](https://github.com/Nico2603/MarIA)
-
-**Demo en vivo**: [https://ai-mental-health-zyb6.onrender.com](https://ai-mental-health-zyb6.onrender.com)
-
-## ⚠️ CONFIGURACIÓN TEMPORAL: MODO SOLO VOZ
-
-**Estado actual:** La aplicación está configurada temporalmente para funcionar únicamente como bot conversacional por voz.
-
-### Funcionalidades Activas ✅
-- 🎤 **Botón de micrófono** para activar/desactivar grabación por click
-- ⌨️ **Push-to-talk** con tecla `[Espacio]` 
-- 🎥 **Video avatar** de Tavus para respuestas visuales
-- 🔊 **Procesamiento de audio** y respuestas por voz en tiempo real
-- 📱 **Interfaz responsive** optimizada para modo solo voz
-
-### Funcionalidades Temporalmente Deshabilitadas 🚫
-- 💬 Chat de texto (textarea y botón de envío)
-- 🔄 Botones de toggle de visibilidad del chat  
-- 📋 Panel lateral del chat (siempre oculto)
-- ⚡ Minimización del chat
-
-### Instrucciones de Uso
-1. **Iniciar conversación:** Hacer click en el botón "Comenzar conversación"
-2. **Hablar:** 
-   - Click en el botón de micrófono 🎤, o
-   - Mantener presionada la tecla `[Espacio]` (push-to-talk)
-3. **Escuchar:** María responderá por voz y con gestos en el avatar
-
-### Restaurar Funcionalidades de Texto
-Para volver a habilitar el chat de texto en el futuro:
-
-1. **Cambiar estado inicial del chat:**
-   ```typescript
-   // En src/reducers/voiceChatReducer.ts
-   isChatVisible: true, // Cambiar de false a true
-   ```
-
-2. **Descomentar toggle del chat:**
-   ```typescript
-   // En src/components/VoiceChat/VoiceChatContainer.tsx
-   const toggleChatVisibility = useCallback(() => {
-     dispatch({ type: 'TOGGLE_CHAT_VISIBILITY' });
-   }, []);
-   ```
-
-3. **Restaurar controles de texto:**
-   ```typescript
-   // En src/components/ChatInput.tsx
-   // Descomentar la sección "ENTRADA DE TEXTO TEMPORALMENTE DESHABILITADA"
-   ```
-
-4. **Habilitar botones de toggle:**
-   ```typescript
-   // En src/components/VoiceChat/VoiceChatLayout.tsx y VideoPanel.tsx
-   // Descomentar los componentes ChatToggle
-   ```
-
-### Archivos Modificados
-- `src/reducers/voiceChatReducer.ts` - Estado inicial isChatVisible = false
-- `src/components/VoiceChat/VoiceChatContainer.tsx` - Toggle deshabilitado
-- `src/components/VoiceChat/VoiceChatLayout.tsx` - Botón toggle comentado
-- `src/components/VoiceChat/VideoPanel.tsx` - Botón toggle comentado  
-- `src/components/ChatInput.tsx` - Entrada de texto comentada
-- `src/app/chat/page.tsx` - Documentación agregada
+Skills en `.agents/skills/` (Superpowers, `nicolas-identity`, `find-skills`, `frontend-design`, `react-typescript`). Grafo: `graphify update .`
 
 ---
 
-## Instalación y Configuración
+<div align="center">
 
-// ... existing code ... 
+**Nicolás Ceballos Brito** · Ingeniero en Sistemas y Telecomunicaciones (UCP 2025)  
+CTO · Prosavis · Pereira, Colombia
+
+[nicolasceballosbrito.com](https://nicolasceballosbrito.com)
+·
+[GitHub](https://github.com/Nico2603)
+·
+[LinkedIn](https://www.linkedin.com/in/nicolas-ceballos-brito/)
+·
+[X](https://x.com/NicolasCBrito)
+·
+[Instagram](https://www.instagram.com/nico_ceballos26/)
+·
+[Hugging Face](https://huggingface.co/Flackoooo)
+·
+[Email](mailto:nicolasceballosbrito@gmail.com)
+
+</div>
