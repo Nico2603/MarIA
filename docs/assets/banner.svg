@@ -22,9 +22,9 @@
   <circle cx="1180" cy="320" r="90" fill="#7BAF9E" fill-opacity="0.08"/>
   <rect x="56" y="56" width="64" height="64" rx="14" fill="none" stroke="#7BA3C9" stroke-width="1.5"/>
   <text x="88" y="98" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="28" font-weight="700" fill="#F1F4F8">NC</text>
-  <text x="140" y="78" font-family="Georgia, 'Times New Roman', serif" font-size="13" letter-spacing="4" fill="#7BA3C9">SALUD MENTAL  &#x00B7;  V2</text>
+  <text x="140" y="78" font-family="Georgia, 'Times New Roman', serif" font-size="13" letter-spacing="4" fill="#7BA3C9">SALUD MENTAL  ·  V2</text>
   <text x="140" y="112" font-family="Georgia, 'Times New Roman', serif" font-size="42" font-weight="700" fill="#F1F4F8">MarIA</text>
-  <text x="56" y="198" font-family="Georgia, 'Times New Roman', serif" font-size="22" fill="#A8B3C2">Acompa&#x00F1;amiento emocional con voz e IA</text>
-  <text x="56" y="268" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" letter-spacing="2" fill="#7BA3C9">NICOL&#x00C1;S CEBALLOS BRITO  &#x00B7;  nicolasceballosbrito.com</text>
+  <text x="56" y="198" font-family="Georgia, 'Times New Roman', serif" font-size="22" fill="#A8B3C2">Acompañamiento emocional con voz e IA</text>
+  <text x="56" y="268" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" letter-spacing="2" fill="#7BA3C9">NICOLÁS CEBALLOS BRITO  ·  nicolasceballosbrito.com</text>
   <rect x="56" y="300" width="48" height="3" fill="#7BAF9E"/>
 </svg>
