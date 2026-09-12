@@ -6,7 +6,7 @@ Identidad del autor: skill `nicolas-identity`. Marca Ink & Steel. Sitio: https:/
 
 ## Skills obligatorias
 
-Leer `.agents/skills/<nombre>/SKILL.md` segÃºn `.cursor/rules/skills-mandatory.mdc`.
+Leer `.agents/skills/<nombre>/SKILL.md` según `.cursor/rules/skills-mandatory.mdc`.
 
 - `nicolas-identity`
 - `using-superpowers`
